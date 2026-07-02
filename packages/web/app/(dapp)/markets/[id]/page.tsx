@@ -3,7 +3,9 @@ import { getMarket } from "@/lib/ponder";
 import { TradePanel } from "@/components/TradePanel";
 import { SettleActions } from "@/components/SettleActions";
 import { RedeemButton } from "@/components/RedeemButton";
+import { CreatorFeesPanel } from "@/components/CreatorFeesPanel";
 import { PriceHistoryChart } from "@/components/PriceHistoryChart";
+import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { ProbabilityDisplay, ProbabilityBar } from "@/components/ProbabilityDisplay";
 import { formatDate, shortenAddress, yesProbabilityFromSupplies } from "@/lib/format";
 import { avatarColorFor } from "@/lib/avatarColor";
@@ -48,8 +50,11 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
         <PriceHistoryChart marketId={marketId} createdAt={BigInt(market.createdAt)} closeTime={BigInt(market.closeTime)} />
 
+        <TradeHistoryTable marketId={marketId} />
+
         <SettleActions marketId={marketId} closeTime={BigInt(market.closeTime)} state={market.state} />
         <RedeemButton marketId={marketId} />
+        <CreatorFeesPanel marketId={marketId} />
       </div>
 
       <div className="lg:sticky lg:top-20">

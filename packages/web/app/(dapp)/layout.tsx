@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
+import { AdminNavLink } from "@/components/AdminNavLink";
 
 export default function DappLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export default function DappLayout({ children }: { children: React.ReactNode }) 
             <Link href="/docs" className="shrink-0 text-sm font-medium text-gray-300 hover:text-white">
               Docs
             </Link>
+            <AdminNavLink />
           </nav>
           <div className="flex items-center gap-3 shrink-0">
             <Link

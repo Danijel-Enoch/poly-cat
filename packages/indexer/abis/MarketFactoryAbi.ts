@@ -1,14 +1,21 @@
 export const MarketFactoryAbi = [
   {
     "type": "constructor",
-    "inputs": [
+    "inputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "CREATOR_FEE_SHARE_BPS",
+    "inputs": [],
+    "outputs": [
       {
-        "name": "_protocolTreasury",
-        "type": "address",
-        "internalType": "address"
+        "name": "",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -45,6 +52,19 @@ export const MarketFactoryAbi = [
         "name": "",
         "type": "uint64",
         "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "UPGRADE_INTERFACE_VERSION",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -209,6 +229,11 @@ export const MarketFactoryAbi = [
             "internalType": "uint256"
           },
           {
+            "name": "creatorFees",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "state",
             "type": "uint8",
             "internalType": "enum MarketFactory.MarketState"
@@ -246,6 +271,19 @@ export const MarketFactoryAbi = [
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initialize",
+    "inputs": [
+      {
+        "name": "_protocolTreasury",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -309,6 +347,11 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
+        "name": "creatorFees",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "state",
         "type": "uint8",
         "internalType": "enum MarketFactory.MarketState"
@@ -356,6 +399,19 @@ export const MarketFactoryAbi = [
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "proxiableUUID",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -508,6 +564,37 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "upgradeToAndCall",
+    "inputs": [
+      {
+        "name": "newImplementation",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "data",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawCreatorFees",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "withdrawFees",
     "inputs": [
       {
@@ -518,6 +605,31 @@ export const MarketFactoryAbi = [
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CreatorFeesWithdrawn",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
   },
   {
     "type": "event",
@@ -540,6 +652,19 @@ export const MarketFactoryAbi = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Initialized",
+    "inputs": [
+      {
+        "name": "version",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
       }
     ],
     "anonymous": false
@@ -799,6 +924,30 @@ export const MarketFactoryAbi = [
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "Upgraded",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
     "type": "error",
     "name": "AlreadyResolved",
     "inputs": []
@@ -806,6 +955,27 @@ export const MarketFactoryAbi = [
   {
     "type": "error",
     "name": "CloseTimeTooSoon",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ERC1967InvalidImplementation",
+    "inputs": [
+      {
+        "name": "implementation",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC1967NonPayable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedCall",
     "inputs": []
   },
   {
@@ -830,6 +1000,11 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "LiquidityTooLow",
     "inputs": []
   },
@@ -850,12 +1025,27 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "NoCreatorFeesToWithdraw",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NoFeesToWithdraw",
     "inputs": []
   },
   {
     "type": "error",
     "name": "NotAContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotCreator",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInitializing",
     "inputs": []
   },
   {
@@ -910,6 +1100,22 @@ export const MarketFactoryAbi = [
     "type": "error",
     "name": "SlippageExceeded",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnauthorizedCallContext",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "UUPSUnsupportedProxiableUUID",
+    "inputs": [
+      {
+        "name": "slot",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
   },
   {
     "type": "error",

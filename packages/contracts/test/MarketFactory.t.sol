@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {MarketFactory} from "../src/MarketFactory.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
@@ -20,7 +21,11 @@ contract MarketFactoryTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        factory = new MarketFactory(treasury);
+
+        MarketFactory implementation = new MarketFactory();
+        ERC1967Proxy proxy =
+            new ERC1967Proxy(address(implementation), abi.encodeCall(MarketFactory.initialize, (treasury)));
+        factory = MarketFactory(address(proxy));
 
         closeTime = uint64(block.timestamp + 7 days);
 
@@ -44,9 +49,21 @@ contract MarketFactoryTest is Test {
         marketId = factory.createMarket(p);
     }
 
-    function test_Constructor_RevertsOnZeroTreasury() public {
+    function test_Initialize_RevertsOnZeroTreasury() public {
+        MarketFactory implementation = new MarketFactory();
         vm.expectRevert();
-        new MarketFactory(address(0));
+        new ERC1967Proxy(address(implementation), abi.encodeCall(MarketFactory.initialize, (address(0))));
+    }
+
+    function test_Initialize_RevertsIfCalledTwice() public {
+        vm.expectRevert();
+        factory.initialize(treasury);
+    }
+
+    function test_Implementation_CannotBeInitializedDirectly() public {
+        MarketFactory implementation = new MarketFactory();
+        vm.expectRevert();
+        implementation.initialize(treasury);
     }
 
     // ---------- createMarket ----------
@@ -334,5 +351,104 @@ contract MarketFactoryTest is Test {
         address newTreasury = makeAddr("newTreasury");
         factory.setProtocolTreasury(newTreasury);
         assertEq(factory.protocolTreasury(), newTreasury);
+    }
+
+    // ---------- creator fee share ----------
+
+    function test_BuyShares_SplitsFeeBetweenTreasuryAndCreator() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        uint256 totalFee = m.collectedFees + m.creatorFees;
+        assertGt(totalFee, 0);
+        // 5% of the fee goes to the creator, 95% to the protocol.
+        assertEq(m.creatorFees, (totalFee * factory.CREATOR_FEE_SHARE_BPS()) / 10_000);
+        assertEq(m.collectedFees, totalFee - m.creatorFees);
+    }
+
+    function test_SellShares_SplitsFeeBetweenTreasuryAndCreator() public {
+        uint256 marketId = _createMarket();
+        vm.startPrank(alice);
+        uint256 sharesOut = factory.buyShares(marketId, true, 100e6, 0);
+        MarketFactory.Market memory beforeSell = factory.getMarket(marketId);
+        factory.sellShares(marketId, true, sharesOut, 0);
+        vm.stopPrank();
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        uint256 sellFee = (m.collectedFees + m.creatorFees) - (beforeSell.collectedFees + beforeSell.creatorFees);
+        uint256 sellCreatorShare = m.creatorFees - beforeSell.creatorFees;
+        assertEq(sellCreatorShare, (sellFee * factory.CREATOR_FEE_SHARE_BPS()) / 10_000);
+    }
+
+    function test_WithdrawCreatorFees_TransfersToCreatorAndResets() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+
+        MarketFactory.Market memory before = factory.getMarket(marketId);
+        assertGt(before.creatorFees, 0);
+        uint256 creatorBalBefore = usdc.balanceOf(creator);
+
+        vm.prank(creator);
+        factory.withdrawCreatorFees(marketId);
+
+        MarketFactory.Market memory afterWithdraw = factory.getMarket(marketId);
+        assertEq(afterWithdraw.creatorFees, 0);
+        assertEq(usdc.balanceOf(creator), creatorBalBefore + before.creatorFees);
+    }
+
+    function test_WithdrawCreatorFees_RevertsIfNotCreator() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.NotCreator.selector);
+        factory.withdrawCreatorFees(marketId);
+    }
+
+    function test_WithdrawCreatorFees_RevertsIfNoFees() public {
+        uint256 marketId = _createMarket();
+        vm.prank(creator);
+        vm.expectRevert(MarketFactory.NoCreatorFeesToWithdraw.selector);
+        factory.withdrawCreatorFees(marketId);
+    }
+
+    // ---------- UUPS upgradeability ----------
+
+    function test_UpgradeToAndCall_RevertsIfNotOwner() public {
+        MarketFactoryV2Mock v2 = new MarketFactoryV2Mock();
+        vm.prank(alice);
+        vm.expectRevert();
+        factory.upgradeToAndCall(address(v2), "");
+    }
+
+    function test_UpgradeToAndCall_SucceedsForOwnerAndPreservesState() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+        MarketFactory.Market memory before = factory.getMarket(marketId);
+
+        MarketFactoryV2Mock v2 = new MarketFactoryV2Mock();
+        factory.upgradeToAndCall(address(v2), "");
+
+        MarketFactory.Market memory afterUpgrade = factory.getMarket(marketId);
+        assertEq(afterUpgrade.reserve, before.reserve);
+        assertEq(afterUpgrade.creator, before.creator);
+        assertEq(afterUpgrade.yesSupply, before.yesSupply);
+        assertEq(afterUpgrade.noSupply, before.noSupply);
+        assertEq(afterUpgrade.collectedFees, before.collectedFees);
+        assertEq(afterUpgrade.creatorFees, before.creatorFees);
+
+        assertEq(MarketFactoryV2Mock(address(factory)).version(), 2);
+    }
+}
+
+/// @dev Minimal upgrade target used only to test the UUPS upgrade path.
+contract MarketFactoryV2Mock is MarketFactory {
+    function version() external pure returns (uint256) {
+        return 2;
     }
 }

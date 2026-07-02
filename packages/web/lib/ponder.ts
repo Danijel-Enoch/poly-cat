@@ -49,7 +49,14 @@ export type PositionRow = {
 export type TradeRow = {
   id: string;
   marketId: string;
+  trader: string;
+  isYes: boolean;
+  side: "buy" | "sell";
+  collateralAmount: string;
+  sharesAmount: string;
+  feePaid: string;
   timestamp: string;
+  txHash: string;
   yesSupplyAfter: string;
   noSupplyAfter: string;
 };
@@ -80,7 +87,10 @@ export async function getTradeHistory(marketId: string): Promise<TradeRow[]> {
   const data = await ponderQuery<{ trades: { items: TradeRow[] } }>(
     `query($marketId: BigInt!) {
       trades(where: { marketId: $marketId }, limit: 1000) {
-        items { id marketId timestamp yesSupplyAfter noSupplyAfter }
+        items {
+          id marketId trader isYes side collateralAmount sharesAmount feePaid
+          timestamp txHash yesSupplyAfter noSupplyAfter
+        }
       }
     }`,
     { marketId },

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test} from "forge-std/Test.sol";
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {MarketFactory} from "../../src/MarketFactory.sol";
 import {MockUSDC} from "../../src/mocks/MockUSDC.sol";
@@ -136,7 +137,10 @@ contract MarketInvariantsTest is Test {
 
     function setUp() public {
         usdc = new MockUSDC();
-        factory = new MarketFactory(treasury);
+        MarketFactory implementation = new MarketFactory();
+        ERC1967Proxy proxy =
+            new ERC1967Proxy(address(implementation), abi.encodeCall(MarketFactory.initialize, (treasury)));
+        factory = MarketFactory(address(proxy));
         handler = new Handler(factory, usdc);
         factory.transferOwnership(address(handler));
 

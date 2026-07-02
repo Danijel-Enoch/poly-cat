@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { keccak256, toHex } from "viem";
+import { keccak256, maxUint256, toHex } from "viem";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, mockUsdcContract, MOCK_USDC_ADDRESS } from "@/lib/contracts";
+import { marketFactoryContract, usdcContract, USDC_ADDRESS } from "@/lib/contracts";
 import { parseUsdc } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
 import { useClickRipple } from "@/components/ClickRipple";
@@ -20,7 +20,6 @@ export default function CreateMarketPage() {
   const { onPointerDown: onSubmitRipple, rippleLayer: submitRippleLayer } = useClickRipple();
 
   const [question, setQuestion] = useState("");
-  const [metadataURI, setMetadataURI] = useState("");
   const [category, setCategory] = useState<Category>("Politics");
   const [closeDate, setCloseDate] = useState("");
   const [liquidity, setLiquidity] = useState("100");
@@ -28,7 +27,7 @@ export default function CreateMarketPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const { data: allowance } = useReadContract({
-    ...mockUsdcContract,
+    ...usdcContract,
     functionName: "allowance",
     args: address ? [address, marketFactoryContract.address] : undefined,
     query: { enabled: !!address },
@@ -50,11 +49,13 @@ export default function CreateMarketPage() {
       const closeTime = BigInt(Math.floor(new Date(closeDate).getTime() / 1000));
 
       if (!allowance || allowance < initialLiquidity) {
+        // Approve once for (effectively) unlimited spending — see TradePanel for why
+        // a max-uint256 allowance means this is the only approval ever needed.
         setStatus("Approving USDC...");
         const approveHash = await writeContractAsync({
-          ...mockUsdcContract,
+          ...usdcContract,
           functionName: "approve",
-          args: [marketFactoryContract.address, initialLiquidity],
+          args: [marketFactoryContract.address, maxUint256],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
       }
@@ -65,9 +66,9 @@ export default function CreateMarketPage() {
         functionName: "createMarket",
         args: [
           {
-            collateralToken: MOCK_USDC_ADDRESS,
+            collateralToken: USDC_ADDRESS,
             questionHash: keccak256(toHex(question)),
-            metadataURI: encodeMetadataURI(category, metadataURI || question),
+            metadataURI: encodeMetadataURI(category, question),
             closeTime,
             initialLiquidity,
           },
@@ -85,18 +86,31 @@ export default function CreateMarketPage() {
     }
   }
 
-  if (!isConnected) {
-    return (
-      <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
-        <p className="text-gray-400 text-sm">Connect your wallet to create a market.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-lg">
       <h1 className="text-2xl font-extrabold text-gray-100 mb-1">Create a market</h1>
-      <p className="text-sm text-gray-400 mb-6">Ask any yes/no question. Anyone can trade once it&apos;s live.</p>
+      <p className="text-sm text-gray-400 mb-4">Ask any yes/no question. Anyone can trade once it&apos;s live.</p>
+
+      <div className="mb-6 rounded-2xl border border-amber-900/50 bg-amber-950/40 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-400 mb-2">Before you create a market</p>
+        <ul className="text-xs text-amber-200/80 space-y-1.5 list-disc list-inside">
+          <li>
+            Your initial liquidity seeds the market&apos;s bonding curve and isn&apos;t returned to you — you only earn
+            it back over time via your 5% cut of trading fees, and only if people actually trade.
+          </li>
+          <li>
+            Settlement is entirely admin-controlled: the platform admin decides the outcome once trading closes.
+            There is no bond, no dispute process, and no oracle — a wrong or malicious settlement is possible.
+          </li>
+          <li>Only seed a market you&apos;re comfortable funding and confident can be settled fairly.</li>
+        </ul>
+      </div>
+
+      {!isConnected ? (
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
+          <p className="text-gray-400 text-sm">Connect your wallet to create a market.</p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-2xl border border-gray-800 bg-gray-900 p-6">
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
           Question
@@ -123,15 +137,6 @@ export default function CreateMarketPage() {
           </select>
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
-          Metadata / resolution criteria URI (optional)
-          <input
-            value={metadataURI}
-            onChange={(e) => setMetadataURI(e.target.value)}
-            placeholder="ipfs://... or leave blank to reuse the question text"
-            className="rounded-lg border border-gray-700 bg-gray-800 text-gray-100 px-3 py-2 font-normal focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
           Closes at
           <input
             required
@@ -155,8 +160,9 @@ export default function CreateMarketPage() {
         </label>
         <p className="text-xs text-gray-500">
           Markets are settled directly by the platform admin once trading closes — no bond, no dispute, no oracle.
-          A protocol trading fee of {((protocolFeeBps ?? 100) / 100).toFixed(2)}% applies to every buy and sell,
-          set by the platform admin — not configurable per market.
+          A protocol trading fee of {((protocolFeeBps ?? 100) / 100).toFixed(2)}% applies to every buy and sell, set
+          by the platform admin — not configurable per market. As the creator, you earn 5% of that fee on every trade
+          in your market, withdrawable any time from the market page.
         </p>
 
         <motion.button
@@ -171,6 +177,7 @@ export default function CreateMarketPage() {
         </motion.button>
         {status && <p className="text-sm text-gray-400">{status}</p>}
       </form>
+      )}
     </div>
   );
 }

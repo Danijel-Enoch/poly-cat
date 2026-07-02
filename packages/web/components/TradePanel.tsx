@@ -5,9 +5,10 @@ import { motion } from "framer-motion";
 import { useClickRipple } from "@/components/ClickRipple";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
+import { maxUint256 } from "viem";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, mockUsdcContract } from "@/lib/contracts";
+import { marketFactoryContract, usdcContract } from "@/lib/contracts";
 import { formatUsdc, parseUsdc, yesProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
@@ -42,14 +43,14 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
   });
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    ...mockUsdcContract,
+    ...usdcContract,
     functionName: "allowance",
     args: address ? [address, marketFactoryContract.address] : undefined,
     query: { enabled: !!address },
   });
 
   const { data: usdcBalance } = useReadContract({
-    ...mockUsdcContract,
+    ...usdcContract,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: { enabled: !!address },
@@ -156,11 +157,14 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         const minSharesOut = buyMode === "receive" ? parsed : 0n;
 
         if (!allowance || allowance < amountIn) {
+          // Approve once for (effectively) unlimited spending, matching how real USDC
+          // treats a max-uint256 allowance: `_spendAllowance` skips decrementing it, so
+          // this is the only approval a wallet ever needs to sign for this market.
           setStatus("Approving USDC...");
           const approveHash = await writeContractAsync({
-            ...mockUsdcContract,
+            ...usdcContract,
             functionName: "approve",
-            args: [marketFactoryContract.address, amountIn],
+            args: [marketFactoryContract.address, maxUint256],
           });
           await waitForTransactionReceipt(wagmiConfig, { hash: approveHash });
         }
