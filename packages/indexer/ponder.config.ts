@@ -2,12 +2,19 @@ import { createConfig } from "ponder";
 
 import { MarketFactoryAbi } from "./abis/MarketFactoryAbi";
 
-// Robinhood Chain (mainnet) is only wired in once its network details and the
-// mainnet MarketFactory deployment are known — set PONDER_RPC_URL_ROBINHOOD,
-// ROBINHOOD_CHAIN_ID, and MARKET_FACTORY_ADDRESS_ROBINHOOD when deploying there.
-// Until then the indexer runs anvil-only, so an unset/placeholder mainnet RPC can
-// never break local dev.
-const hasRobinhoodConfig = !!process.env.PONDER_RPC_URL_ROBINHOOD && !!process.env.ROBINHOOD_CHAIN_ID;
+// Robinhood Chain (mainnet) is only wired in once its network details AND the
+// mainnet MarketFactory deployment are known — all three of
+// PONDER_RPC_URL_ROBINHOOD, ROBINHOOD_CHAIN_ID, and
+// MARKET_FACTORY_ADDRESS_ROBINHOOD are required together, since a chain entry
+// with no contract address (or vice versa) fails Ponder's config validation
+// outright rather than just being inert. Until all three are set, the indexer
+// runs anvil-only, so filling in the network's RPC/chain ID ahead of actually
+// deploying the contract there (as this repo's own .env.local does) can't
+// break local dev.
+const hasRobinhoodConfig =
+  !!process.env.PONDER_RPC_URL_ROBINHOOD &&
+  !!process.env.ROBINHOOD_CHAIN_ID &&
+  !!process.env.MARKET_FACTORY_ADDRESS_ROBINHOOD;
 
 export default createConfig({
   chains: {

@@ -205,38 +205,68 @@ exposes a Docker `HEALTHCHECK` against Ponder's `/health` endpoint.
 
 ## Moving to Robinhood Chain mainnet
 
-No real-world Robinhood Chain network parameters (chain ID, RPC URL, block
-explorer, native USDC address) are hardcoded anywhere in this codebase — they
-must come from Robinhood Chain's own docs/explorer, not a guess. Everything
-mainnet-related is env-var driven instead:
+Robinhood Chain's network parameters are now known and filled in as real
+values across all three `.env.example` files (confirmed, not guessed: chain ID
+via `eth_chainId` against the RPC URL, the collateral token via the block
+explorer's own API — it's **USDG** ("Global Dollar"), not USDC, though it
+shares USDC's 6 decimals). `MarketFactory` is now deployed to mainnet — proxy
+`0x18189829F3906Ed57e1B215873A9dd0A237D04DD`, implementation
+`0x04462E84EAC64ef0531Ed9778D33836631a97186`, owned by
+`0x0Ce79fe7497DAf6FDba339768B2577E120b4f285` — and the addresses below are
+wired into every package's `.env.local`:
+
+| | Chain ID | RPC | Explorer | Collateral token |
+|---|---|---|---|---|
+| Value | `4663` | `https://rpc.mainnet.chain.robinhood.com` | `https://robinhoodchain.blockscout.com` | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` (USDG) |
+
+**`packages/contracts`** (`script/Deploy.s.sol`):
+
+```bash
+USDC_ADDRESS=0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168 \
+  forge script script/Deploy.s.sol --rpc-url https://rpc.mainnet.chain.robinhood.com --broadcast --verify
+```
+
+Setting `USDC_ADDRESS` skips deploying/minting `MockUSDC` and uses that
+address as the collateral token instead — `MockUSDC` deployment is otherwise
+unconditional, which is only correct for local/testnet. This logs the
+`MarketFactory` **proxy** address, which is what steps below need.
 
 **`packages/web`** (`lib/wagmi.ts`, `lib/contracts.ts`):
 
 | Env var | Purpose |
 |---|---|
 | `NEXT_PUBLIC_NETWORK=mainnet` | switches the whole app off local Anvil |
-| `NEXT_PUBLIC_MAINNET_CHAIN_ID` | Robinhood Chain's chain ID |
+| `NEXT_PUBLIC_MAINNET_CHAIN_ID` | `4663` |
 | `NEXT_PUBLIC_MAINNET_CHAIN_NAME` | display name (defaults to "Robinhood Chain") |
-| `NEXT_PUBLIC_MAINNET_RPC_URL` | public RPC endpoint |
-| `NEXT_PUBLIC_MAINNET_EXPLORER_URL` | block explorer (optional) |
-| `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH) |
-| `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | the mainnet proxy address, once deployed |
-| `NEXT_PUBLIC_MAINNET_USDC_ADDRESS` | real USDC's address on Robinhood Chain |
+| `NEXT_PUBLIC_MAINNET_RPC_URL` | `https://rpc.mainnet.chain.robinhood.com` |
+| `NEXT_PUBLIC_MAINNET_EXPLORER_URL` | `https://robinhoodchain.blockscout.com` |
+| `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH — unconfirmed, but Robinhood Chain is an Arbitrum L2 and the explorer's own coin icon/price data both point to ETH) |
+| `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | `0x18189829F3906Ed57e1B215873A9dd0A237D04DD` (mainnet proxy) |
+| `NEXT_PUBLIC_MAINNET_USDC_ADDRESS` | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` (USDG) |
 
 If `NEXT_PUBLIC_NETWORK=mainnet` and either address var is unset, the app
 throws immediately at startup (`lib/contracts.ts`'s `requireMainnetEnv`) —
 fail loudly, not silently-wrong.
 
+Note the UI hardcodes the label "USDC" in several places (trade panel, create
+form, trade history, docs) — accurate for local/testnet MockUSDC, but wrong on
+mainnet where the real collateral token is USDG. Not yet updated to be
+network-aware; do this before actually flipping `NEXT_PUBLIC_NETWORK=mainnet`
+in a user-facing deployment.
+
 **`packages/indexer`** (`ponder.config.ts`):
 
 | Env var | Purpose |
 |---|---|
-| `PONDER_RPC_URL_ROBINHOOD` | RPC endpoint for indexing |
-| `ROBINHOOD_CHAIN_ID` | chain ID |
-| `MARKET_FACTORY_ADDRESS_ROBINHOOD` | mainnet proxy address |
-| `START_BLOCK_ROBINHOOD` | block the contract was deployed at |
+| `PONDER_RPC_URL_ROBINHOOD` | `https://rpc.mainnet.chain.robinhood.com` |
+| `ROBINHOOD_CHAIN_ID` | `4663` |
+| `MARKET_FACTORY_ADDRESS_ROBINHOOD` | `0x18189829F3906Ed57e1B215873A9dd0A237D04DD` (mainnet proxy) |
+| `START_BLOCK_ROBINHOOD` | `1495391` (block the proxy was deployed at) |
 
-The mainnet chain is only added to the indexer's config when
-`PONDER_RPC_URL_ROBINHOOD` and `ROBINHOOD_CHAIN_ID` are both set — leaving them
-unset keeps local dev anvil-only, so this can't accidentally break anything
-before you're ready to deploy.
+The mainnet chain is only added to the indexer's config when **all three** of
+`PONDER_RPC_URL_ROBINHOOD`, `ROBINHOOD_CHAIN_ID`, and
+`MARKET_FACTORY_ADDRESS_ROBINHOOD` are set (not just the first two — a chain
+entry with no contract address fails Ponder's config validation outright, so
+this repo's own `.env.local` has the RPC/chain ID filled in but stays
+anvil-only until the contract address is too). This can't accidentally break
+local dev before you're ready to deploy.

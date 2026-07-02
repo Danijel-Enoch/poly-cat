@@ -29,19 +29,26 @@ cp .env.example .env.local                               # optional — defaults
 forge script script/Deploy.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 
-This deploys `MockUSDC`, the `MarketFactory` implementation, and an
-`ERC1967Proxy` pointed at it (initialized with the deployer as owner). **The
-proxy address is what every other package uses** (indexer, frontend) — the
-implementation address is only needed if you later call `upgradeToAndCall`.
-The deployer becomes the contract owner and is therefore the only account that
-can call `settleMarket`, `setFeeBps`, `withdrawFees`, or push upgrades —
-reassign ownership to a multisig before any real deployment.
+This deploys `MockUSDC` (minting test funds to the deployer), the
+`MarketFactory` implementation, and an `ERC1967Proxy` pointed at it
+(initialized with the deployer as owner). **The proxy address is what every
+other package uses** (indexer, frontend) — the implementation address is only
+needed if you later call `upgradeToAndCall`. The deployer becomes the contract
+owner and is therefore the only account that can call `settleMarket`,
+`setFeeBps`, `withdrawFees`, or push upgrades — reassign ownership to a
+multisig before any real deployment.
 
 ## Deploying to Robinhood Chain mainnet
 
 ```bash
-forge script script/Deploy.s.sol --rpc-url $ROBINHOOD_RPC_URL --broadcast --verify
+USDC_ADDRESS=0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168 \
+  forge script script/Deploy.s.sol --rpc-url $ROBINHOOD_RPC_URL --broadcast --verify
 ```
+
+Setting `USDC_ADDRESS` (real USDG — "Global Dollar" — on Robinhood Chain
+mainnet) skips deploying/minting `MockUSDC` entirely and uses that address as
+the collateral token instead. Without it, `Deploy.s.sol` always deploys a
+fresh mock, which is only appropriate for local/testnet use.
 
 No real network parameters for Robinhood Chain are hardcoded anywhere in this
 repo — get the RPC URL from Robinhood Chain's own docs/explorer. See
