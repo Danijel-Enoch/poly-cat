@@ -3,9 +3,12 @@
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
-    "contracts:test": "cd packages/contracts && forge test -vvv",
     "contracts:build": "cd packages/contracts && forge build",
-    "indexer:dev": "pnpm --filter @hoodmarkets/indexer dev",
-    "web:dev": "pnpm --filter @hoodmarkets/web dev"
+    "contracts:test": "cd packages/contracts && forge test -vvv",
+    "contracts:deploy": "cd packages/contracts && forge script script/Deploy.s.sol --broadcast",
+    "indexer:dev": "pnpm --filter indexer dev",
+    "indexer:start": "pnpm --filter indexer start",
+    "web:dev": "pnpm --filter web dev",
+    "web:build": "pnpm --filter web build"
   }
 }

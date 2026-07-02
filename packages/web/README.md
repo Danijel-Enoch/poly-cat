@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HoodMarkets — web
 
-## Getting Started
+Next.js (App Router) frontend: trading UI, market creation, portfolio,
+leaderboard, in-product docs, and an admin dashboard. See the repo root
+[`README.md`](../../README.md) and [`DOCS.md`](../../DOCS.md) for the full
+picture — this file covers just this package.
 
-First, run the development server:
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Fill in `.env.local` — defaults match a local Anvil + `forge script
+script/Deploy.s.sol --broadcast` deployment (see the contracts package). The
+Ponder indexer (`packages/indexer`) must be running for market data to load.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+pnpm dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Open [http://localhost:3000](http://localhost:3000). `/app` is the market
+list; `/admin` is only visible/usable to the wallet matching the contract's
+`owner()`.
 
-## Learn More
+## Env vars
 
-To learn more about Next.js, take a look at the following resources:
+See `.env.example` for the full list with comments. In short:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `NEXT_PUBLIC_RPC_URL`, `NEXT_PUBLIC_PONDER_URL` — where to reach the chain
+  and the indexer's GraphQL API.
+- `NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`, `NEXT_PUBLIC_MOCK_USDC_ADDRESS` — the
+  local/testnet deployment's contract addresses.
+- `NEXT_PUBLIC_NETWORK=mainnet` plus the `NEXT_PUBLIC_MAINNET_*` vars — switch
+  the whole app to Robinhood Chain. See [`DOCS.md`](../../DOCS.md#moving-to-robinhood-chain-mainnet).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Structure
 
-## Deploy on Vercel
+```
+app/
+  page.tsx                 marketing landing page
+  (dapp)/                  route group for the actual app
+    app/                   markets list (search/filter/sort)
+    markets/[id]/          market detail: chart, trade panel, trade history
+    create/                create-market form + risk disclosure
+    portfolio/              connected wallet's open positions
+    leaderboard/            top traders by volume
+    docs/                   in-product explainer
+    admin/                  owner-only: settle, claim fees, volume, closing-soon
+components/                 shared UI (TradePanel, RedeemButton, CreatorFeesPanel, ...)
+lib/                        wagmi/viem config, contract addresses+ABIs, Ponder client, math
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploying
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deploys like any Next.js app (Vercel, etc.) — set the env vars above in your
+hosting provider's dashboard, pointed at a reachable RPC endpoint and Ponder
+instance (not `localhost`, which only resolves on your own machine).
+
+```bash
+pnpm build
+pnpm start
+```

@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.next
+**/.next
+packages/contracts/cache
+packages/contracts/out
+packages/contracts/broadcast
+packages/indexer/.ponder
+packages/indexer/generated
+.env*
+!.env.example
+**/.env.example
+*.log
+.DS_Store

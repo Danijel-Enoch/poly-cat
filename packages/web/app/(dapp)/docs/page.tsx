@@ -27,7 +27,7 @@ const SECTIONS = [
   {
     id: "fees",
     title: "Fees",
-    body: "A flat protocol trading fee (1% by default) applies to every buy and sell, set globally by the platform admin. It is not configurable per market.",
+    body: "A flat protocol trading fee (1% by default) applies to every buy and sell, set globally by the platform admin. It is not configurable per market. 5% of every fee collected goes to that market's creator rather than the protocol treasury — withdrawable any time from the market page — as the only return a creator earns on the liquidity they seeded.",
   },
 ];
 
