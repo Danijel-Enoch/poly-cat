@@ -64,10 +64,10 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
-      className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5"
+      className="rounded-2xl border border-gray-800 bg-gray-900 p-5"
     >
-      <h2 className="font-bold text-gray-900 dark:text-gray-100 mb-2">Redeem</h2>
-      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+      <h2 className="font-bold text-gray-100 mb-2">Redeem</h2>
+      <p className="text-sm text-gray-300 mb-4">
         Outcome: <strong>{market.outcome ? "YES" : "NO"}</strong>. Your winning shares:{" "}
         {formatUsdc(winningBalance ?? 0n)}
       </p>
@@ -76,12 +76,12 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
         onClick={handleRedeem}
         onPointerDown={onRedeemRipple}
         disabled={submitting || !hasWinnings}
-        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-900 py-2.5 px-5 text-sm font-semibold disabled:opacity-50 disabled:bg-gray-200 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-500"
+        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-900 py-2.5 px-5 text-sm font-semibold disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
       >
         {redeemRippleLayer}
         {hasWinnings ? "Redeem winnings" : "Nothing to redeem"}
       </motion.button>
-      {status && <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{status}</p>}
+      {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
     </motion.div>
   );
 }

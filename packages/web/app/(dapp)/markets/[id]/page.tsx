@@ -23,7 +23,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
   return (
     <div className="grid gap-6 lg:grid-cols-3 items-start">
       <div className="lg:col-span-2 flex flex-col gap-6">
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
           <div className="flex items-start gap-3">
             <span
               className={`h-12 w-12 shrink-0 rounded-full ${avatarColorFor(market.id)} flex items-center justify-center text-white font-bold`}
@@ -32,12 +32,12 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
             </span>
             <div className="flex-1 min-w-0">
               {category && (
-                <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-700 dark:text-gray-200 mb-1">
+                <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-200 mb-1">
                   {category}
                 </span>
               )}
-              <h1 className="text-xl font-extrabold text-gray-900 dark:text-gray-100 break-words">{title}</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <h1 className="text-xl font-extrabold text-gray-100 break-words">{title}</h1>
+              <p className="text-sm text-gray-400 mt-1">
                 Created by {shortenAddress(market.creator)} · Closes {formatDate(market.closeTime)}
               </p>
             </div>

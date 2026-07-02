@@ -1,30 +1,46 @@
 import Link from "next/link";
-import { getMarkets } from "@/lib/ponder";
-import { MarketsBrowser } from "@/components/MarketsBrowser";
 
-export default async function Home() {
-  const markets = await getMarkets();
-
+export default function LandingPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">Markets</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Trade on the outcome of anything.</p>
-      </div>
-
-      {markets.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 py-16 text-center">
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-3">No markets yet.</p>
-          <Link
-            href="/create"
-            className="inline-block text-sm font-semibold px-4 py-2 rounded-full bg-accent text-gray-900 hover:bg-accent-dark"
-          >
-            Create the first one
-          </Link>
+    <div className="min-h-screen flex flex-col">
+      <header className="max-w-5xl w-full mx-auto px-6 py-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-gray-900 text-sm font-bold">
+            H
+          </span>
+          <span className="font-extrabold tracking-tight text-lg">HoodMarkets</span>
         </div>
-      ) : (
-        <MarketsBrowser markets={markets} />
-      )}
+        <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white">
+          Docs
+        </Link>
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
+        <span className="text-xs font-semibold uppercase tracking-wide text-accent mb-4">Built on Robinhood Chain</span>
+        <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight max-w-2xl">
+          The first prediction market on Robinhood Chain
+        </h1>
+        <p className="text-gray-400 max-w-xl mt-5 text-base sm:text-lg">
+          Create a market on anything. Trade Yes or No shares on a live bonding-curve price. Settled fast, no
+          middlemen.
+        </p>
+        <Link
+          href="/app"
+          className="mt-10 rounded-full bg-accent hover:bg-accent-dark text-gray-900 font-semibold px-8 py-3 text-base transition-colors"
+        >
+          Launch App
+        </Link>
+      </main>
+
+      <footer className="max-w-5xl w-full mx-auto px-6 py-8 flex items-center justify-center gap-6 text-xs text-gray-500">
+        <span>HoodMarkets</span>
+        <Link href="/docs" className="hover:text-gray-300">
+          Docs
+        </Link>
+        <Link href="/app" className="hover:text-gray-300">
+          Launch App
+        </Link>
+      </footer>
     </div>
   );
 }

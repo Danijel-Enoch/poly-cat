@@ -17,10 +17,10 @@ export function SpinningGlobe({ size = 280 }: { size?: number }) {
         transition={{ repeat: Infinity, duration: 22, ease: "linear" }}
       >
         {RING_TRANSFORMS.map((transform, i) => (
-          <div key={i} className="absolute inset-0 rounded-full border-2 border-accent/60" style={{ transform }} />
+          <div key={i} className="absolute inset-0 rounded-full border-2 border-accent/40" style={{ transform }} />
         ))}
         <div
-          className="absolute rounded-full border-2 border-accent/30"
+          className="absolute rounded-full border-2 border-accent/20"
           style={{ inset: "15%", transform: "rotateX(90deg)" }}
         />
       </motion.div>

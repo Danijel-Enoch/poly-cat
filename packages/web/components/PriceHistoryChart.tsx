@@ -3,39 +3,24 @@
 import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { useTheme } from "next-themes";
 
 import { getTradeHistory } from "@/lib/ponder";
 import { yesProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 
-// SVG fill/stroke colors can't be styled with Tailwind's `dark:` classes, so this
-// picks a light/dark palette explicitly based on the resolved theme.
-const PALETTE = {
-  light: {
-    yes: "#059669", // emerald-600 — matches the Yes color used everywhere else in the app
-    no: "#e11d48", // rose-600 — matches the No color used everywhere else in the app
-    grid: "#e5e7eb", // gray-200, recessive hairline
-    axisText: "#9ca3af", // gray-400
-    valueText: "#111827", // gray-900
-    markerRing: "#ffffff",
-    hoverLine: "#9ca3af",
-    tooltipBg: "#ffffff",
-    tooltipBorder: "#e5e7eb",
-    tooltipText: "#6b7280",
-  },
-  dark: {
-    yes: "#34d399", // emerald-400
-    no: "#fb7185", // rose-400
-    grid: "#374151", // gray-700
-    axisText: "#6b7280", // gray-500
-    valueText: "#f3f4f6", // gray-100
-    markerRing: "#111827", // gray-900, matches the card background so the ring blends in
-    hoverLine: "#6b7280",
-    tooltipBg: "#111827",
-    tooltipBorder: "#1f2937",
-    tooltipText: "#9ca3af",
-  },
+// SVG fill/stroke colors can't be styled with Tailwind classes, so they're plain
+// hex constants matching the dark theme used everywhere else in the app.
+const colors = {
+  yes: "#34d399", // emerald-400
+  no: "#fb7185", // rose-400
+  grid: "#374151", // gray-700
+  axisText: "#6b7280", // gray-500
+  valueText: "#f3f4f6", // gray-100
+  markerRing: "#111827", // gray-900, matches the card background so the ring blends in
+  hoverLine: "#6b7280",
+  tooltipBg: "#111827",
+  tooltipBorder: "#1f2937",
+  tooltipText: "#9ca3af",
 };
 
 const WIDTH = 640;
@@ -80,8 +65,6 @@ export function PriceHistoryChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const now = useNow();
-  const { resolvedTheme } = useTheme();
-  const colors = PALETTE[resolvedTheme === "dark" ? "dark" : "light"];
 
   const { data: trades, isLoading } = useQuery({
     queryKey: ["tradeHistory", marketId.toString()],
@@ -143,15 +126,15 @@ export function PriceHistoryChart({
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 dark:text-gray-100">Price history</h2>
+        <h2 className="font-bold text-gray-100">Price history</h2>
         <div className="flex items-center gap-4 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+          <span className="flex items-center gap-1.5 text-gray-300">
             <span className="inline-block w-3 h-0.5 rounded-full" style={{ backgroundColor: colors.yes }} />
             Yes
           </span>
-          <span className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
+          <span className="flex items-center gap-1.5 text-gray-300">
             <span className="inline-block w-3 h-0.5 rounded-full" style={{ backgroundColor: colors.no }} />
             No
           </span>
@@ -159,7 +142,7 @@ export function PriceHistoryChart({
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400 py-16 text-center">Loading price history...</p>
+        <p className="text-sm text-gray-400 py-16 text-center">Loading price history...</p>
       ) : (
         <div className="relative">
           <svg

@@ -55,9 +55,9 @@ export function SettleActions({
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-900 dark:text-gray-100">Settlement</h2>
+        <h2 className="font-bold text-gray-100">Settlement</h2>
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
             key={isClosed ? "unresolved" : "pending"}
@@ -65,21 +65,21 @@ export function SettleActions({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+            className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-800 text-gray-300"
           >
             Unresolved
           </motion.span>
         </AnimatePresence>
       </div>
 
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <p className="text-sm text-gray-400 mb-4">
         Settled directly by the platform admin — no bond, no dispute window, no oracle module.
       </p>
 
       {!isClosed ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Settlement opens after the market closes on {formatDate(closeTime)}.</p>
+        <p className="text-sm text-gray-400">Settlement opens after the market closes on {formatDate(closeTime)}.</p>
       ) : !isAdmin ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Waiting for the admin to settle this market.</p>
+        <p className="text-sm text-gray-400">Waiting for the admin to settle this market.</p>
       ) : (
         <div className="flex gap-2">
           <motion.button
@@ -105,7 +105,7 @@ export function SettleActions({
         </div>
       )}
 
-      {status && <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">{status}</p>}
+      {status && <p className="text-sm text-gray-400 mt-3">{status}</p>}
     </div>
   );
 }

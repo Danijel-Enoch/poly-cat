@@ -28,10 +28,8 @@ function PillButton({ label, active, onClick }: { label: string; active: boolean
       type="button"
       onClick={onClick}
       onPointerDown={onPointerDown}
-      className={`relative overflow-hidden shrink-0 text-sm font-medium px-3.5 py-1.5 rounded-full border transition-colors ${
-        active
-          ? "bg-accent text-gray-900 border-accent"
-          : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+      className={`relative overflow-hidden shrink-0 text-sm font-medium px-3.5 py-1.5 rounded-full transition-colors ${
+        active ? "bg-accent text-gray-900" : "bg-gray-900 text-gray-300 hover:bg-gray-800"
       }`}
     >
       {rippleLayer}
@@ -98,12 +96,12 @@ export function MarketsBrowser({ markets }: { markets: MarketRow[] }) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search markets..."
-          className="w-full sm:max-w-xs rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          className="w-full sm:max-w-xs rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
         />
         <select
           value={sortBy}
           onChange={(e) => handleSortChange(e.target.value as SortBy)}
-          className="rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          className="rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
         >
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
@@ -125,8 +123,8 @@ export function MarketsBrowser({ markets }: { markets: MarketRow[] }) {
       </div>
 
       {displayed.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 py-16 text-center">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">No markets match your filters.</p>
+        <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900 py-16 text-center">
+          <p className="text-gray-400 text-sm">No markets match your filters.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -29,28 +29,16 @@ export function AmbientBackground() {
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <motion.div style={{ x: parallaxX, y: parallaxY }} className="absolute inset-0">
         <motion.div
-          className="absolute rounded-full blur-3xl bg-accent/25"
-          style={{ width: 520, height: 520, top: "-8%", left: "5%" }}
+          className="absolute rounded-full blur-3xl bg-accent/10"
+          style={{ width: 440, height: 440, top: "-10%", left: "5%" }}
           animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
           transition={{ duration: 26, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute rounded-full blur-3xl bg-emerald-400/20"
-          style={{ width: 420, height: 420, top: "35%", right: "0%" }}
+          className="absolute rounded-full blur-3xl bg-emerald-400/8"
+          style={{ width: 360, height: 360, top: "35%", right: "0%" }}
           animate={{ x: [0, -30, 20, 0], y: [0, 25, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute rounded-full blur-3xl bg-rose-400/15"
-          style={{ width: 380, height: 380, bottom: "0%", left: "20%" }}
-          animate={{ x: [0, 25, -30, 0], y: [0, -20, 15, 0] }}
-          transition={{ duration: 30, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute rounded-full blur-3xl bg-accent/10"
-          style={{ width: 640, height: 640, bottom: "-15%", right: "10%" }}
-          animate={{ x: [0, -20, 30, 0], y: [0, 20, -25, 0] }}
-          transition={{ duration: 34, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
         <div className="absolute" style={{ top: "6%", right: "6%" }}>
           <SpinningGlobe />

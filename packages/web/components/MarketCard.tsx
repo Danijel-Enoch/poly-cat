@@ -36,11 +36,11 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
 
   const statusBadge =
     market.state === "Finalized" ? (
-      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 whitespace-nowrap">
+      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-900 whitespace-nowrap">
         Resolved · {market.outcome ? "YES" : "NO"}
       </span>
     ) : isClosed ? (
-      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400 whitespace-nowrap">
+      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 whitespace-nowrap">
         Closed
       </span>
     ) : null;
@@ -57,7 +57,7 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
     >
       <Link
         href={`/markets/${market.id}`}
-        className="block rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-600 transition-[box-shadow,border-color]"
+        className="block rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-[box-shadow,border-color]"
       >
         <div className="flex items-start gap-3">
           <span
@@ -67,11 +67,11 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
           </span>
           <div className="flex-1 min-w-0">
             {category && (
-              <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-700 dark:text-gray-200 mb-1">
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-200 mb-1">
                 {category}
               </span>
             )}
-            <p className="font-semibold text-[15px] leading-snug text-gray-900 dark:text-gray-100 line-clamp-2">{title}</p>
+            <p className="font-semibold text-[15px] leading-snug text-gray-100 line-clamp-2">{title}</p>
           </div>
           <div className="text-right shrink-0 overflow-hidden">
             <AnimatePresence mode="popLayout" initial={false}>
@@ -81,16 +81,16 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.2 }}
-                className={`text-2xl font-extrabold ${yesPct >= 50 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}
+                className={`text-2xl font-extrabold ${yesPct >= 50 ? "text-emerald-400" : "text-rose-400"}`}
               >
                 {yesPct}%
               </motion.p>
             </AnimatePresence>
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 -mt-1">chance</p>
+            <p className="text-[11px] text-gray-500 -mt-1">chance</p>
           </div>
         </div>
 
-        <div className="mt-3 h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div className="mt-3 h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-emerald-500"
             animate={{ width: `${yesPct}%` }}
@@ -99,15 +99,15 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <span className="text-center text-sm font-semibold rounded-lg py-2 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+          <span className="text-center text-sm font-semibold rounded-lg py-2 bg-emerald-950 text-emerald-400 border border-emerald-900">
             Buy Yes · {yesPct}¢
           </span>
-          <span className="text-center text-sm font-semibold rounded-lg py-2 bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+          <span className="text-center text-sm font-semibold rounded-lg py-2 bg-rose-950 text-rose-400 border border-rose-900">
             Buy No · {100 - yesPct}¢
           </span>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
           <span>Vol {formatUsdc(market.volume)} USDC</span>
           {statusBadge ?? <span>Closes {formatDate(market.closeTime)}</span>}
         </div>

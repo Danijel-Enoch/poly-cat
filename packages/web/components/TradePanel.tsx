@@ -104,7 +104,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
   if (!market) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 text-sm text-gray-500 dark:text-gray-400">
+      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
         Loading market...
       </div>
     );
@@ -191,34 +191,34 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
       <div className="relative flex items-center gap-1 mb-4">
         <button
           type="button"
           onClick={() => setSide("buy")}
-          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "buy" ? "text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
         >
           {side === "buy" && (
-            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-900 dark:bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
           )}
           <span className="relative">Buy</span>
         </button>
         <button
           type="button"
           onClick={() => setSide("sell")}
-          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "sell" ? "text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
         >
           {side === "sell" && (
-            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-900 dark:bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
           )}
           <span className="relative">Sell</span>
         </button>
       </div>
 
       {!isTrading ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Trading is closed for this market.</p>
+        <p className="text-sm text-gray-400">Trading is closed for this market.</p>
       ) : !isConnected ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Connect your wallet to trade.</p>
+        <p className="text-sm text-gray-400">Connect your wallet to trade.</p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-2">
@@ -229,7 +229,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
               className={`rounded-xl py-3 font-bold text-sm transition-colors ${
                 isYes
                   ? "bg-emerald-600 text-white"
-                  : "bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100 dark:hover:bg-emerald-900"
+                  : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
               }`}
             >
               Yes · {yesPct}¢
@@ -241,7 +241,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
               className={`rounded-xl py-3 font-bold text-sm transition-colors ${
                 !isYes
                   ? "bg-rose-600 text-white"
-                  : "bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 dark:hover:bg-rose-900"
+                  : "bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900"
               }`}
             >
               No · {100 - yesPct}¢
@@ -254,7 +254,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                 type="button"
                 onClick={() => setBuyMode("spend")}
                 className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                  buyMode === "spend" ? "bg-gray-900 dark:bg-gray-700 text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  buyMode === "spend" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
                 Spend USDC
@@ -263,7 +263,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                 type="button"
                 onClick={() => setBuyMode("receive")}
                 className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
-                  buyMode === "receive" ? "bg-gray-900 dark:bg-gray-700 text-white" : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  buyMode === "receive" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
                 Buy exact shares
@@ -272,12 +272,12 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           )}
 
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            <label className="text-xs font-medium text-gray-400">
               {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : "Amount (USDC)"}
             </label>
             <div className="relative mt-1">
               {side === "buy" && buyMode === "spend" && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-400 dark:text-gray-500">$</span>
+                <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-500">$</span>
               )}
               <input
                 type="number"
@@ -285,10 +285,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className={`w-full text-2xl font-bold text-gray-900 dark:text-gray-100 bg-transparent border-b-2 border-gray-200 dark:border-gray-700 focus:border-accent outline-none py-1 ${side === "buy" && buyMode === "spend" ? "pl-5" : ""}`}
+                className={`w-full text-2xl font-bold text-gray-100 bg-transparent border-b-2 border-gray-700 focus:border-accent outline-none py-1 ${side === "buy" && buyMode === "spend" ? "pl-5" : ""}`}
               />
             </div>
-            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {preview
                 ? preview.label === "shares"
                   ? `If ${isYes ? "Yes" : "No"} wins → you get $${formatUsdc(preview.value)}`
@@ -302,27 +302,27 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           <div className="flex gap-2 text-xs font-semibold">
             {side === "buy" && buyMode === "spend" ? (
               <>
-                <button type="button" onClick={() => addToAmount(10)} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <button type="button" onClick={() => addToAmount(10)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
                   +$10
                 </button>
-                <button type="button" onClick={() => addToAmount(50)} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <button type="button" onClick={() => addToAmount(50)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
                   +$50
                 </button>
-                <button type="button" onClick={() => addToAmount(100)} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <button type="button" onClick={() => addToAmount(100)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
                   +$100
                 </button>
               </>
             ) : (
               <>
-                <button type="button" onClick={() => addToAmount(1)} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <button type="button" onClick={() => addToAmount(1)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
                   +1
                 </button>
-                <button type="button" onClick={() => addToAmount(10)} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <button type="button" onClick={() => addToAmount(10)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
                   +10
                 </button>
               </>
             )}
-            <button type="button" onClick={setMax} className="flex-1 rounded-full border border-gray-200 dark:border-gray-700 dark:text-gray-300 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">
+            <button type="button" onClick={setMax} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
               Max
             </button>
           </div>
@@ -339,16 +339,16 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
             {submitRippleLayer}
             {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} ${isYes ? "Yes" : "No"}`}
           </motion.button>
-          {status && <p className="text-sm text-gray-500 dark:text-gray-400">{status}</p>}
+          {status && <p className="text-sm text-gray-400">{status}</p>}
         </form>
       )}
 
       {isConnected && (
-        <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800 flex gap-3 text-xs">
-          <span className="flex-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 px-3 py-2 font-semibold">
+        <div className="mt-5 pt-4 border-t border-gray-800 flex gap-3 text-xs">
+          <span className="flex-1 rounded-lg bg-emerald-950 text-emerald-400 px-3 py-2 font-semibold">
             Yes: {formatUsdc(yesBalance ?? 0n)}
           </span>
-          <span className="flex-1 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-700 dark:text-rose-400 px-3 py-2 font-semibold">
+          <span className="flex-1 rounded-lg bg-rose-950 text-rose-400 px-3 py-2 font-semibold">
             No: {formatUsdc(noBalance ?? 0n)}
           </span>
         </div>
