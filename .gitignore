@@ -1,0 +1,20 @@
+node_modules/
+.DS_Store
+*.log
+
+# Env files (local RPC URLs / addresses / keys — never commit real secrets)
+.env
+.env.local
+.env.*.local
+
+# Next.js
+.next/
+out/
+
+# Foundry
+packages/contracts/cache/
+packages/contracts/out/
+packages/contracts/broadcast/
+
+# Ponder
+.ponder/

@@ -1,0 +1,11 @@
+{
+  "name": "hoodmarkets",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "contracts:test": "cd packages/contracts && forge test -vvv",
+    "contracts:build": "cd packages/contracts && forge build",
+    "indexer:dev": "pnpm --filter @hoodmarkets/indexer dev",
+    "web:dev": "pnpm --filter @hoodmarkets/web dev"
+  }
+}

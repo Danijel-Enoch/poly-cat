@@ -1,0 +1,10 @@
+# Foundry build artifacts
+cache/
+out/
+broadcast/*/31337/
+
+# Env files
+.env
+.env.local
+
+.DS_Store
