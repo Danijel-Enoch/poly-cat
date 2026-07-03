@@ -34,7 +34,22 @@ contract MarketFactoryTest is Test {
             usdc.mint(user, 10_000_000e6);
             vm.prank(user);
             usdc.approve(address(factory), type(uint256).max);
+            vm.deal(user, 1_000_000 ether);
         }
+    }
+
+    uint256 constant NATIVE_INITIAL_LIQUIDITY = 1_000 ether;
+
+    function _createNativeMarket() internal returns (uint256 marketId) {
+        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+            collateralToken: address(0),
+            questionHash: keccak256("Will ETH flip BTC?"),
+            metadataURI: "ipfs://example-eth",
+            closeTime: closeTime,
+            initialLiquidity: NATIVE_INITIAL_LIQUIDITY
+        });
+        vm.prank(creator);
+        marketId = factory.createMarket{value: NATIVE_INITIAL_LIQUIDITY}(p);
     }
 
     function _createMarket() internal returns (uint256 marketId) {
@@ -414,6 +429,308 @@ contract MarketFactoryTest is Test {
         vm.prank(creator);
         vm.expectRevert(MarketFactory.NoCreatorFeesToWithdraw.selector);
         factory.withdrawCreatorFees(marketId);
+    }
+
+    // ---------- escape hatch: extend / cancel / refund ----------
+
+    function test_ExtendCloseTime_Success() public {
+        uint256 marketId = _createMarket();
+        uint64 newCloseTime = closeTime + 7 days;
+
+        factory.extendCloseTime(marketId, newCloseTime);
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        assertEq(m.closeTime, newCloseTime);
+    }
+
+    function test_ExtendCloseTime_RevertsIfNotOwner() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        vm.expectRevert();
+        factory.extendCloseTime(marketId, closeTime + 1 days);
+    }
+
+    function test_ExtendCloseTime_RevertsIfNotTrading() public {
+        uint256 marketId = _createMarket();
+        vm.warp(closeTime);
+        factory.settleMarket(marketId, true);
+
+        vm.expectRevert(MarketFactory.MarketNotTrading.selector);
+        factory.extendCloseTime(marketId, closeTime + 1 days);
+    }
+
+    function test_ExtendCloseTime_RevertsIfNotForward() public {
+        uint256 marketId = _createMarket();
+        vm.expectRevert(MarketFactory.CloseTimeNotExtended.selector);
+        factory.extendCloseTime(marketId, closeTime);
+    }
+
+    function test_ExtendCloseTime_ReopensTrading() public {
+        uint256 marketId = _createMarket();
+        vm.warp(closeTime);
+
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.MarketClosed.selector);
+        factory.buyShares(marketId, true, 100e6, 0);
+
+        factory.extendCloseTime(marketId, closeTime + 7 days);
+
+        vm.prank(alice);
+        uint256 sharesOut = factory.buyShares(marketId, true, 100e6, 0);
+        assertGt(sharesOut, 0);
+    }
+
+    function test_CancelMarket_Success() public {
+        uint256 marketId = _createMarket();
+        factory.cancelMarket(marketId);
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        assertEq(uint8(m.state), uint8(MarketFactory.MarketState.Cancelled));
+    }
+
+    function test_CancelMarket_CallableBeforeCloseTime() public {
+        uint256 marketId = _createMarket();
+        // Not warped past closeTime — cancellation isn't gated on it.
+        factory.cancelMarket(marketId);
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        assertEq(uint8(m.state), uint8(MarketFactory.MarketState.Cancelled));
+    }
+
+    function test_CancelMarket_RevertsIfNotOwner() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        vm.expectRevert();
+        factory.cancelMarket(marketId);
+    }
+
+    function test_CancelMarket_RevertsIfAlreadyFinalized() public {
+        uint256 marketId = _createMarket();
+        vm.warp(closeTime);
+        factory.settleMarket(marketId, true);
+
+        vm.expectRevert(MarketFactory.MarketNotTrading.selector);
+        factory.cancelMarket(marketId);
+    }
+
+    function test_CancelMarket_RevertsIfAlreadyCancelled() public {
+        uint256 marketId = _createMarket();
+        factory.cancelMarket(marketId);
+
+        vm.expectRevert(MarketFactory.MarketNotTrading.selector);
+        factory.cancelMarket(marketId);
+    }
+
+    function test_ClaimRefund_SingleHolder() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 200e6, 0);
+
+        factory.cancelMarket(marketId);
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        uint256 balBefore = usdc.balanceOf(alice);
+
+        vm.prank(alice);
+        uint256 payout = factory.claimRefund(marketId);
+
+        // Sole holder of all outstanding shares gets the whole reserve.
+        assertEq(payout, m.reserve);
+        assertEq(usdc.balanceOf(alice), balBefore + m.reserve);
+        assertEq(factory.shareBalanceOf(marketId, true, alice), 0);
+    }
+
+    function test_ClaimRefund_ProRataMultipleHolders() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        uint256 aliceShares = factory.buyShares(marketId, true, 200e6, 0);
+        vm.prank(bob);
+        uint256 bobShares = factory.buyShares(marketId, false, 100e6, 0);
+
+        factory.cancelMarket(marketId);
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+
+        vm.prank(alice);
+        uint256 alicePayout = factory.claimRefund(marketId);
+        vm.prank(bob);
+        uint256 bobPayout = factory.claimRefund(marketId);
+
+        uint256 totalShares = (m.yesSupply - m.genesisSupply) + (m.noSupply - m.genesisSupply);
+        assertEq(alicePayout, (m.reserve * aliceShares) / totalShares);
+        assertEq(bobPayout, (m.reserve * bobShares) / totalShares);
+        // Rounding is always down, so the sum can never exceed the reserve that backed it.
+        assertLe(alicePayout + bobPayout, m.reserve);
+    }
+
+    function test_ClaimRefund_RevertsIfNotCancelled() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.MarketNotCancelled.selector);
+        factory.claimRefund(marketId);
+    }
+
+    function test_ClaimRefund_RevertsIfNothingToClaim() public {
+        uint256 marketId = _createMarket();
+        factory.cancelMarket(marketId);
+
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.NothingToRefund.selector);
+        factory.claimRefund(marketId);
+    }
+
+    function test_ClaimRefund_RevertsOnDoubleClaim() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        factory.buyShares(marketId, true, 100e6, 0);
+        factory.cancelMarket(marketId);
+
+        vm.startPrank(alice);
+        factory.claimRefund(marketId);
+        vm.expectRevert(MarketFactory.NothingToRefund.selector);
+        factory.claimRefund(marketId);
+        vm.stopPrank();
+    }
+
+    // ---------- native ETH collateral ----------
+
+    function test_CreateMarket_Native_Success() public {
+        uint256 creatorBalBefore = creator.balance;
+        uint256 marketId = _createNativeMarket();
+
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        assertEq(address(m.collateralToken), address(0));
+        assertEq(m.reserve, NATIVE_INITIAL_LIQUIDITY);
+        assertEq(creator.balance, creatorBalBefore - NATIVE_INITIAL_LIQUIDITY);
+        assertEq(address(factory).balance, NATIVE_INITIAL_LIQUIDITY);
+    }
+
+    function test_CreateMarket_Native_RevertsIfValueMismatch() public {
+        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+            collateralToken: address(0),
+            questionHash: keccak256("x"),
+            metadataURI: "",
+            closeTime: closeTime,
+            initialLiquidity: NATIVE_INITIAL_LIQUIDITY
+        });
+        vm.prank(creator);
+        vm.expectRevert(MarketFactory.EthAmountMismatch.selector);
+        factory.createMarket{value: NATIVE_INITIAL_LIQUIDITY - 1}(p);
+    }
+
+    function test_CreateMarket_RevertsIfEthSentToErc20Market() public {
+        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+            collateralToken: address(usdc),
+            questionHash: keccak256("x"),
+            metadataURI: "",
+            closeTime: closeTime,
+            initialLiquidity: INITIAL_LIQUIDITY
+        });
+        vm.prank(creator);
+        vm.expectRevert(MarketFactory.UnexpectedEthValue.selector);
+        factory.createMarket{value: 1 ether}(p);
+    }
+
+    function test_BuyShares_Native_Success() public {
+        uint256 marketId = _createNativeMarket();
+        uint256 aliceBalBefore = alice.balance;
+
+        vm.prank(alice);
+        uint256 sharesOut = factory.buyShares{value: 100 ether}(marketId, true, 100 ether, 0);
+
+        assertGt(sharesOut, 0);
+        assertEq(alice.balance, aliceBalBefore - 100 ether);
+        assertEq(address(factory).balance, NATIVE_INITIAL_LIQUIDITY + 100 ether);
+    }
+
+    function test_BuyShares_Native_RevertsIfValueMismatch() public {
+        uint256 marketId = _createNativeMarket();
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.EthAmountMismatch.selector);
+        factory.buyShares{value: 50 ether}(marketId, true, 100 ether, 0);
+    }
+
+    function test_BuyShares_RevertsIfEthSentToErc20Market() public {
+        uint256 marketId = _createMarket();
+        vm.prank(alice);
+        vm.expectRevert(MarketFactory.UnexpectedEthValue.selector);
+        factory.buyShares{value: 1 ether}(marketId, true, 100e6, 0);
+    }
+
+    function test_SellShares_Native_PaysOutEth() public {
+        uint256 marketId = _createNativeMarket();
+
+        vm.startPrank(alice);
+        uint256 sharesOut = factory.buyShares{value: 100 ether}(marketId, true, 100 ether, 0);
+        uint256 balBefore = alice.balance;
+        uint256 collateralOut = factory.sellShares(marketId, true, sharesOut, 0);
+        vm.stopPrank();
+
+        assertGt(collateralOut, 0);
+        assertEq(alice.balance, balBefore + collateralOut);
+    }
+
+    function test_Redeem_Native_PaysOutEth() public {
+        uint256 marketId = _createNativeMarket();
+
+        vm.prank(alice);
+        uint256 aliceShares = factory.buyShares{value: 200 ether}(marketId, true, 200 ether, 0);
+
+        vm.warp(closeTime);
+        factory.settleMarket(marketId, true);
+
+        uint256 balBefore = alice.balance;
+        vm.prank(alice);
+        uint256 payout = factory.redeem(marketId);
+
+        assertEq(payout, aliceShares);
+        assertEq(alice.balance, balBefore + aliceShares);
+    }
+
+    function test_WithdrawFees_Native() public {
+        uint256 marketId = _createNativeMarket();
+        vm.prank(alice);
+        factory.buyShares{value: 100 ether}(marketId, true, 100 ether, 0);
+
+        MarketFactory.Market memory before = factory.getMarket(marketId);
+        assertGt(before.collectedFees, 0);
+        uint256 treasuryBalBefore = treasury.balance;
+
+        factory.withdrawFees(marketId);
+
+        assertEq(treasury.balance, treasuryBalBefore + before.collectedFees);
+    }
+
+    function test_WithdrawCreatorFees_Native() public {
+        uint256 marketId = _createNativeMarket();
+        vm.prank(alice);
+        factory.buyShares{value: 100 ether}(marketId, true, 100 ether, 0);
+
+        MarketFactory.Market memory before = factory.getMarket(marketId);
+        assertGt(before.creatorFees, 0);
+        uint256 creatorBalBefore = creator.balance;
+
+        vm.prank(creator);
+        factory.withdrawCreatorFees(marketId);
+
+        assertEq(creator.balance, creatorBalBefore + before.creatorFees);
+    }
+
+    function test_ClaimRefund_Native() public {
+        uint256 marketId = _createNativeMarket();
+        vm.prank(alice);
+        factory.buyShares{value: 200 ether}(marketId, true, 200 ether, 0);
+
+        factory.cancelMarket(marketId);
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+
+        uint256 balBefore = alice.balance;
+        vm.prank(alice);
+        uint256 payout = factory.claimRefund(marketId);
+
+        assertEq(payout, m.reserve);
+        assertEq(alice.balance, balBefore + m.reserve);
     }
 
     // ---------- UUPS upgradeability ----------

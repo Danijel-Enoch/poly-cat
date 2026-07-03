@@ -20,7 +20,7 @@ export async function ponderQuery<T>(query: string, variables?: Record<string, u
   return json.data as T;
 }
 
-export type MarketState = "Trading" | "Finalized";
+export type MarketState = "Trading" | "Finalized" | "Cancelled";
 
 export type MarketRow = {
   id: string;

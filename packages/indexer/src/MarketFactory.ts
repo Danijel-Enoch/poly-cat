@@ -30,6 +30,39 @@ ponder.on("MarketFactory:MarketSettled", async ({ event, context }) => {
   });
 });
 
+ponder.on("MarketFactory:CloseTimeExtended", async ({ event, context }) => {
+  const { marketId, newCloseTime } = event.args;
+
+  await context.db.update(schema.market, { id: marketId }).set({
+    closeTime: newCloseTime,
+  });
+});
+
+ponder.on("MarketFactory:MarketCancelled", async ({ event, context }) => {
+  const { marketId } = event.args;
+
+  await context.db.update(schema.market, { id: marketId }).set({
+    state: "Cancelled",
+  });
+});
+
+ponder.on("MarketFactory:RefundClaimed", async ({ event, context }) => {
+  const { marketId, claimant, payout } = event.args;
+
+  await context.db.insert(schema.refund).values({
+    id: `${event.transaction.hash}-${event.log.logIndex}`,
+    marketId,
+    claimant,
+    payout,
+    timestamp: event.block.timestamp,
+  });
+
+  await context.db.update(schema.position, { id: `${marketId}-${claimant.toLowerCase()}` }).set({
+    yesBalance: 0n,
+    noBalance: 0n,
+  });
+});
+
 ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
   const { marketId, buyer, isYes, collateralIn, sharesOut, feePaid, newYesSupply, newNoSupply } = event.args;
 

@@ -8,15 +8,16 @@ import {MarketFactory} from "../../src/MarketFactory.sol";
 import {MockUSDC} from "../../src/mocks/MockUSDC.sol";
 
 /// @dev Drives bounded-random sequences of createMarket/buy/sell/settle/redeem
-/// against the real contracts, tracking ghost accounting totals so the invariant test
-/// can assert the core solvency property: every collateral unit that enters the
-/// factory is accounted for by what leaves it (sells, redemptions, fee withdrawals)
-/// plus what the factory still holds. This is independent of any single market's
-/// reserve bookkeeping, so it holds across many markets, finalizations, and partial
-/// redemptions simultaneously.
+/// (plus cancel/claimRefund, and both USDC- and native-ETH-collateralized
+/// markets) against the real contracts, tracking ghost accounting totals so
+/// the invariant test can assert the core solvency property: every collateral
+/// unit that enters the factory is accounted for by what leaves it (sells,
+/// redemptions, refunds, fee withdrawals) plus what the factory still holds.
+/// USDC and native ETH are tracked with separate ghost totals since they're
+/// entirely independent balances.
 ///
 /// The Handler is made the factory's owner (see `MarketInvariantsTest.setUp`) so it
-/// can call `settleMarket` directly, mirroring the real admin-only settlement flow.
+/// can call `settleMarket`/`cancelMarket` directly, mirroring the real admin-only flow.
 contract Handler is Test {
     MarketFactory public factory;
     MockUSDC public usdc;
@@ -24,8 +25,15 @@ contract Handler is Test {
     uint256[] public marketIds;
     address[] public actors;
 
+    mapping(uint256 => bool) public isNativeMarket;
+    mapping(uint256 => bool) public isCancelledMarket;
+    mapping(uint256 => uint256) public cancelledReserve;
+    mapping(uint256 => uint256) public claimedForMarket;
+
     uint256 public ghost_totalIn;
     uint256 public ghost_totalOut;
+    uint256 public ghost_nativeTotalIn;
+    uint256 public ghost_nativeTotalOut;
 
     constructor(MarketFactory _factory, MockUSDC _usdc) {
         factory = _factory;
@@ -37,6 +45,7 @@ contract Handler is Test {
             usdc.mint(actor, 1_000_000_000e6);
             vm.prank(actor);
             usdc.approve(address(factory), type(uint256).max);
+            vm.deal(actor, 1_000_000 ether);
         }
     }
 
@@ -44,23 +53,42 @@ contract Handler is Test {
         return actors[seed % actors.length];
     }
 
-    function createMarket(uint256 actorSeed, uint256 liquiditySeed, uint256 durationSeed) external {
+    function createMarket(uint256 actorSeed, uint256 liquiditySeed, uint256 durationSeed, bool useNative) external {
         address actor = _actor(actorSeed);
-        uint256 liquidity = bound(liquiditySeed, factory.MIN_INITIAL_LIQUIDITY(), 1_000_000e6);
         uint64 duration = uint64(bound(durationSeed, factory.MIN_TRADING_DURATION(), 30 days));
+        uint64 closeTime = uint64(block.timestamp) + duration;
 
-        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
-            collateralToken: address(usdc),
-            questionHash: keccak256(abi.encodePacked(marketIds.length)),
-            metadataURI: "",
-            closeTime: uint64(block.timestamp) + duration,
-            initialLiquidity: liquidity
-        });
-
-        vm.prank(actor);
-        uint256 marketId = factory.createMarket(p);
-        marketIds.push(marketId);
-        ghost_totalIn += liquidity;
+        if (useNative) {
+            uint256 liquidity = bound(liquiditySeed, factory.MIN_INITIAL_LIQUIDITY(), 1_000 ether);
+            MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+                collateralToken: address(0),
+                questionHash: keccak256(abi.encodePacked(marketIds.length)),
+                metadataURI: "",
+                closeTime: closeTime,
+                initialLiquidity: liquidity
+            });
+            vm.deal(actor, actor.balance + liquidity);
+            vm.prank(actor);
+            try factory.createMarket{value: liquidity}(p) returns (uint256 marketId) {
+                marketIds.push(marketId);
+                isNativeMarket[marketId] = true;
+                ghost_nativeTotalIn += liquidity;
+            } catch {}
+        } else {
+            uint256 liquidity = bound(liquiditySeed, factory.MIN_INITIAL_LIQUIDITY(), 1_000_000e6);
+            MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+                collateralToken: address(usdc),
+                questionHash: keccak256(abi.encodePacked(marketIds.length)),
+                metadataURI: "",
+                closeTime: closeTime,
+                initialLiquidity: liquidity
+            });
+            vm.prank(actor);
+            try factory.createMarket(p) returns (uint256 marketId) {
+                marketIds.push(marketId);
+                ghost_totalIn += liquidity;
+            } catch {}
+        }
     }
 
     function buyShares(uint256 marketSeed, uint256 actorSeed, bool isYes, uint256 amountSeed) external {
@@ -70,12 +98,22 @@ contract Handler is Test {
         if (m.state != MarketFactory.MarketState.Trading || block.timestamp >= m.closeTime) return;
 
         address actor = _actor(actorSeed);
-        uint256 amountIn = bound(amountSeed, 1e6, 10_000e6);
+        bool native = isNativeMarket[marketId];
 
-        vm.prank(actor);
-        try factory.buyShares(marketId, isYes, amountIn, 0) {
-            ghost_totalIn += amountIn;
-        } catch {}
+        if (native) {
+            uint256 amountIn = bound(amountSeed, 1e15, 100 ether);
+            vm.deal(actor, actor.balance + amountIn);
+            vm.prank(actor);
+            try factory.buyShares{value: amountIn}(marketId, isYes, amountIn, 0) {
+                ghost_nativeTotalIn += amountIn;
+            } catch {}
+        } else {
+            uint256 amountIn = bound(amountSeed, 1e6, 10_000e6);
+            vm.prank(actor);
+            try factory.buyShares(marketId, isYes, amountIn, 0) {
+                ghost_totalIn += amountIn;
+            } catch {}
+        }
     }
 
     function sellShares(uint256 marketSeed, uint256 actorSeed, bool isYes, uint256 sharesSeed) external {
@@ -91,7 +129,11 @@ contract Handler is Test {
 
         vm.prank(actor);
         try factory.sellShares(marketId, isYes, sharesIn, 0) returns (uint256 collateralOut) {
-            ghost_totalOut += collateralOut;
+            if (isNativeMarket[marketId]) {
+                ghost_nativeTotalOut += collateralOut;
+            } else {
+                ghost_totalOut += collateralOut;
+            }
         } catch {}
     }
 
@@ -110,6 +152,38 @@ contract Handler is Test {
         try factory.settleMarket(marketId, actorSeed % 2 == 0) {} catch {}
     }
 
+    /// @dev Abandons a market instead of settling it, mirroring `cancelMarket`
+    /// being callable by the owner any time a market is `Trading`.
+    function cancelMarket(uint256 marketSeed) external {
+        if (marketIds.length == 0) return;
+        uint256 marketId = marketIds[marketSeed % marketIds.length];
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        if (m.state != MarketFactory.MarketState.Trading) return;
+
+        try factory.cancelMarket(marketId) {
+            isCancelledMarket[marketId] = true;
+            cancelledReserve[marketId] = m.reserve;
+        } catch {}
+    }
+
+    function claimRefund(uint256 marketSeed, uint256 actorSeed) external {
+        if (marketIds.length == 0) return;
+        uint256 marketId = marketIds[marketSeed % marketIds.length];
+        MarketFactory.Market memory m = factory.getMarket(marketId);
+        if (m.state != MarketFactory.MarketState.Cancelled) return;
+
+        address actor = _actor(actorSeed);
+        vm.prank(actor);
+        try factory.claimRefund(marketId) returns (uint256 payout) {
+            claimedForMarket[marketId] += payout;
+            if (isNativeMarket[marketId]) {
+                ghost_nativeTotalOut += payout;
+            } else {
+                ghost_totalOut += payout;
+            }
+        } catch {}
+    }
+
     function redeem(uint256 marketSeed, uint256 actorSeed) external {
         if (marketIds.length == 0) return;
         uint256 marketId = marketIds[marketSeed % marketIds.length];
@@ -119,7 +193,11 @@ contract Handler is Test {
         address actor = _actor(actorSeed);
         vm.prank(actor);
         try factory.redeem(marketId) returns (uint256 payout) {
-            ghost_totalOut += payout;
+            if (isNativeMarket[marketId]) {
+                ghost_nativeTotalOut += payout;
+            } else {
+                ghost_totalOut += payout;
+            }
         } catch {}
     }
 
@@ -144,25 +222,37 @@ contract MarketInvariantsTest is Test {
         handler = new Handler(factory, usdc);
         factory.transferOwnership(address(handler));
 
-        bytes4[] memory selectors = new bytes4[](5);
+        bytes4[] memory selectors = new bytes4[](7);
         selectors[0] = Handler.createMarket.selector;
         selectors[1] = Handler.buyShares.selector;
         selectors[2] = Handler.sellShares.selector;
         selectors[3] = Handler.settleMarket.selector;
         selectors[4] = Handler.redeem.selector;
+        selectors[5] = Handler.cancelMarket.selector;
+        selectors[6] = Handler.claimRefund.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
         targetContract(address(handler));
     }
 
-    /// @notice Every collateral unit that entered the factory (initial liquidity +
+    /// @notice Every USDC unit that entered the factory (initial liquidity +
     /// buys) is either still held by the factory, or accounted for by an equal amount
-    /// leaving (sells + redemptions + fee withdrawals). No value can be created or
+    /// leaving (sells + redemptions + refunds + fee withdrawals). No value can be created or
     /// destroyed by rounding, fee handling, or the settlement state machine.
     function invariant_CollateralConservation() public view {
         assertEq(
             usdc.balanceOf(address(factory)) + handler.ghost_totalOut(),
             handler.ghost_totalIn(),
             "factory balance + total paid out must equal total collateral ever deposited"
+        );
+    }
+
+    /// @notice Same conservation property as above, tracked independently for
+    /// native-ETH-collateralized markets since ETH and USDC are disjoint balances.
+    function invariant_NativeCollateralConservation() public view {
+        assertEq(
+            address(factory).balance + handler.ghost_nativeTotalOut(),
+            handler.ghost_nativeTotalIn(),
+            "factory ETH balance + total native ETH paid out must equal total native ETH ever deposited"
         );
     }
 
@@ -180,6 +270,23 @@ contract MarketInvariantsTest is Test {
                 m.reserve * m.reserve,
                 m.yesSupply * m.yesSupply + m.noSupply * m.noSupply,
                 "reserve must cover sqrt(yesSupply^2+noSupply^2) for every market"
+            );
+        }
+    }
+
+    /// @notice A cancelled market's cumulative refund claims can never exceed
+    /// the reserve it was frozen with at cancellation time — the pro-rata
+    /// `claimRefund` formula must never let claimants collectively drain more
+    /// than the market actually held.
+    function invariant_CancelledMarketNeverOverpays() public view {
+        uint256 count = handler.marketIdsLength();
+        for (uint256 i = 0; i < count; i++) {
+            uint256 marketId = handler.marketIds(i);
+            if (!handler.isCancelledMarket(marketId)) continue;
+            assertLe(
+                handler.claimedForMarket(marketId),
+                handler.cancelledReserve(marketId),
+                "cumulative refund claims must never exceed the market's reserve at cancellation"
             );
         }
     }

@@ -1,6 +1,6 @@
 import { createConfig, http } from "wagmi";
 import { defineChain } from "viem";
-import { injected } from "wagmi/connectors";
+import { injected, walletConnect } from "wagmi/connectors";
 
 // Local Anvil chain, used for development.
 export const anvil = defineChain({
@@ -43,9 +43,37 @@ export const robinhoodChain = defineChain({
 // so nothing breaks until mainnet env vars are actually filled in.
 export const activeChain = process.env.NEXT_PUBLIC_NETWORK === "mainnet" ? robinhoodChain : anvil;
 
+// `injected()` alone only connects wallets that inject a `window.ethereum`
+// provider (MetaMask-style browser extensions) — the common case on desktop,
+// but most mobile browsers have no such extension and the connect button
+// silently does nothing. WalletConnect (QR code on desktop, deep link into a
+// wallet app on mobile) needs a project ID from https://cloud.reown.com
+// (formerly WalletConnect Cloud) to initialize, so it's only wired in once
+// one is configured — see ConnectButton for how the two are surfaced.
+const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+export const connectors = [
+  injected(),
+  ...(walletConnectProjectId
+    ? [
+        walletConnect({
+          projectId: walletConnectProjectId,
+          metadata: {
+            name: "HoodMarkets",
+            description: "The first prediction market on Robinhood Chain",
+            url: appUrl,
+            icons: [`${appUrl}/Icon.png`],
+          },
+          showQrModal: true,
+        }),
+      ]
+    : []),
+];
+
 export const wagmiConfig = createConfig({
   chains: [activeChain],
-  connectors: [injected()],
+  connectors,
   transports: {
     [activeChain.id]: http(),
   },

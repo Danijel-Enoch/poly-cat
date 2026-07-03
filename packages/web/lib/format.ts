@@ -1,14 +1,25 @@
 import { formatUnits, parseUnits } from "viem";
 import { USDC_DECIMALS } from "./contracts";
 
-export function formatUsdc(raw: string | bigint): string {
+/** Decimal-aware amount formatting, shared by every collateral type (USDC/USDG
+ * at 6 decimals, native ETH at 18). ETH gets more fraction digits since its
+ * unit price is much larger than a stablecoin's. */
+export function formatCollateral(raw: string | bigint, decimals: number): string {
   const value = typeof raw === "string" ? BigInt(raw) : raw;
-  const formatted = Number(formatUnits(value, USDC_DECIMALS));
-  return formatted.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const formatted = Number(formatUnits(value, decimals));
+  return formatted.toLocaleString(undefined, { maximumFractionDigits: decimals >= 18 ? 4 : 2 });
+}
+
+export function parseCollateral(input: string, decimals: number): bigint {
+  return parseUnits(input || "0", decimals);
+}
+
+export function formatUsdc(raw: string | bigint): string {
+  return formatCollateral(raw, USDC_DECIMALS);
 }
 
 export function parseUsdc(input: string): bigint {
-  return parseUnits(input || "0", USDC_DECIMALS);
+  return parseCollateral(input, USDC_DECIMALS);
 }
 
 /** Matches partial-typing states ("", "1.", ".5") as well as complete decimals,

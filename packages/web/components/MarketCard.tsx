@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { AnimatePresence, motion, useMotionValue, useSpring } from "framer-motion";
 import type { MarketRow } from "@/lib/ponder";
-import { formatUsdc, formatDate, yesProbabilityFromSupplies } from "@/lib/format";
+import { formatCollateral, formatDate, yesProbabilityFromSupplies } from "@/lib/format";
+import { collateralDecimals, collateralSymbol } from "@/lib/contracts";
 import { useNow } from "@/lib/useNow";
 import { avatarColorFor } from "@/lib/avatarColor";
 import { parseMetadataURI } from "@/lib/category";
@@ -38,6 +39,10 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
     market.state === "Finalized" ? (
       <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-900 whitespace-nowrap">
         Resolved · {market.outcome ? "YES" : "NO"}
+      </span>
+    ) : market.state === "Cancelled" ? (
+      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 whitespace-nowrap">
+        Cancelled
       </span>
     ) : isClosed ? (
       <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 whitespace-nowrap">
@@ -109,7 +114,10 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
         </div>
 
         <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
-          <span>Vol {formatUsdc(market.volume)} USDC</span>
+          <span>
+            Vol {formatCollateral(market.volume, collateralDecimals(market.collateralToken))}{" "}
+            {collateralSymbol(market.collateralToken)}
+          </span>
           {statusBadge ?? <span>Closes {formatDate(market.closeTime)}</span>}
         </div>
       </Link>

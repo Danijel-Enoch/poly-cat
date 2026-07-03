@@ -1,4 +1,4 @@
-import { getAddress, isAddress } from "viem";
+import { getAddress, isAddress, zeroAddress } from "viem";
 import { MarketFactoryAbi } from "./abis/MarketFactoryAbi";
 import { MockUSDCAbi } from "./abis/MockUSDCAbi";
 
@@ -70,3 +70,21 @@ export const usdcContract = {
 } as const;
 
 export const USDC_DECIMALS = 6;
+
+// Sentinel `collateralToken` value meaning "this market is backed by native
+// ETH", matching `NATIVE_TOKEN` in MarketFactory.sol — there's no canonical
+// WETH on Robinhood Chain to wrap into, so native ETH is a first-class
+// collateral option alongside any ERC20, picked per-market at creation.
+export const NATIVE_TOKEN = zeroAddress;
+
+export function isNativeCollateral(token: string): boolean {
+  return token.toLowerCase() === NATIVE_TOKEN;
+}
+
+export function collateralDecimals(token: string): number {
+  return isNativeCollateral(token) ? 18 : USDC_DECIMALS;
+}
+
+export function collateralSymbol(token: string): string {
+  return isNativeCollateral(token) ? "ETH" : COLLATERAL_SYMBOL;
+}

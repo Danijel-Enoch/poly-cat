@@ -101,6 +101,38 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "cancelMarket",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "claimRefund",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "payout",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable"
   },
   {
@@ -147,6 +179,24 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "extendCloseTime",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "newCloseTime",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -220,6 +270,11 @@ export const MarketFactoryAbi = [
           },
           {
             "name": "noSupply",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "genesisSupply",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -338,6 +393,11 @@ export const MarketFactoryAbi = [
       },
       {
         "name": "noSupply",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "genesisSupply",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -608,6 +668,25 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "event",
+    "name": "CloseTimeExtended",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newCloseTime",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "CreatorFeesWithdrawn",
     "inputs": [
       {
@@ -665,6 +744,19 @@ export const MarketFactoryAbi = [
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MarketCancelled",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -815,6 +907,31 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "event",
+    "name": "RefundClaimed",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "claimant",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "payout",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "SharesBought",
     "inputs": [
       {
@@ -954,6 +1071,11 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "CloseTimeNotExtended",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "CloseTimeTooSoon",
     "inputs": []
   },
@@ -971,6 +1093,16 @@ export const MarketFactoryAbi = [
   {
     "type": "error",
     "name": "ERC1967NonPayable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EthAmountMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EthTransferFailed",
     "inputs": []
   },
   {
@@ -1015,6 +1147,11 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "MarketNotCancelled",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "MarketNotFinalized",
     "inputs": []
   },
@@ -1051,6 +1188,11 @@ export const MarketFactoryAbi = [
   {
     "type": "error",
     "name": "NothingToRedeem",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NothingToRefund",
     "inputs": []
   },
   {
@@ -1116,6 +1258,11 @@ export const MarketFactoryAbi = [
         "internalType": "bytes32"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "UnexpectedEthValue",
+    "inputs": []
   },
   {
     "type": "error",

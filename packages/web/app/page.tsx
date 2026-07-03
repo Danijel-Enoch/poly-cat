@@ -4,15 +4,17 @@ import Link from "next/link";
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="max-w-5xl w-full mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Image src="/Icon.png" alt="HoodMarkets" width={28} height={28} className="h-7 w-7 rounded-full" priority />
-          <span className="font-extrabold tracking-tight text-lg">HoodMarkets</span>
-        </div>
-        <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white">
-          Docs
-        </Link>
-      </header>
+      <div className="max-w-5xl w-full mx-auto px-6 pt-6">
+        <header className="rounded-2xl border border-gray-800 bg-gray-900 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image src="/Icon.png" alt="HoodMarkets" width={36} height={36} className="h-9 w-9 rounded-full" priority />
+            <span className="font-semibold tracking-tight text-lg">HoodMarkets</span>
+          </div>
+          <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white">
+            Docs
+          </Link>
+        </header>
+      </div>
 
       <main className="flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
         <span className="text-xs font-semibold uppercase tracking-wide text-accent mb-4">Built on Robinhood Chain</span>

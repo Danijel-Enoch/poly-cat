@@ -4,12 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { keccak256, maxUint256, toHex } from "viem";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { formatUsdc, parseUsdc, isPartialDecimalInput } from "@/lib/format";
+import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL, NATIVE_TOKEN } from "@/lib/contracts";
+import { formatUsdc, parseUsdc, formatCollateral, parseCollateral, isPartialDecimalInput } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
 import { useClickRipple } from "@/components/ClickRipple";
 
@@ -22,15 +22,18 @@ export default function CreateMarketPage() {
   const [question, setQuestion] = useState("");
   const [category, setCategory] = useState<Category>("Politics");
   const [closeDate, setCloseDate] = useState("");
+  const [collateralMode, setCollateralMode] = useState<"usdc" | "eth">("usdc");
   const [liquidity, setLiquidity] = useState("100");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const isNative = collateralMode === "eth";
 
   const { data: allowance } = useReadContract({
     ...usdcContract,
     functionName: "allowance",
     args: address ? [address, marketFactoryContract.address] : undefined,
-    query: { enabled: !!address },
+    query: { enabled: !!address && !isNative },
   });
 
   const { data: protocolFeeBps } = useReadContract({
@@ -45,6 +48,8 @@ export default function CreateMarketPage() {
     query: { enabled: !!address },
   });
 
+  const { data: ethBalance } = useBalance({ address, query: { enabled: !!address && isNative } });
+
   const { data: minInitialLiquidity } = useReadContract({
     ...marketFactoryContract,
     functionName: "MIN_INITIAL_LIQUIDITY",
@@ -57,15 +62,19 @@ export default function CreateMarketPage() {
     setStatus(null);
 
     try {
-      const initialLiquidity = parseUsdc(liquidity);
+      const initialLiquidity = isNative ? parseCollateral(liquidity, 18) : parseUsdc(liquidity);
       if (minInitialLiquidity !== undefined && initialLiquidity < minInitialLiquidity) {
-        setStatus(`Initial liquidity must be at least ${formatUsdc(minInitialLiquidity)} ${COLLATERAL_SYMBOL}.`);
+        setStatus(
+          `Initial liquidity must be at least ${
+            isNative ? formatCollateral(minInitialLiquidity, 18) : formatUsdc(minInitialLiquidity)
+          } ${isNative ? "ETH" : COLLATERAL_SYMBOL}.`,
+        );
         setSubmitting(false);
         return;
       }
       const closeTime = BigInt(Math.floor(new Date(closeDate).getTime() / 1000));
 
-      if (!allowance || allowance < initialLiquidity) {
+      if (!isNative && (!allowance || allowance < initialLiquidity)) {
         // Approve once for (effectively) unlimited spending — see TradePanel for why
         // a max-uint256 allowance means this is the only approval ever needed.
         setStatus(`Approving ${COLLATERAL_SYMBOL}...`);
@@ -83,13 +92,14 @@ export default function CreateMarketPage() {
         functionName: "createMarket",
         args: [
           {
-            collateralToken: USDC_ADDRESS,
+            collateralToken: isNative ? NATIVE_TOKEN : USDC_ADDRESS,
             questionHash: keccak256(toHex(question)),
             metadataURI: encodeMetadataURI(category, question),
             closeTime,
             initialLiquidity,
           },
         ],
+        value: isNative ? initialLiquidity : 0n,
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
 
@@ -164,10 +174,36 @@ export default function CreateMarketPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
+          Collateral
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setCollateralMode("usdc")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                collateralMode === "usdc" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
+              }`}
+            >
+              {COLLATERAL_SYMBOL}
+            </button>
+            <button
+              type="button"
+              onClick={() => setCollateralMode("eth")}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                collateralMode === "eth" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
+              }`}
+            >
+              ETH
+            </button>
+          </div>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
           <span className="flex items-center justify-between">
-            Initial liquidity ({COLLATERAL_SYMBOL})
+            Initial liquidity ({isNative ? "ETH" : COLLATERAL_SYMBOL})
             <span className="text-xs font-normal text-gray-500">
-              Balance: {formatUsdc(usdcBalance ?? 0n)} {COLLATERAL_SYMBOL}
+              Balance:{" "}
+              {isNative
+                ? `${formatCollateral(ethBalance?.value ?? 0n, 18)} ETH`
+                : `${formatUsdc(usdcBalance ?? 0n)} ${COLLATERAL_SYMBOL}`}
             </span>
           </span>
           <input
@@ -182,7 +218,10 @@ export default function CreateMarketPage() {
           />
           {minInitialLiquidity !== undefined && (
             <span className="text-xs font-normal text-gray-500">
-              Minimum {formatUsdc(minInitialLiquidity)} {COLLATERAL_SYMBOL}
+              Minimum{" "}
+              {isNative
+                ? `${formatCollateral(minInitialLiquidity, 18)} ETH`
+                : `${formatUsdc(minInitialLiquidity)} ${COLLATERAL_SYMBOL}`}
             </span>
           )}
         </label>

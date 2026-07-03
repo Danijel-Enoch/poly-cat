@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -36,8 +37,16 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
 
     enum MarketState {
         Trading,
-        Finalized
+        Finalized,
+        Cancelled
     }
+
+    /// @notice Sentinel used as `collateralToken` to mean "this market is
+    /// backed by native ETH" instead of an ERC20. Robinhood Chain's native
+    /// currency is ETH itself and no canonical WETH contract is assumed to
+    /// exist, so native ETH is handled directly (payable in, low-level
+    /// `.call` out) rather than wrapped.
+    address private constant NATIVE_TOKEN = address(0);
 
     struct Market {
         address creator;
@@ -49,6 +58,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         uint256 reserve; // r: real collateral custodied for this market's curve
         uint256 yesSupply; // sYes: virtual accounting supply, not a real token
         uint256 noSupply; // sNo: virtual accounting supply, not a real token
+        uint256 genesisSupply; // s0 baked into yesSupply/noSupply at creation, held by no one — see claimRefund
         uint256 collectedFees; // protocol's share, withdrawable by the admin via withdrawFees
         uint256 creatorFees; // creator's share, withdrawable by the creator via withdrawCreatorFees
         MarketState state;
@@ -124,6 +134,9 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     event ProtocolTreasurySet(address indexed treasury);
     event ProtocolFeeSet(uint16 feeBps);
     event MarketSettled(uint256 indexed marketId, bool outcome);
+    event CloseTimeExtended(uint256 indexed marketId, uint64 newCloseTime);
+    event MarketCancelled(uint256 indexed marketId);
+    event RefundClaimed(uint256 indexed marketId, address indexed claimant, uint256 payout);
 
     error MarketNotTrading();
     error MarketNotFinalized();
@@ -141,6 +154,12 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     error LiquidityTooLow();
     error FeeTooHigh();
     error NotAContract();
+    error CloseTimeNotExtended();
+    error MarketNotCancelled();
+    error NothingToRefund();
+    error UnexpectedEthValue();
+    error EthAmountMismatch();
+    error EthTransferFailed();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -174,10 +193,17 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     /// creator receives no shares for this — it purely seeds the curve's starting
     /// depth/price and backs solvency; the creator's only return is a
     /// `CREATOR_FEE_SHARE_BPS` cut of trading fees if and when people trade.
-    function createMarket(CreateMarketParams calldata p) external nonReentrant returns (uint256 marketId) {
+    function createMarket(CreateMarketParams calldata p) external payable nonReentrant returns (uint256 marketId) {
         if (p.closeTime < block.timestamp + MIN_TRADING_DURATION) revert CloseTimeTooSoon();
         if (p.initialLiquidity < MIN_INITIAL_LIQUIDITY) revert LiquidityTooLow();
-        if (p.collateralToken.code.length == 0) revert NotAContract();
+
+        bool isNative = p.collateralToken == NATIVE_TOKEN;
+        if (isNative) {
+            if (msg.value != p.initialLiquidity) revert EthAmountMismatch();
+        } else {
+            if (msg.value != 0) revert UnexpectedEthValue();
+            if (p.collateralToken.code.length == 0) revert NotAContract();
+        }
 
         uint256 s0 = PythagoreanMath.seedGenesis(p.initialLiquidity);
 
@@ -192,9 +218,12 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         m.reserve = p.initialLiquidity;
         m.yesSupply = s0;
         m.noSupply = s0;
+        m.genesisSupply = s0;
         m.state = MarketState.Trading;
 
-        IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), p.initialLiquidity);
+        if (!isNative) {
+            IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), p.initialLiquidity);
+        }
 
         emit MarketCreated(
             marketId, msg.sender, p.collateralToken, p.questionHash, p.metadataURI, p.closeTime, p.initialLiquidity
@@ -204,6 +233,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     /// @notice Buy `isYes` shares by depositing `amountIn` collateral via the bonding curve.
     function buyShares(uint256 marketId, bool isYes, uint256 amountIn, uint256 minSharesOut)
         external
+        payable
         nonReentrant
         returns (uint256 sharesOut)
     {
@@ -211,6 +241,13 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         if (m.state != MarketState.Trading) revert MarketNotTrading();
         if (block.timestamp >= m.closeTime) revert MarketClosed();
         if (amountIn == 0) revert ZeroAmount();
+
+        bool isNative = address(m.collateralToken) == NATIVE_TOKEN;
+        if (isNative) {
+            if (msg.value != amountIn) revert EthAmountMismatch();
+        } else if (msg.value != 0) {
+            revert UnexpectedEthValue();
+        }
 
         (uint256 sSame, uint256 sOther) = isYes ? (m.yesSupply, m.noSupply) : (m.noSupply, m.yesSupply);
         uint256 newR;
@@ -228,7 +265,9 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         _splitFee(m, feePaid);
         shareBalances[marketId][isYes][msg.sender] += sharesOut;
 
-        m.collateralToken.safeTransferFrom(msg.sender, address(this), amountIn);
+        if (!isNative) {
+            m.collateralToken.safeTransferFrom(msg.sender, address(this), amountIn);
+        }
 
         emit SharesBought(marketId, msg.sender, isYes, amountIn, sharesOut, feePaid, m.yesSupply, m.noSupply);
     }
@@ -262,7 +301,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         }
         _splitFee(m, feePaid);
 
-        m.collateralToken.safeTransfer(msg.sender, collateralOut);
+        _payOut(m, msg.sender, collateralOut);
 
         emit SharesSold(marketId, msg.sender, isYes, sharesIn, collateralOut, feePaid, m.yesSupply, m.noSupply);
     }
@@ -274,6 +313,20 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         uint256 creatorShare = (feePaid * CREATOR_FEE_SHARE_BPS) / BPS_DENOMINATOR;
         m.creatorFees += creatorShare;
         m.collectedFees += feePaid - creatorShare;
+    }
+
+    /// @dev Pays out `amount` to `to` in whichever collateral the market
+    /// uses. Always called after this market's storage has already been
+    /// updated (balances/reserve/fees zeroed or decremented), so the
+    /// checks-effects-interactions ordering that makes `safeTransfer` safe
+    /// under `nonReentrant` carries over unchanged to the low-level ETH call.
+    function _payOut(Market storage m, address to, uint256 amount) private {
+        if (address(m.collateralToken) == NATIVE_TOKEN) {
+            (bool ok,) = to.call{value: amount}("");
+            if (!ok) revert EthTransferFailed();
+        } else {
+            m.collateralToken.safeTransfer(to, amount);
+        }
     }
 
     /// @notice Redeem winning shares 1:1 for collateral after the market is finalized.
@@ -289,7 +342,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         shareBalances[marketId][true][msg.sender] = 0;
         shareBalances[marketId][false][msg.sender] = 0;
 
-        m.collateralToken.safeTransfer(msg.sender, payout);
+        _payOut(m, msg.sender, payout);
 
         emit Redeemed(marketId, msg.sender, payout, outcome);
     }
@@ -307,25 +360,78 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit MarketSettled(marketId, outcome);
     }
 
-    function withdrawFees(uint256 marketId) external onlyOwner {
+    /// @notice Push a market's close time further out, e.g. when the settlement
+    /// agent needs more time after the original deadline passed without a
+    /// settlement. Note this also reopens trading until the new deadline,
+    /// since `closeTime` gates both — the same field doing the same dual job
+    /// it already does at creation, just moved later.
+    function extendCloseTime(uint256 marketId, uint64 newCloseTime) external onlyOwner {
+        Market storage m = markets[marketId];
+        if (m.state != MarketState.Trading) revert MarketNotTrading();
+        if (newCloseTime <= m.closeTime) revert CloseTimeNotExtended();
+        m.closeTime = newCloseTime;
+        emit CloseTimeExtended(marketId, newCloseTime);
+    }
+
+    /// @notice Abandon a market instead of settling it, letting every share
+    /// holder reclaim a pro-rata slice of the pool via `claimRefund`. Callable
+    /// any time the market is `Trading` — same fully-trusted-owner model as
+    /// `settleMarket`, no bond, no dispute.
+    function cancelMarket(uint256 marketId) external onlyOwner {
+        Market storage m = markets[marketId];
+        if (m.state != MarketState.Trading) revert MarketNotTrading();
+        m.state = MarketState.Cancelled;
+        emit MarketCancelled(marketId);
+    }
+
+    /// @notice Claim a pro-rata refund from a cancelled market's reserve.
+    /// Paying every YES/NO share 1:1 (like `redeem` does for the winning side)
+    /// would be insolvent here: the Pythagorean curve guarantees
+    /// `reserve <= yesSupply + noSupply`, not equality. Splitting `reserve`
+    /// proportionally across each holder's combined YES+NO balance instead
+    /// sums to exactly `reserve` once everyone claims — but `yesSupply`/
+    /// `noSupply` themselves are net of `genesisSupply` first, since that
+    /// seed liquidity is virtual accounting baked in at creation and isn't
+    /// held by any address (see the `Market.genesisSupply` field doc). For
+    /// markets created before this field existed, `genesisSupply` reads as 0
+    /// and refunds fall back to the pre-upgrade (still solvent, just slightly
+    /// under-distributing) behavior rather than reverting.
+    function claimRefund(uint256 marketId) external nonReentrant returns (uint256 payout) {
+        Market storage m = markets[marketId];
+        if (m.state != MarketState.Cancelled) revert MarketNotCancelled();
+
+        uint256 userShares = shareBalances[marketId][true][msg.sender] + shareBalances[marketId][false][msg.sender];
+        if (userShares == 0) revert NothingToRefund();
+
+        uint256 totalShares = (m.yesSupply - m.genesisSupply) + (m.noSupply - m.genesisSupply);
+        payout = Math.mulDiv(m.reserve, userShares, totalShares);
+
+        shareBalances[marketId][true][msg.sender] = 0;
+        shareBalances[marketId][false][msg.sender] = 0;
+
+        _payOut(m, msg.sender, payout);
+        emit RefundClaimed(marketId, msg.sender, payout);
+    }
+
+    function withdrawFees(uint256 marketId) external onlyOwner nonReentrant {
         Market storage m = markets[marketId];
         uint256 amount = m.collectedFees;
         if (amount == 0) revert NoFeesToWithdraw();
         m.collectedFees = 0;
-        m.collateralToken.safeTransfer(protocolTreasury, amount);
+        _payOut(m, protocolTreasury, amount);
         emit FeesWithdrawn(marketId, protocolTreasury, amount);
     }
 
     /// @notice Lets a market's creator withdraw their accrued share of trading
     /// fees (`CREATOR_FEE_SHARE_BPS` of `feeBps` on every buy/sell in their
     /// market). Only the creator can call this for their own market.
-    function withdrawCreatorFees(uint256 marketId) external {
+    function withdrawCreatorFees(uint256 marketId) external nonReentrant {
         Market storage m = markets[marketId];
         if (msg.sender != m.creator) revert NotCreator();
         uint256 amount = m.creatorFees;
         if (amount == 0) revert NoCreatorFeesToWithdraw();
         m.creatorFees = 0;
-        m.collateralToken.safeTransfer(m.creator, amount);
+        _payOut(m, m.creator, amount);
         emit CreatorFeesWithdrawn(marketId, m.creator, amount);
     }
 

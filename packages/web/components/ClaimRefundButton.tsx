@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import confetti from "canvas-confetti";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
@@ -11,14 +10,14 @@ import { marketFactoryContract, collateralDecimals, collateralSymbol } from "@/l
 import { formatCollateral } from "@/lib/format";
 import { useClickRipple } from "@/components/ClickRipple";
 
-const MARKET_STATE_FINALIZED = 1;
+const MARKET_STATE_CANCELLED = 2;
 
-export function RedeemButton({ marketId }: { marketId: bigint }) {
+export function ClaimRefundButton({ marketId }: { marketId: bigint }) {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { onPointerDown: onRedeemRipple, rippleLayer: redeemRippleLayer } = useClickRipple();
+  const { onPointerDown: onClaimRipple, rippleLayer: claimRippleLayer } = useClickRipple();
 
   const { data: market } = useReadContract({
     ...marketFactoryContract,
@@ -26,39 +25,45 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
     args: [marketId],
   });
 
-  const { data: winningBalance, refetch } = useReadContract({
+  const { data: yesBalance, refetch: refetchYes } = useReadContract({
     ...marketFactoryContract,
     functionName: "shareBalanceOf",
-    args: address && market ? [marketId, market.outcome, address] : undefined,
-    query: { enabled: !!address && !!market && market.state === MARKET_STATE_FINALIZED },
+    args: address ? [marketId, true, address] : undefined,
+    query: { enabled: !!address && market?.state === MARKET_STATE_CANCELLED },
   });
 
-  if (!isConnected || !market || market.state !== MARKET_STATE_FINALIZED) return null;
+  const { data: noBalance, refetch: refetchNo } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "shareBalanceOf",
+    args: address ? [marketId, false, address] : undefined,
+    query: { enabled: !!address && market?.state === MARKET_STATE_CANCELLED },
+  });
 
-  async function handleRedeem() {
+  if (!isConnected || !market || market.state !== MARKET_STATE_CANCELLED) return null;
+
+  const heldShares = (yesBalance ?? 0n) + (noBalance ?? 0n);
+  const hasSharesToClaim = heldShares > 0n;
+  const decimals = collateralDecimals(market.collateralToken);
+  const symbol = collateralSymbol(market.collateralToken);
+
+  async function handleClaim() {
     setSubmitting(true);
-    setStatus("Redeeming...");
+    setStatus("Claiming refund...");
     try {
       const hash = await writeContractAsync({
         ...marketFactoryContract,
-        functionName: "redeem",
+        functionName: "claimRefund",
         args: [marketId],
       });
       await waitForTransactionReceipt(wagmiConfig, { hash });
-      setStatus("Redeemed!");
-      // hasWinnings gates this button, so a successful redeem here always means a
-      // real payout — this is the "you won" moment worth celebrating.
-      confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ["#ccff00", "#059669", "#ffffff"] });
-      await refetch();
+      setStatus("Refund claimed!");
+      await Promise.all([refetchYes(), refetchNo()]);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Transaction failed");
     } finally {
       setSubmitting(false);
     }
   }
-
-  const hasWinnings = winningBalance !== undefined && winningBalance > 0n;
-  const decimals = collateralDecimals(market.collateralToken);
 
   return (
     <motion.div
@@ -67,20 +72,20 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
       transition={{ duration: 0.25 }}
       className="rounded-2xl border border-gray-800 bg-gray-900 p-5"
     >
-      <h2 className="font-bold text-gray-100 mb-2">Redeem</h2>
+      <h2 className="font-bold text-gray-100 mb-2">Market cancelled</h2>
       <p className="text-sm text-gray-300 mb-4">
-        Outcome: <strong>{market.outcome ? "YES" : "NO"}</strong>. Your winning shares:{" "}
-        {formatCollateral(winningBalance ?? 0n, decimals)} {collateralSymbol(market.collateralToken)}
+        This market was cancelled instead of settled. You held {formatCollateral(heldShares, decimals)} {symbol}{" "}
+        worth of shares, and can claim your pro-rata share of the pool back.
       </p>
       <motion.button
         whileTap={{ scale: 0.97 }}
-        onClick={handleRedeem}
-        onPointerDown={onRedeemRipple}
-        disabled={submitting || !hasWinnings}
+        onClick={handleClaim}
+        onPointerDown={onClaimRipple}
+        disabled={submitting || !hasSharesToClaim}
         className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-900 py-2.5 px-5 text-sm font-semibold disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
       >
-        {redeemRippleLayer}
-        {hasWinnings ? "Redeem winnings" : "Nothing to redeem"}
+        {claimRippleLayer}
+        {hasSharesToClaim ? "Claim refund" : "Nothing to claim"}
       </motion.button>
       {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
     </motion.div>

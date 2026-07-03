@@ -8,7 +8,7 @@ export const market = onchainTable("market", (t) => ({
   metadataURI: t.text().notNull(),
   closeTime: t.bigint().notNull(),
   createdAt: t.bigint().notNull(),
-  state: t.text().notNull(), // "Trading" | "Finalized"
+  state: t.text().notNull(), // "Trading" | "Finalized" | "Cancelled"
   outcome: t.boolean(), // null until finalized
   yesSupply: t.bigint().notNull(), // virtual Pythagorean-curve supply, not a real token
   noSupply: t.bigint().notNull(),
@@ -45,5 +45,13 @@ export const redemption = onchainTable("redemption", (t) => ({
   redeemer: t.hex().notNull(),
   payout: t.bigint().notNull(),
   outcome: t.boolean().notNull(),
+  timestamp: t.bigint().notNull(),
+}));
+
+export const refund = onchainTable("refund", (t) => ({
+  id: t.text().primaryKey(), // `${txHash}-${logIndex}`
+  marketId: t.bigint().notNull(),
+  claimant: t.hex().notNull(),
+  payout: t.bigint().notNull(),
   timestamp: t.bigint().notNull(),
 }));

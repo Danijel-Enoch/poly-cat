@@ -3,6 +3,7 @@ import { getMarket } from "@/lib/ponder";
 import { TradePanel } from "@/components/TradePanel";
 import { SettleActions } from "@/components/SettleActions";
 import { RedeemButton } from "@/components/RedeemButton";
+import { ClaimRefundButton } from "@/components/ClaimRefundButton";
 import { CreatorFeesPanel } from "@/components/CreatorFeesPanel";
 import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { TradeHistoryTable } from "@/components/TradeHistoryTable";
@@ -54,6 +55,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
         <SettleActions marketId={marketId} closeTime={BigInt(market.closeTime)} state={market.state} />
         <RedeemButton marketId={marketId} />
+        <ClaimRefundButton marketId={marketId} />
         <CreatorFeesPanel marketId={marketId} />
       </div>
 
