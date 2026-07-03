@@ -9,7 +9,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { formatUsdc, parseUsdc } from "@/lib/format";
+import { formatUsdc, parseUsdc, isPartialDecimalInput } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
 import { useClickRipple } from "@/components/ClickRipple";
 
@@ -45,6 +45,11 @@ export default function CreateMarketPage() {
     query: { enabled: !!address },
   });
 
+  const { data: minInitialLiquidity } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "MIN_INITIAL_LIQUIDITY",
+  });
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!address) return;
@@ -53,6 +58,11 @@ export default function CreateMarketPage() {
 
     try {
       const initialLiquidity = parseUsdc(liquidity);
+      if (minInitialLiquidity !== undefined && initialLiquidity < minInitialLiquidity) {
+        setStatus(`Initial liquidity must be at least ${formatUsdc(minInitialLiquidity)} ${COLLATERAL_SYMBOL}.`);
+        setSubmitting(false);
+        return;
+      }
       const closeTime = BigInt(Math.floor(new Date(closeDate).getTime() / 1000));
 
       if (!allowance || allowance < initialLiquidity) {
@@ -162,13 +172,19 @@ export default function CreateMarketPage() {
           </span>
           <input
             required
-            type="number"
-            min="1"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={liquidity}
-            onChange={(e) => setLiquidity(e.target.value)}
+            onChange={(e) => {
+              if (isPartialDecimalInput(e.target.value)) setLiquidity(e.target.value);
+            }}
             className="rounded-lg border border-gray-700 bg-gray-800 text-gray-100 px-3 py-2 font-normal focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
           />
+          {minInitialLiquidity !== undefined && (
+            <span className="text-xs font-normal text-gray-500">
+              Minimum {formatUsdc(minInitialLiquidity)} {COLLATERAL_SYMBOL}
+            </span>
+          )}
         </label>
         <p className="text-xs text-gray-500">
           Markets are settled by an AI agent (LLM) once trading closes — no bond, no dispute, no oracle.

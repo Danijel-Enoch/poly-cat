@@ -9,7 +9,7 @@ import { maxUint256 } from "viem";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, usdcContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { formatUsdc, parseUsdc, yesProbabilityFromSupplies } from "@/lib/format";
+import { formatUsdc, parseUsdc, isPartialDecimalInput, yesProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
 
@@ -291,11 +291,12 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-500">$</span>
               )}
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  if (isPartialDecimalInput(e.target.value)) setAmount(e.target.value);
+                }}
                 className={`w-full text-2xl font-bold text-gray-100 bg-transparent border-b-2 border-gray-700 focus:border-accent outline-none py-1 ${side === "buy" && buyMode === "spend" ? "pl-5" : ""}`}
               />
             </div>

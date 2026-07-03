@@ -11,6 +11,16 @@ export function parseUsdc(input: string): bigint {
   return parseUnits(input || "0", USDC_DECIMALS);
 }
 
+/** Matches partial-typing states ("", "1.", ".5") as well as complete decimals,
+ * so it's usable directly as an onChange filter on a decimal amount input
+ * without fighting the user mid-keystroke. Rejects everything a native
+ * `type="number"` input's `valueAsNumber` would reject anyway (multiple dots,
+ * letters, "e" scientific notation), but — unlike `type="number"` — never
+ * blocks a leading "0." or silently mangles the value on mobile keyboards. */
+export function isPartialDecimalInput(value: string): boolean {
+  return /^\d*\.?\d*$/.test(value);
+}
+
 export function formatDate(unixSeconds: string | bigint): string {
   const seconds = typeof unixSeconds === "string" ? Number(unixSeconds) : Number(unixSeconds);
   return new Date(seconds * 1000).toLocaleString();
