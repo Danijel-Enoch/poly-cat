@@ -55,6 +55,19 @@ export default function CreateMarketPage() {
     functionName: "MIN_INITIAL_LIQUIDITY",
   });
 
+  // The contract's MIN_INITIAL_LIQUIDITY is a flat raw-unit floor (1e6) —
+  // calibrated for a 6-decimal token like USDC (≈$1 minimum). At ETH's 18
+  // decimals that same floor is a dust amount (≈0.000000000001 ETH) that
+  // rounds to "0.0000" on screen, making the displayed minimum meaningless.
+  // A separate, sensible UI-level floor is enforced for ETH markets on top.
+  const ETH_UI_MIN_LIQUIDITY = parseCollateral("0.001", 18);
+  const effectiveMinLiquidity =
+    isNative && minInitialLiquidity !== undefined
+      ? minInitialLiquidity > ETH_UI_MIN_LIQUIDITY
+        ? minInitialLiquidity
+        : ETH_UI_MIN_LIQUIDITY
+      : minInitialLiquidity;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!address) return;
@@ -63,10 +76,10 @@ export default function CreateMarketPage() {
 
     try {
       const initialLiquidity = isNative ? parseCollateral(liquidity, 18) : parseUsdc(liquidity);
-      if (minInitialLiquidity !== undefined && initialLiquidity < minInitialLiquidity) {
+      if (effectiveMinLiquidity !== undefined && initialLiquidity < effectiveMinLiquidity) {
         setStatus(
           `Initial liquidity must be at least ${
-            isNative ? formatCollateral(minInitialLiquidity, 18) : formatUsdc(minInitialLiquidity)
+            isNative ? formatCollateral(effectiveMinLiquidity, 18) : formatUsdc(effectiveMinLiquidity)
           } ${isNative ? "ETH" : COLLATERAL_SYMBOL}.`,
         );
         setSubmitting(false);
@@ -178,7 +191,13 @@ export default function CreateMarketPage() {
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setCollateralMode("usdc")}
+              onClick={() => {
+                setCollateralMode("usdc");
+                // Reset the amount on switch — "100" means something very
+                // different at 6 vs 18 decimals, and carrying the raw text
+                // over silently turns e.g. 100 USDC into 100 ETH.
+                setLiquidity("100");
+              }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 collateralMode === "usdc" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
               }`}
@@ -187,7 +206,10 @@ export default function CreateMarketPage() {
             </button>
             <button
               type="button"
-              onClick={() => setCollateralMode("eth")}
+              onClick={() => {
+                setCollateralMode("eth");
+                setLiquidity("0.05");
+              }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 collateralMode === "eth" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
               }`}
@@ -216,12 +238,12 @@ export default function CreateMarketPage() {
             }}
             className="rounded-lg border border-gray-700 bg-gray-800 text-gray-100 px-3 py-2 font-normal focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
           />
-          {minInitialLiquidity !== undefined && (
+          {effectiveMinLiquidity !== undefined && (
             <span className="text-xs font-normal text-gray-500">
               Minimum{" "}
               {isNative
-                ? `${formatCollateral(minInitialLiquidity, 18)} ETH`
-                : `${formatUsdc(minInitialLiquidity)} ${COLLATERAL_SYMBOL}`}
+                ? `${formatCollateral(effectiveMinLiquidity, 18)} ETH`
+                : `${formatUsdc(effectiveMinLiquidity)} ${COLLATERAL_SYMBOL}`}
             </span>
           )}
         </label>
