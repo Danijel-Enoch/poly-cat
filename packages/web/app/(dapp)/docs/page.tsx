@@ -17,7 +17,7 @@ const SECTIONS = [
   {
     id: "settlement",
     title: "Settlement",
-    body: "Markets are settled directly by the platform admin once trading closes — a single on-chain call sets the final outcome. There's no bond, no dispute window, and no oracle module. This is a deliberate simplicity tradeoff: it keeps the protocol small and fast to reason about, in exchange for trusting a single admin key rather than a decentralized dispute process.",
+    body: "Markets are settled by an AI agent (an LLM) that determines the outcome once trading closes — a single on-chain call sets the final outcome. There's no bond, no dispute window, and no oracle module. This is a deliberate simplicity tradeoff: it keeps the protocol small and fast to reason about, in exchange for trusting a single settlement agent rather than a decentralized dispute process.",
   },
   {
     id: "categories",

@@ -8,8 +8,8 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, usdcContract, USDC_ADDRESS } from "@/lib/contracts";
-import { parseUsdc } from "@/lib/format";
+import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL } from "@/lib/contracts";
+import { formatUsdc, parseUsdc } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
 import { useClickRipple } from "@/components/ClickRipple";
 
@@ -38,6 +38,13 @@ export default function CreateMarketPage() {
     functionName: "feeBps",
   });
 
+  const { data: usdcBalance } = useReadContract({
+    ...usdcContract,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: { enabled: !!address },
+  });
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!address) return;
@@ -51,7 +58,7 @@ export default function CreateMarketPage() {
       if (!allowance || allowance < initialLiquidity) {
         // Approve once for (effectively) unlimited spending — see TradePanel for why
         // a max-uint256 allowance means this is the only approval ever needed.
-        setStatus("Approving USDC...");
+        setStatus(`Approving ${COLLATERAL_SYMBOL}...`);
         const approveHash = await writeContractAsync({
           ...usdcContract,
           functionName: "approve",
@@ -99,7 +106,7 @@ export default function CreateMarketPage() {
             it back over time via your 5% cut of trading fees, and only if people actually trade.
           </li>
           <li>
-            Settlement is entirely admin-controlled: the platform admin decides the outcome once trading closes.
+            Settlement is handled by an AI agent (LLM): it decides the outcome once trading closes.
             There is no bond, no dispute process, and no oracle — a wrong or malicious settlement is possible.
           </li>
           <li>Only seed a market you&apos;re comfortable funding and confident can be settled fairly.</li>
@@ -147,7 +154,12 @@ export default function CreateMarketPage() {
           />
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
-          Initial liquidity (USDC)
+          <span className="flex items-center justify-between">
+            Initial liquidity ({COLLATERAL_SYMBOL})
+            <span className="text-xs font-normal text-gray-500">
+              Balance: {formatUsdc(usdcBalance ?? 0n)} {COLLATERAL_SYMBOL}
+            </span>
+          </span>
           <input
             required
             type="number"
@@ -159,7 +171,7 @@ export default function CreateMarketPage() {
           />
         </label>
         <p className="text-xs text-gray-500">
-          Markets are settled directly by the platform admin once trading closes — no bond, no dispute, no oracle.
+          Markets are settled by an AI agent (LLM) once trading closes — no bond, no dispute, no oracle.
           A protocol trading fee of {((protocolFeeBps ?? 100) / 100).toFixed(2)}% applies to every buy and sell, set
           by the platform admin — not configurable per market. As the creator, you earn 5% of that fee on every trade
           in your market, withdrawable any time from the market page.

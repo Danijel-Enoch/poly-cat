@@ -73,13 +73,13 @@ export function SettleActions({
       </div>
 
       <p className="text-sm text-gray-400 mb-4">
-        Settled directly by the platform admin — no bond, no dispute window, no oracle module.
+        Settled by an AI agent (LLM) — no bond, no dispute window, no oracle module.
       </p>
 
       {!isClosed ? (
         <p className="text-sm text-gray-400">Settlement opens after the market closes on {formatDate(closeTime)}.</p>
       ) : !isAdmin ? (
-        <p className="text-sm text-gray-400">Waiting for the admin to settle this market.</p>
+        <p className="text-sm text-gray-400">Waiting for the settlement agent to settle this market.</p>
       ) : (
         <div className="flex gap-2">
           <motion.button

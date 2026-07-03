@@ -11,10 +11,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 import {PythagoreanMath} from "./libraries/PythagoreanMath.sol";
 
 /// @notice Permissionless prediction-market factory, bonding-curve AMM, and
-/// collateral custody hub. Settlement is admin-controlled: the contract owner
-/// calls `settleMarket` directly once a market's close time has passed — no bond,
-/// no dispute, no oracle module. Market price/probability is never read as a
-/// settlement signal anywhere in this contract.
+/// collateral custody hub. Settlement is handled by an AI agent (LLM): the
+/// contract owner calls `settleMarket` directly once a market's close time has
+/// passed — no bond, no dispute, no oracle module. Market price/probability is
+/// never read as a settlement signal anywhere in this contract.
 ///
 /// Pricing uses a Pythagorean bonding curve (`reserve = c*sqrt(yesSupply^2 +
 /// noSupply^2)`, see `PythagoreanMath`) rather than a constant-product AMM — this
@@ -294,9 +294,10 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit Redeemed(marketId, msg.sender, payout, outcome);
     }
 
-    /// @notice Admin-only settlement. The owner is the sole source of truth for
-    /// every market's outcome — no bond, no dispute, no oracle module. Callable
-    /// only once a market has closed, and only once per market.
+    /// @notice Settlement by AI agent (LLM). The owner account, operated by the
+    /// settlement agent, is the sole source of truth for every market's outcome —
+    /// no bond, no dispute, no oracle module. Callable only once a market has
+    /// closed, and only once per market.
     function settleMarket(uint256 marketId, bool outcome) external onlyOwner {
         Market storage m = markets[marketId];
         if (m.state != MarketState.Trading) revert AlreadyResolved();

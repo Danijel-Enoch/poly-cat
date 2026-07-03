@@ -22,9 +22,9 @@ is a quickstart.
 - **Fees**: a flat protocol trading fee (1% by default, admin-adjustable up to
   5%) applies to every buy/sell. 95% goes to the protocol treasury, 5% to the
   market's creator (withdrawable any time from the market page).
-- **Settlement**: admin-only. The contract owner calls `settleMarket` once a
-  market closes — no bond, no dispute window, no oracle module. A deliberate
-  simplicity tradeoff, not a gap to fix.
+- **Settlement**: an AI agent (LLM) determines the outcome and calls
+  `settleMarket` once a market closes — no bond, no dispute window, no oracle
+  module. A deliberate simplicity tradeoff, not a gap to fix.
 - **Upgradeability**: `MarketFactory` sits behind a UUPS (`ERC1967Proxy`)
   proxy, so logic can be upgraded later without migrating market state.
 

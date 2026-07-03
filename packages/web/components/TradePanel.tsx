@@ -8,7 +8,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 import { maxUint256 } from "viem";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, usdcContract } from "@/lib/contracts";
+import { marketFactoryContract, usdcContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatUsdc, parseUsdc, yesProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
@@ -93,10 +93,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       }
       if (side === "buy" && buyMode === "receive") {
         const amountIn = quoteAmountInForShares(market.reserve, sSame, sOther, parsed, BigInt(feeBps));
-        return { label: "USDC", value: amountIn };
+        return { label: COLLATERAL_SYMBOL, value: amountIn };
       }
       const { collateralOut } = quoteSell(market.reserve, sSame, sOther, parsed, BigInt(feeBps));
-      return { label: "USDC", value: collateralOut };
+      return { label: COLLATERAL_SYMBOL, value: collateralOut };
     } catch (err) {
       if (err instanceof CurveQuoteError) return null;
       throw err;
@@ -160,7 +160,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           // Approve once for (effectively) unlimited spending, matching how real USDC
           // treats a max-uint256 allowance: `_spendAllowance` skips decrementing it, so
           // this is the only approval a wallet ever needs to sign for this market.
-          setStatus("Approving USDC...");
+          setStatus(`Approving ${COLLATERAL_SYMBOL}...`);
           const approveHash = await writeContractAsync({
             ...usdcContract,
             functionName: "approve",
@@ -196,27 +196,34 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-      <div className="relative flex items-center gap-1 mb-4">
-        <button
-          type="button"
-          onClick={() => setSide("buy")}
-          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
-        >
-          {side === "buy" && (
-            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
-          )}
-          <span className="relative">Buy</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setSide("sell")}
-          className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
-        >
-          {side === "sell" && (
-            <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
-          )}
-          <span className="relative">Sell</span>
-        </button>
+      <div className="relative flex items-center justify-between gap-1 mb-4">
+        <div className="relative flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setSide("buy")}
+            className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
+          >
+            {side === "buy" && (
+              <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+            )}
+            <span className="relative">Buy</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSide("sell")}
+            className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
+          >
+            {side === "sell" && (
+              <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+            )}
+            <span className="relative">Sell</span>
+          </button>
+        </div>
+        {isConnected && (
+          <span className="text-xs text-gray-500">
+            Balance: <span className="text-gray-300 font-semibold">{formatUsdc(usdcBalance ?? 0n)} {COLLATERAL_SYMBOL}</span>
+          </span>
+        )}
       </div>
 
       {!isTrading ? (
@@ -261,7 +268,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                   buyMode === "spend" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                Spend USDC
+                Spend {COLLATERAL_SYMBOL}
               </button>
               <button
                 type="button"
@@ -277,7 +284,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
           <div>
             <label className="text-xs font-medium text-gray-400">
-              {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : "Amount (USDC)"}
+              {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : `Amount (${COLLATERAL_SYMBOL})`}
             </label>
             <div className="relative mt-1">
               {side === "buy" && buyMode === "spend" && (
@@ -299,7 +306,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                   : `≈ ${formatUsdc(preview.value)} ${preview.label}`
                 : side === "sell"
                   ? `Balance: ${formatUsdc(shareBalance ?? 0n)} shares`
-                  : `Balance: ${formatUsdc(usdcBalance ?? 0n)} USDC`}
+                  : `Balance: ${formatUsdc(usdcBalance ?? 0n)} ${COLLATERAL_SYMBOL}`}
             </p>
           </div>
 

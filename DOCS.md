@@ -86,12 +86,13 @@ tradeoff surfaced in the create-market UI's risk disclosure.
 
 ## Settlement
 
-Admin-only: the contract owner calls `settleMarket(marketId, outcome)` once
-`block.timestamp >= closeTime`. No bond, no dispute window, no oracle module —
-a single on-chain call sets the final outcome. This is a deliberate simplicity
-tradeoff: it keeps the protocol small and fast to reason about, in exchange for
-trusting a single admin key rather than a decentralized dispute process. Losing
-shares are worthless; `redeem` pays winning shares out 1:1.
+Markets are settled by an AI agent (LLM): it determines the outcome and calls
+`settleMarket(marketId, outcome)` once `block.timestamp >= closeTime`. No
+bond, no dispute window, no oracle module — a single on-chain call sets the
+final outcome. This is a deliberate simplicity tradeoff: it keeps the protocol
+small and fast to reason about, in exchange for trusting a single settlement
+key rather than a decentralized dispute process. Losing shares are worthless;
+`redeem` pays winning shares out 1:1.
 
 The `/admin` route in the frontend (gated to the connected wallet matching
 `owner()`) surfaces markets that are past `closeTime` and still `Trading`
