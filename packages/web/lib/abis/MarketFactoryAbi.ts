@@ -32,19 +32,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "MIN_INITIAL_LIQUIDITY",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "MIN_TRADING_DURATION",
     "inputs": [],
     "outputs": [
@@ -426,6 +413,19 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "minInitialLiquidity",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "nextMarketId",
     "inputs": [],
     "outputs": [
@@ -544,6 +544,19 @@ export const MarketFactoryAbi = [
         "name": "_feeBps",
         "type": "uint16",
         "internalType": "uint16"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setMinInitialLiquidity",
+    "inputs": [
+      {
+        "name": "_minInitialLiquidity",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -825,6 +838,19 @@ export const MarketFactoryAbi = [
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MinInitialLiquiditySet",
+    "inputs": [
+      {
+        "name": "minInitialLiquidity",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false

@@ -12,6 +12,14 @@ import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL, N
 import { formatUsdc, parseUsdc, formatCollateral, parseCollateral, isPartialDecimalInput } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
 import { useClickRipple } from "@/components/ClickRipple";
+import { useNow } from "@/lib/useNow";
+
+function formatDuration(seconds: bigint): string {
+  const hours = Number(seconds) / 3600;
+  if (Number.isInteger(hours)) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const minutes = Math.round(Number(seconds) / 60);
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
 
 export default function CreateMarketPage() {
   const router = useRouter();
@@ -52,14 +60,31 @@ export default function CreateMarketPage() {
 
   const { data: minInitialLiquidity } = useReadContract({
     ...marketFactoryContract,
-    functionName: "MIN_INITIAL_LIQUIDITY",
+    functionName: "minInitialLiquidity",
   });
 
-  // The contract's MIN_INITIAL_LIQUIDITY is a flat raw-unit floor (1e6) —
-  // calibrated for a 6-decimal token like USDC (≈$1 minimum). At ETH's 18
-  // decimals that same floor is a dust amount (≈0.000000000001 ETH) that
-  // rounds to "0.0000" on screen, making the displayed minimum meaningless.
-  // A separate, sensible UI-level floor is enforced for ETH markets on top.
+  const { data: minTradingDuration } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "MIN_TRADING_DURATION",
+  });
+
+  const now = useNow();
+
+  // Live (not just on-submit) check so a too-soon close time is flagged the
+  // moment it's picked, instead of surfacing as an opaque wallet-level revert
+  // (CloseTimeTooSoon) after the user has already signed a transaction.
+  const closeTimeMs = closeDate ? new Date(closeDate).getTime() : NaN;
+  const closeTimeTooSoon =
+    !Number.isNaN(closeTimeMs) &&
+    minTradingDuration !== undefined &&
+    BigInt(Math.floor(closeTimeMs / 1000)) < BigInt(Math.floor(now / 1000)) + minTradingDuration;
+
+  // The contract's minInitialLiquidity is an admin-adjustable raw-unit floor
+  // (1e4 = $0.01 by default) — calibrated for a 6-decimal token like USDC. At
+  // ETH's 18 decimals that same raw value is a dust amount (~0.00000000001
+  // ETH) that rounds to "0.0000" on screen, making the displayed minimum
+  // meaningless. A separate, sensible UI-level floor is enforced for ETH
+  // markets on top of whatever the contract's floor happens to be.
   const ETH_UI_MIN_LIQUIDITY = parseCollateral("0.001", 18);
   const effectiveMinLiquidity =
     isNative && minInitialLiquidity !== undefined
@@ -86,6 +111,11 @@ export default function CreateMarketPage() {
         return;
       }
       const closeTime = BigInt(Math.floor(new Date(closeDate).getTime() / 1000));
+      if (minTradingDuration !== undefined && closeTime < BigInt(Math.floor(now / 1000)) + minTradingDuration) {
+        setStatus(`Close time must be at least ${formatDuration(minTradingDuration)} from now.`);
+        setSubmitting(false);
+        return;
+      }
 
       if (!isNative && (!allowance || allowance < initialLiquidity)) {
         // Approve once for (effectively) unlimited spending — see TradePanel for why
@@ -183,8 +213,21 @@ export default function CreateMarketPage() {
             type="datetime-local"
             value={closeDate}
             onChange={(e) => setCloseDate(e.target.value)}
-            className="rounded-lg border border-gray-700 bg-gray-800 text-gray-100 px-3 py-2 font-normal focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+            className={`rounded-lg border bg-gray-800 text-gray-100 px-3 py-2 font-normal focus:outline-none focus:ring-2 focus:border-transparent ${
+              closeTimeTooSoon ? "border-rose-800 focus:ring-rose-600" : "border-gray-700 focus:ring-accent"
+            }`}
           />
+          {closeTimeTooSoon ? (
+            <span className="text-xs font-normal text-rose-400">
+              Must be at least {minTradingDuration !== undefined ? formatDuration(minTradingDuration) : ""} from now.
+            </span>
+          ) : (
+            minTradingDuration !== undefined && (
+              <span className="text-xs font-normal text-gray-500">
+                Must be at least {formatDuration(minTradingDuration)} from now.
+              </span>
+            )
+          )}
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
           Collateral
@@ -256,7 +299,7 @@ export default function CreateMarketPage() {
 
         <motion.button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || closeTimeTooSoon}
           whileTap={{ scale: 0.98 }}
           onPointerDown={onSubmitRipple}
           className="relative overflow-hidden mt-2 rounded-full bg-accent hover:bg-accent-dark text-gray-900 py-2.5 font-semibold disabled:opacity-50"

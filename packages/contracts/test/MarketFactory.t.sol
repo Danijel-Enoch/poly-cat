@@ -162,6 +162,49 @@ contract MarketFactoryTest is Test {
         factory.setFeeBps(200);
     }
 
+    // ---------- admin-controlled minimum initial liquidity ----------
+
+    function test_DefaultMinInitialLiquidityIsOneCent() public view {
+        assertEq(factory.minInitialLiquidity(), 1e4);
+    }
+
+    function test_SetMinInitialLiquidity_UpdatesFloorAndAppliesToCreation() public {
+        factory.setMinInitialLiquidity(1);
+        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+            collateralToken: address(usdc),
+            questionHash: keccak256("x"),
+            metadataURI: "",
+            closeTime: closeTime,
+            initialLiquidity: 2 // below the old 1e4 default, above the new floor of 1
+        });
+        vm.prank(alice);
+        factory.createMarket(p);
+    }
+
+    function test_SetMinInitialLiquidity_RevertsIfZero() public {
+        vm.expectRevert(MarketFactory.LiquidityTooLow.selector);
+        factory.setMinInitialLiquidity(0);
+    }
+
+    function test_SetMinInitialLiquidity_RevertsIfNotOwner() public {
+        vm.prank(alice);
+        vm.expectRevert();
+        factory.setMinInitialLiquidity(1);
+    }
+
+    function test_CreateMarket_RevertsBelowUpdatedMinimum() public {
+        factory.setMinInitialLiquidity(5e6);
+        MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
+            collateralToken: address(usdc),
+            questionHash: keccak256("x"),
+            metadataURI: "",
+            closeTime: closeTime,
+            initialLiquidity: 1e6 // was fine under the old fixed 1e6 constant, now too low
+        });
+        vm.expectRevert(MarketFactory.LiquidityTooLow.selector);
+        factory.createMarket(p);
+    }
+
     // ---------- trading ----------
 
     function test_BuyShares_IncreasesSupplyAndCreditsBalance() public {

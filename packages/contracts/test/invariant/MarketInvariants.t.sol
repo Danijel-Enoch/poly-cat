@@ -59,7 +59,7 @@ contract Handler is Test {
         uint64 closeTime = uint64(block.timestamp) + duration;
 
         if (useNative) {
-            uint256 liquidity = bound(liquiditySeed, factory.MIN_INITIAL_LIQUIDITY(), 1_000 ether);
+            uint256 liquidity = bound(liquiditySeed, factory.minInitialLiquidity(), 1_000 ether);
             MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
                 collateralToken: address(0),
                 questionHash: keccak256(abi.encodePacked(marketIds.length)),
@@ -75,7 +75,7 @@ contract Handler is Test {
                 ghost_nativeTotalIn += liquidity;
             } catch {}
         } else {
-            uint256 liquidity = bound(liquiditySeed, factory.MIN_INITIAL_LIQUIDITY(), 1_000_000e6);
+            uint256 liquidity = bound(liquiditySeed, factory.minInitialLiquidity(), 1_000_000e6);
             MarketFactory.CreateMarketParams memory p = MarketFactory.CreateMarketParams({
                 collateralToken: address(usdc),
                 questionHash: keccak256(abi.encodePacked(marketIds.length)),

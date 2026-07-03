@@ -75,7 +75,6 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
 
     uint64 public constant MIN_TRADING_DURATION = 1 hours;
     uint16 public constant MAX_FEE_BPS = 500; // 5% ceiling on the admin-settable protocol fee
-    uint256 public constant MIN_INITIAL_LIQUIDITY = 1e6; // floor in raw collateral units, avoids degenerate pools
     uint256 private constant BPS_DENOMINATOR = 10_000;
 
     /// @notice Fixed share of every collected trading fee that goes to a market's
@@ -93,6 +92,14 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     uint16 public feeBps;
 
     uint256 public nextMarketId; // 0 is reserved/invalid
+
+    /// @notice Admin-settable floor in raw collateral units on a market's
+    /// initial liquidity, avoids degenerate pools (PythagoreanMath.seedGenesis
+    /// reverts outright on an amount too small to seed any virtual supply —
+    /// this exists to fail earlier, with a friendlier error, well above that
+    /// hard mathematical floor). Was a fixed constant (1e6) before this field
+    /// existed; see `setMinInitialLiquidity`.
+    uint256 public minInitialLiquidity;
 
     mapping(uint256 => Market) public markets;
     // marketId => isYes => holder => balance. Internal balances (not per-market ERC20s)
@@ -133,6 +140,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     event CreatorFeesWithdrawn(uint256 indexed marketId, address indexed creator, uint256 amount);
     event ProtocolTreasurySet(address indexed treasury);
     event ProtocolFeeSet(uint16 feeBps);
+    event MinInitialLiquiditySet(uint256 minInitialLiquidity);
     event MarketSettled(uint256 indexed marketId, bool outcome);
     event CloseTimeExtended(uint256 indexed marketId, uint64 newCloseTime);
     event MarketCancelled(uint256 indexed marketId);
@@ -172,6 +180,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         protocolTreasury = _protocolTreasury;
         feeBps = 100; // 1% — inline field initializers don't run against proxy storage, so this must live here
         nextMarketId = 1; // 0 is reserved/invalid
+        minInitialLiquidity = 1e4; // $0.01 for a 6-decimal token like USDC/USDG
     }
 
     function setProtocolTreasury(address _protocolTreasury) external onlyOwner {
@@ -188,6 +197,17 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit ProtocolFeeSet(_feeBps);
     }
 
+    /// @notice Admin-only update to the minimum initial liquidity required to
+    /// create a market, in raw collateral units. Must stay nonzero — setting
+    /// it to 0 wouldn't actually allow zero-liquidity markets, it would just
+    /// move the revert to the less legible `InsufficientLiquidity` deeper in
+    /// `PythagoreanMath.seedGenesis` instead of the friendlier check here.
+    function setMinInitialLiquidity(uint256 _minInitialLiquidity) external onlyOwner {
+        if (_minInitialLiquidity == 0) revert LiquidityTooLow();
+        minInitialLiquidity = _minInitialLiquidity;
+        emit MinInitialLiquiditySet(_minInitialLiquidity);
+    }
+
     /// @notice Permissionlessly create a new binary prediction market on any topic.
     /// Pulls `initialLiquidity` from the caller and seeds the bonding curve. The
     /// creator receives no shares for this — it purely seeds the curve's starting
@@ -195,7 +215,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     /// `CREATOR_FEE_SHARE_BPS` cut of trading fees if and when people trade.
     function createMarket(CreateMarketParams calldata p) external payable nonReentrant returns (uint256 marketId) {
         if (p.closeTime < block.timestamp + MIN_TRADING_DURATION) revert CloseTimeTooSoon();
-        if (p.initialLiquidity < MIN_INITIAL_LIQUIDITY) revert LiquidityTooLow();
+        if (p.initialLiquidity < minInitialLiquidity) revert LiquidityTooLow();
 
         bool isNative = p.collateralToken == NATIVE_TOKEN;
         if (isNative) {
@@ -455,6 +475,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
 
     /// @dev Reserved storage slots so future upgrades can add new state variables
     /// without corrupting the layout of variables declared after this point in a
-    /// derived/future version of this contract.
-    uint256[50] private __gap;
+    /// derived/future version of this contract. Shrunk from 50 to 49 when
+    /// `minInitialLiquidity` was added — that slot now belongs to it.
+    uint256[49] private __gap;
 }
