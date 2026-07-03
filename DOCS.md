@@ -186,7 +186,7 @@ produces a hydration mismatch on any component that branches on
 ## Deploying the indexer with Docker
 
 ```bash
-docker build -f packages/indexer/Dockerfile -t hoodmarkets-indexer .
+docker build -t hoodmarkets-indexer .
 docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local hoodmarkets-indexer
 ```
 

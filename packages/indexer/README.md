@@ -41,9 +41,9 @@ pnpm start
 ### Docker
 
 ```bash
-docker build -f Dockerfile -t hoodmarkets-indexer ../..   # from this directory
+docker build -f ../../Dockerfile -t hoodmarkets-indexer ../..   # from this directory
 # or, from the repo root:
-docker build -f packages/indexer/Dockerfile -t hoodmarkets-indexer .
+docker build -t hoodmarkets-indexer .
 
 docker run --rm -p 42069:42069 --env-file .env.local hoodmarkets-indexer
 ```

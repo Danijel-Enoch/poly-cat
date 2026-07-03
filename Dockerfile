@@ -5,9 +5,9 @@
 # This package has no dependencies on the other workspace packages, but the
 # monorepo is pnpm-workspace-managed, so the build still needs the root
 # lockfile + every workspace member's package.json to resolve correctly.
-# Build from the monorepo root (not this directory):
+# Build from the monorepo root, where this Dockerfile lives:
 #
-#   docker build -f packages/indexer/Dockerfile -t hoodmarkets-indexer .
+#   docker build -t hoodmarkets-indexer .
 #   docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local hoodmarkets-indexer
 #
 # To use a different port, set PORT in the env file (or -e PORT=<port>) and
