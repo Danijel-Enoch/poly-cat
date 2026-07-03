@@ -24,7 +24,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="grid gap-6 lg:grid-cols-3 items-start">
-      <div className="lg:col-span-2 flex flex-col gap-6">
+      <div className="min-w-0 lg:col-span-2 flex flex-col gap-6">
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
           <div className="flex items-start gap-3">
             <span
@@ -57,7 +57,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
         <CreatorFeesPanel marketId={marketId} />
       </div>
 
-      <div className="lg:sticky lg:top-20">
+      <div className="min-w-0 lg:sticky lg:top-20">
         <TradePanel marketId={marketId} />
       </div>
     </div>

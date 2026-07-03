@@ -47,6 +47,7 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
 
   return (
     <motion.div
+      className="min-w-0"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.4), ease: [0.16, 1, 0.3, 1] }}
@@ -71,7 +72,7 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
                 {category}
               </span>
             )}
-            <p className="font-semibold text-[15px] leading-snug text-gray-100 line-clamp-2">{title}</p>
+            <p className="font-semibold text-[15px] leading-snug text-gray-100 line-clamp-2 break-words">{title}</p>
           </div>
           <div className="text-right shrink-0 overflow-hidden">
             <AnimatePresence mode="popLayout" initial={false}>
