@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function LandingPage() {
@@ -5,9 +6,7 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col">
       <header className="max-w-5xl w-full mx-auto px-6 py-6 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-gray-900 text-sm font-bold">
-            H
-          </span>
+          <Image src="/Icon.png" alt="HoodMarkets" width={28} height={28} className="h-7 w-7 rounded-full" priority />
           <span className="font-extrabold tracking-tight text-lg">HoodMarkets</span>
         </div>
         <Link href="/docs" className="text-sm font-medium text-gray-400 hover:text-white">
@@ -33,7 +32,10 @@ export default function LandingPage() {
       </main>
 
       <footer className="max-w-5xl w-full mx-auto px-6 py-8 flex items-center justify-center gap-6 text-xs text-gray-500">
-        <span>HoodMarkets</span>
+        <span className="flex items-center gap-1.5">
+          <Image src="/Icon.png" alt="" width={16} height={16} className="h-4 w-4 rounded-full" />
+          HoodMarkets
+        </span>
         <Link href="/docs" className="hover:text-gray-300">
           Docs
         </Link>

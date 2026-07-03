@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
 import { AdminNavLink } from "@/components/AdminNavLink";
@@ -10,9 +11,7 @@ export default function DappLayout({ children }: { children: React.ReactNode }) 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 sm:gap-6 min-w-0">
             <Link href="/app" className="flex items-center gap-2 shrink-0">
-              <span className="h-7 w-7 rounded-full bg-accent flex items-center justify-center text-gray-900 text-sm font-bold">
-                H
-              </span>
+              <Image src="/Icon.png" alt="HoodMarkets" width={28} height={28} className="h-7 w-7 rounded-full" priority />
               <span className="font-extrabold tracking-tight text-lg hidden sm:inline">HoodMarkets</span>
             </Link>
             <nav className="hidden sm:flex items-center gap-4 sm:gap-6">
