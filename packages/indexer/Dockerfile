@@ -10,6 +10,11 @@
 #   docker build -f packages/indexer/Dockerfile -t hoodmarkets-indexer .
 #   docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local hoodmarkets-indexer
 #
+# To use a different port, set PORT in the env file (or -e PORT=<port>) and
+# map the same port with -p, e.g.:
+#
+#   docker run --rm -p 8080:8080 -e PORT=8080 --env-file packages/indexer/.env.local hoodmarkets-indexer
+#
 # `ponder start` (unlike `ponder dev`) requires DATABASE_SCHEMA to be set
 # explicitly — see .env.example. In production, also set DATABASE_URL to a
 # real Postgres instance; without it, Ponder falls back to an on-disk PGlite
@@ -37,8 +42,12 @@ COPY --from=deps /app/packages/indexer/node_modules ./packages/indexer/node_modu
 COPY packages/indexer ./packages/indexer
 WORKDIR /app/packages/indexer
 
+# Documentation only — EXPOSE doesn't bind or restrict anything. The actual
+# port is whatever PORT resolves to at runtime (default 42069, see
+# .env.example and package.json's dev/start scripts); map it explicitly with
+# `-p <port>:<port> -e PORT=<port>` if you override it.
 EXPOSE 42069
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://localhost:42069/health || exit 1
+  CMD wget -q --spider http://localhost:${PORT:-42069}/health || exit 1
 
 CMD ["pnpm", "start"]
