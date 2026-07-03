@@ -62,3 +62,8 @@ Set `PONDER_RPC_URL_ROBINHOOD`, `ROBINHOOD_CHAIN_ID`,
 `.env.example`) to also index the mainnet deployment alongside local Anvil.
 Leaving any of these unset keeps the indexer anvil-only — this can't
 accidentally break local dev.
+
+In production (no local Anvil node to reach), also leave `ENABLE_ANVIL` unset
+so the indexer doesn't try to connect to `http://127.0.0.1:8545` and spam the
+logs with `ECONNREFUSED` retries. `ENABLE_ANVIL=true` is only meant for local
+dev.

@@ -270,3 +270,10 @@ entry with no contract address fails Ponder's config validation outright, so
 this repo's own `.env.local` has the RPC/chain ID filled in but stays
 anvil-only until the contract address is too). This can't accidentally break
 local dev before you're ready to deploy.
+
+The anvil chain is the mirror case: it's opt-in via `ENABLE_ANVIL=true`, not
+on by default. Production deployments (a VPS, the Dockerfile) have no local
+Anvil node to reach — leaving anvil wired in unconditionally means Ponder
+retries `http://127.0.0.1:8545` forever and floods the logs with
+`ECONNREFUSED`. Set `ENABLE_ANVIL=true` in `.env.local` for local dev; leave
+it unset in production and set the four `_ROBINHOOD` vars above instead.
