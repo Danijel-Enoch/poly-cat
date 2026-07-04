@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { keccak256, maxUint256, toHex } from "viem";
@@ -11,6 +11,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, usdcContract, USDC_ADDRESS, COLLATERAL_SYMBOL, NATIVE_TOKEN } from "@/lib/contracts";
 import { formatUsdc, parseUsdc, formatCollateral, parseCollateral, isPartialDecimalInput } from "@/lib/format";
 import { CATEGORIES, encodeMetadataURI, type Category } from "@/lib/category";
+import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/imageUpload";
 import { useClickRipple } from "@/components/ClickRipple";
 import { useNow } from "@/lib/useNow";
 
@@ -34,6 +35,61 @@ export default function CreateMarketPage() {
   const [liquidity, setLiquidity] = useState("100");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageCid, setImageCid] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Revoke the object URL used for the local preview whenever it's replaced
+  // or the component unmounts, so we don't leak blob URLs.
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    };
+  }, [imagePreviewUrl]);
+
+  async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageError(null);
+    setImageCid(null);
+
+    if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
+      setImageError("Unsupported image type — use PNG, JPEG, WEBP, or GIF.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError("Image is too large (max 5MB).");
+      e.target.value = "";
+      return;
+    }
+
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setUploadingImage(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch("/api/upload-image", { method: "POST", body });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Upload failed");
+      setImageCid(data.cid);
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  function clearImage() {
+    setImagePreviewUrl(null);
+    setImageCid(null);
+    setImageError(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
 
   const isNative = collateralMode === "eth";
 
@@ -137,7 +193,7 @@ export default function CreateMarketPage() {
           {
             collateralToken: isNative ? NATIVE_TOKEN : USDC_ADDRESS,
             questionHash: keccak256(toHex(question)),
-            metadataURI: encodeMetadataURI(category, question),
+            metadataURI: encodeMetadataURI(category, question, imageCid ?? undefined),
             closeTime,
             initialLiquidity,
           },
@@ -205,6 +261,37 @@ export default function CreateMarketPage() {
               </option>
             ))}
           </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
+          Image <span className="font-normal text-gray-500">(optional)</span>
+          <div className="flex items-center gap-3">
+            {imagePreviewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imagePreviewUrl}
+                alt="Market image preview"
+                className="h-12 w-12 rounded-full object-cover border border-gray-700"
+              />
+            ) : null}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={handleImageChange}
+              className="flex-1 text-xs font-normal text-gray-400 file:mr-3 file:rounded-full file:border-0 file:bg-gray-700 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-gray-600"
+            />
+            {imagePreviewUrl && (
+              <button
+                type="button"
+                onClick={clearImage}
+                className="text-xs font-semibold text-gray-400 hover:text-gray-200"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {uploadingImage && <span className="text-xs font-normal text-gray-500">Uploading...</span>}
+          {imageError && <span className="text-xs font-normal text-rose-400">{imageError}</span>}
         </label>
         <label className="flex flex-col gap-1 text-sm font-medium text-gray-300">
           Closes at
@@ -299,7 +386,7 @@ export default function CreateMarketPage() {
 
         <motion.button
           type="submit"
-          disabled={submitting || closeTimeTooSoon}
+          disabled={submitting || closeTimeTooSoon || uploadingImage}
           whileTap={{ scale: 0.98 }}
           onPointerDown={onSubmitRipple}
           className="relative overflow-hidden mt-2 rounded-full bg-accent hover:bg-accent-dark text-gray-900 py-2.5 font-semibold disabled:opacity-50"

@@ -8,14 +8,16 @@ import { collateralDecimals, collateralSymbol } from "@/lib/contracts";
 import { useNow } from "@/lib/useNow";
 import { avatarColorFor } from "@/lib/avatarColor";
 import { parseMetadataURI } from "@/lib/category";
+import { ipfsImageUrl } from "@/lib/ipfs";
 
 export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: number }) {
   const yesProb = yesProbabilityFromSupplies(market.yesSupply, market.noSupply);
   const yesPct = Math.round(yesProb * 100);
   const now = useNow();
   const isClosed = now / 1000 >= Number(market.closeTime);
-  const { category, title: parsedTitle } = parseMetadataURI(market.metadataURI);
+  const { category, image, title: parsedTitle } = parseMetadataURI(market.metadataURI);
   const title = parsedTitle || market.questionHash;
+  const imageUrl = ipfsImageUrl(image);
 
   const rotateXRaw = useMotionValue(0);
   const rotateYRaw = useMotionValue(0);
@@ -66,11 +68,16 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
         className="block rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-[box-shadow,border-color]"
       >
         <div className="flex items-start gap-3">
-          <span
-            className={`h-10 w-10 shrink-0 rounded-full ${avatarColorFor(market.id)} flex items-center justify-center text-white font-bold text-sm`}
-          >
-            {title.replace("ipfs://", "").charAt(0).toUpperCase()}
-          </span>
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span
+              className={`h-10 w-10 shrink-0 rounded-full ${avatarColorFor(market.id)} flex items-center justify-center text-white font-bold text-sm`}
+            >
+              {title.replace("ipfs://", "").charAt(0).toUpperCase()}
+            </span>
+          )}
           <div className="flex-1 min-w-0">
             {category && (
               <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-200 mb-1">
