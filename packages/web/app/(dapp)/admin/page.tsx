@@ -12,6 +12,7 @@ import { getMarkets, type MarketRow } from "@/lib/ponder";
 import { formatUsdc, formatDate, shortenAddress } from "@/lib/format";
 import { parseMetadataURI } from "@/lib/category";
 import { verificationMessage, currentTimestamp } from "@/lib/adminVerifyMessage";
+import { delistMessage } from "@/lib/adminDelistMessage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { PolymarketImportPanel } from "@/components/PolymarketImportPanel";
 import { useNow } from "@/lib/useNow";
@@ -20,6 +21,12 @@ async function fetchVerifiedMarketIds(): Promise<Set<string>> {
   const res = await fetch("/api/verified-markets");
   const data = await res.json();
   return new Set<string>(data.verified ?? []);
+}
+
+async function fetchDelistedMarketIds(): Promise<Set<string>> {
+  const res = await fetch("/api/delisted-markets");
+  const data = await res.json();
+  return new Set<string>(data.delisted ?? []);
 }
 
 const CLOSING_SOON_WINDOW_SECONDS = 24 * 60 * 60; // markets closing within the next 24h
@@ -52,6 +59,12 @@ export default function AdminPage() {
   const { data: verifiedIds } = useQuery({
     queryKey: ["verifiedMarkets"],
     queryFn: fetchVerifiedMarketIds,
+    enabled: isAdmin,
+  });
+
+  const { data: delistedIds } = useQuery({
+    queryKey: ["delistedMarkets"],
+    queryFn: fetchDelistedMarketIds,
     enabled: isAdmin,
   });
 
@@ -206,6 +219,29 @@ export default function AdminPage() {
     }
   }
 
+  async function handleToggleDelist(marketId: string, delisted: boolean) {
+    setPendingId(marketId);
+    setStatus(`${delisted ? "Delisting" : "Relisting"} market #${marketId}...`);
+    try {
+      const timestamp = currentTimestamp();
+      const message = delistMessage(marketId, delisted, timestamp);
+      const signature = await signMessageAsync({ message });
+      const res = await fetch("/api/admin/delist-market", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketId, delisted, timestamp, signature }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to update listing");
+      setStatus(`Market #${marketId} ${delisted ? "delisted" : "relisted"}.`);
+      await queryClient.invalidateQueries({ queryKey: ["delistedMarkets"] });
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to update listing");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!isConnected) {
     return (
       <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
@@ -329,6 +365,7 @@ export default function AdminPage() {
                 <th className="pb-2 pr-4 font-medium">Volume</th>
                 <th className="pb-2 pr-4 font-medium">Fees</th>
                 <th className="pb-2 pr-4 font-medium">Verified</th>
+                <th className="pb-2 pr-4 font-medium">Listed</th>
                 <th className="pb-2 font-medium" />
               </tr>
             </thead>
@@ -336,8 +373,9 @@ export default function AdminPage() {
               {(markets ?? []).map((m) => {
                 const fees = collectedFeesById.get(m.id) ?? 0n;
                 const isVerified = verifiedIds?.has(m.id) ?? false;
+                const isDelisted = delistedIds?.has(m.id) ?? false;
                 return (
-                  <tr key={m.id} className="border-b border-gray-800/60 last:border-0">
+                  <tr key={m.id} className={`border-b border-gray-800/60 last:border-0 ${isDelisted ? "opacity-50" : ""}`}>
                     <td className="py-2 pr-4">
                       <Link href={`/markets/${m.id}`} className="text-gray-100 hover:underline flex items-center gap-1">
                         {titleFor(m)}
@@ -359,6 +397,19 @@ export default function AdminPage() {
                         }`}
                       >
                         {isVerified ? "Unverify" : "Verify"}
+                      </button>
+                    </td>
+                    <td className="py-2 pr-4">
+                      <button
+                        disabled={pendingId === m.id}
+                        onClick={() => handleToggleDelist(m.id, !isDelisted)}
+                        className={`rounded-lg text-xs font-semibold px-3 py-1.5 disabled:opacity-50 ${
+                          isDelisted
+                            ? "bg-accent hover:bg-accent-dark text-gray-900"
+                            : "border border-rose-900 text-rose-400 hover:bg-rose-950"
+                        }`}
+                      >
+                        {isDelisted ? "Relist" : "Delist"}
                       </button>
                     </td>
                     <td className="py-2 text-right">

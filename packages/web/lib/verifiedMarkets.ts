@@ -1,5 +1,5 @@
 import "server-only";
-import Redis from "ioredis";
+import { redis } from "./redis";
 
 // Server-only: verification status is admin-curated off-chain metadata, not
 // part of the on-chain Market struct — see docs/notes on lib/category.ts for
@@ -8,16 +8,6 @@ import Redis from "ioredis";
 // app/api/admin/verify-market/route.ts for how that's authenticated).
 // Falls back to "nothing is verified" if no REDIS_URL is configured, so the
 // rest of the app degrades gracefully instead of crashing.
-
-// Cache the client on globalThis so Next.js dev's hot-reload (which
-// re-evaluates this module on every edit) reuses one TCP connection instead
-// of leaking a new one each time — the same pattern commonly used for a
-// Prisma client singleton.
-const globalForRedis = globalThis as unknown as { redis?: Redis };
-
-const redisUrl = process.env.REDIS_URL;
-const redis = redisUrl ? (globalForRedis.redis ?? new Redis(redisUrl, { lazyConnect: true })) : null;
-if (redis && process.env.NODE_ENV !== "production") globalForRedis.redis = redis;
 
 const KEY_PREFIX = "hoodmarkets:verified-market:";
 

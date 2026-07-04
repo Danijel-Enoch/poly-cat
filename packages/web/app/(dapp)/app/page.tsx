@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { getMarkets } from "@/lib/ponder";
 import { getVerifiedMarketIds } from "@/lib/verifiedMarkets";
+import { getDelistedMarketIds } from "@/lib/delistedMarkets";
 import { MarketsBrowser } from "@/components/MarketsBrowser";
 
 export default async function Home() {
-  const markets = await getMarkets();
+  const allMarkets = await getMarkets();
+  const delistedIds = new Set(await getDelistedMarketIds(allMarkets.map((m) => m.id)));
+  const markets = allMarkets.filter((m) => !delistedIds.has(m.id));
   const verifiedIds = await getVerifiedMarketIds(markets.map((m) => m.id));
 
   return (
