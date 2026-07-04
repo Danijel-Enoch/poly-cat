@@ -26,6 +26,7 @@ export default function AdminPage() {
   const now = useNow(15_000);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [extendDates, setExtendDates] = useState<Record<string, string>>({});
 
   const { data: owner } = useReadContract({ ...marketFactoryContract, functionName: "owner" });
   const isAdmin = !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
@@ -104,6 +105,48 @@ export default function AdminPage() {
     }
   }
 
+  async function handleExtend(marketId: string) {
+    const newCloseDate = extendDates[marketId];
+    if (!newCloseDate) return;
+    setPendingId(marketId);
+    setStatus(`Extending close time for market #${marketId}...`);
+    try {
+      const newCloseTime = BigInt(Math.floor(new Date(newCloseDate).getTime() / 1000));
+      const hash = await writeContractAsync({
+        ...marketFactoryContract,
+        functionName: "extendCloseTime",
+        args: [BigInt(marketId), newCloseTime],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      setStatus(`Market #${marketId} close time extended.`);
+      setExtendDates((prev) => ({ ...prev, [marketId]: "" }));
+      await refetchMarkets();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Transaction failed");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleCancel(marketId: string) {
+    setPendingId(marketId);
+    setStatus(`Cancelling market #${marketId}...`);
+    try {
+      const hash = await writeContractAsync({
+        ...marketFactoryContract,
+        functionName: "cancelMarket",
+        args: [BigInt(marketId)],
+      });
+      await waitForTransactionReceipt(wagmiConfig, { hash });
+      setStatus(`Market #${marketId} cancelled — traders can now claim a pro-rata refund.`);
+      await refetchMarkets();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Transaction failed");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   async function handleClaim(marketId: string) {
     setPendingId(marketId);
     setStatus(`Claiming fees for market #${marketId}...`);
@@ -158,33 +201,57 @@ export default function AdminPage() {
       <Section title="Ready to settle" isEmpty={readyToSettle.length === 0} empty="No markets are waiting on settlement.">
         <div className="flex flex-col gap-2">
           {readyToSettle.map((m) => (
-            <div
-              key={m.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950/40 p-3"
-            >
-              <div className="min-w-0">
-                <Link
-                  href={`/markets/${m.id}`}
-                  className="text-sm font-semibold text-gray-100 hover:underline truncate block"
-                >
-                  {titleFor(m)}
-                </Link>
-                <p className="text-xs text-gray-500">Closed {formatDate(m.closeTime)}</p>
+            <div key={m.id} className="rounded-xl border border-gray-800 bg-gray-950/40 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`/markets/${m.id}`}
+                    className="text-sm font-semibold text-gray-100 hover:underline truncate block"
+                  >
+                    {titleFor(m)}
+                  </Link>
+                  <p className="text-xs text-gray-500">Closed {formatDate(m.closeTime)}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    disabled={pendingId === m.id}
+                    onClick={() => handleSettle(m.id, true)}
+                    className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  >
+                    Settle YES
+                  </button>
+                  <button
+                    disabled={pendingId === m.id}
+                    onClick={() => handleSettle(m.id, false)}
+                    className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  >
+                    Settle NO
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 shrink-0">
+
+              <div className="mt-3 pt-3 border-t border-gray-800 flex flex-col sm:flex-row gap-2">
+                <input
+                  type="datetime-local"
+                  value={extendDates[m.id] ?? ""}
+                  onChange={(e) => setExtendDates((prev) => ({ ...prev, [m.id]: e.target.value }))}
+                  className="flex-1 rounded-lg border border-gray-700 bg-gray-800 text-gray-100 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+                />
                 <button
-                  disabled={pendingId === m.id}
-                  onClick={() => handleSettle(m.id, true)}
-                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  type="button"
+                  disabled={pendingId === m.id || !extendDates[m.id]}
+                  onClick={() => handleExtend(m.id)}
+                  className="rounded-lg border border-gray-700 text-gray-200 hover:bg-gray-800 text-xs font-semibold px-3 py-1.5 disabled:opacity-50 whitespace-nowrap"
                 >
-                  Settle YES
+                  Extend deadline
                 </button>
                 <button
+                  type="button"
                   disabled={pendingId === m.id}
-                  onClick={() => handleSettle(m.id, false)}
-                  className="rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  onClick={() => handleCancel(m.id)}
+                  className="rounded-lg border border-rose-900 text-rose-400 hover:bg-rose-950 text-xs font-semibold px-3 py-1.5 disabled:opacity-50 whitespace-nowrap"
                 >
-                  Settle NO
+                  Cancel &amp; enable refunds
                 </button>
               </div>
             </div>
