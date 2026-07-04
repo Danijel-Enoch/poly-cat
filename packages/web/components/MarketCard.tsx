@@ -9,8 +9,17 @@ import { useNow } from "@/lib/useNow";
 import { avatarColorFor } from "@/lib/avatarColor";
 import { parseMetadataURI } from "@/lib/category";
 import { ipfsImageUrl } from "@/lib/ipfs";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
-export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: number }) {
+export function MarketCard({
+  market,
+  index = 0,
+  verified = false,
+}: {
+  market: MarketRow;
+  index?: number;
+  verified?: boolean;
+}) {
   const yesProb = yesProbabilityFromSupplies(market.yesSupply, market.noSupply);
   const yesPct = Math.round(yesProb * 100);
   const now = useNow();
@@ -84,7 +93,10 @@ export function MarketCard({ market, index = 0 }: { market: MarketRow; index?: n
                 {category}
               </span>
             )}
-            <p className="font-semibold text-[15px] leading-snug text-gray-100 line-clamp-2 break-words">{title}</p>
+            <p className="font-semibold text-[15px] leading-snug text-gray-100 flex items-start gap-1">
+              <span className="min-w-0 line-clamp-2 break-words">{title}</span>
+              {verified && <VerifiedBadge />}
+            </p>
           </div>
           <div className="text-right shrink-0 overflow-hidden">
             <AnimatePresence mode="popLayout" initial={false}>

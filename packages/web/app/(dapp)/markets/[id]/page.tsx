@@ -12,6 +12,8 @@ import { formatDate, shortenAddress, yesProbabilityFromSupplies } from "@/lib/fo
 import { avatarColorFor } from "@/lib/avatarColor";
 import { parseMetadataURI } from "@/lib/category";
 import { ipfsImageUrl } from "@/lib/ipfs";
+import { isMarketVerified } from "@/lib/verifiedMarkets";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 
 export default async function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +25,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
   const { category, image, title: parsedTitle } = parseMetadataURI(market.metadataURI);
   const title = parsedTitle || market.questionHash;
   const imageUrl = ipfsImageUrl(image);
+  const verified = await isMarketVerified(id);
   const yesPct = Math.round(yesProbabilityFromSupplies(market.yesSupply, market.noSupply) * 100);
 
   return (
@@ -46,7 +49,10 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
                   {category}
                 </span>
               )}
-              <h1 className="text-xl font-extrabold text-gray-100 break-words">{title}</h1>
+              <h1 className="text-xl font-extrabold text-gray-100 break-words flex items-center gap-1.5">
+                {title}
+                {verified && <VerifiedBadge size={18} />}
+              </h1>
               <p className="text-sm text-gray-400 mt-1">
                 Created by {shortenAddress(market.creator)} · Closes {formatDate(market.closeTime)}
               </p>

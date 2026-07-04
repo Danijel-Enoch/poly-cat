@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getMarkets } from "@/lib/ponder";
+import { getVerifiedMarketIds } from "@/lib/verifiedMarkets";
 import { MarketsBrowser } from "@/components/MarketsBrowser";
 
 export default async function Home() {
   const markets = await getMarkets();
+  const verifiedIds = await getVerifiedMarketIds(markets.map((m) => m.id));
 
   return (
     <div className="flex flex-col gap-6">
@@ -23,7 +25,7 @@ export default async function Home() {
           </Link>
         </div>
       ) : (
-        <MarketsBrowser markets={markets} />
+        <MarketsBrowser markets={markets} verifiedIds={verifiedIds} />
       )}
     </div>
   );

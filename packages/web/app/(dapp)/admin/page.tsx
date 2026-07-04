@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { useAccount, useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAccount, useReadContract, useReadContracts, useSignMessage, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
@@ -11,7 +11,15 @@ import { marketFactoryContract } from "@/lib/contracts";
 import { getMarkets, type MarketRow } from "@/lib/ponder";
 import { formatUsdc, formatDate, shortenAddress } from "@/lib/format";
 import { parseMetadataURI } from "@/lib/category";
+import { verificationMessage, currentTimestamp } from "@/lib/adminVerifyMessage";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { useNow } from "@/lib/useNow";
+
+async function fetchVerifiedMarketIds(): Promise<Set<string>> {
+  const res = await fetch("/api/verified-markets");
+  const data = await res.json();
+  return new Set<string>(data.verified ?? []);
+}
 
 const CLOSING_SOON_WINDOW_SECONDS = 24 * 60 * 60; // markets closing within the next 24h
 
@@ -23,6 +31,8 @@ function titleFor(m: MarketRow): string {
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
+  const queryClient = useQueryClient();
   const now = useNow(15_000);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -35,6 +45,12 @@ export default function AdminPage() {
     queryKey: ["adminMarkets"],
     queryFn: getMarkets,
     refetchInterval: 10_000,
+    enabled: isAdmin,
+  });
+
+  const { data: verifiedIds } = useQuery({
+    queryKey: ["verifiedMarkets"],
+    queryFn: fetchVerifiedMarketIds,
     enabled: isAdmin,
   });
 
@@ -166,6 +182,29 @@ export default function AdminPage() {
     }
   }
 
+  async function handleToggleVerify(marketId: string, verified: boolean) {
+    setPendingId(marketId);
+    setStatus(`${verified ? "Verifying" : "Unverifying"} market #${marketId}...`);
+    try {
+      const timestamp = currentTimestamp();
+      const message = verificationMessage(marketId, verified, timestamp);
+      const signature = await signMessageAsync({ message });
+      const res = await fetch("/api/admin/verify-market", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ marketId, verified, timestamp, signature }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to update verification");
+      setStatus(`Market #${marketId} ${verified ? "verified" : "unverified"}.`);
+      await queryClient.invalidateQueries({ queryKey: ["verifiedMarkets"] });
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Failed to update verification");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!isConnected) {
     return (
       <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
@@ -284,23 +323,39 @@ export default function AdminPage() {
                 <th className="pb-2 pr-4 font-medium">State</th>
                 <th className="pb-2 pr-4 font-medium">Volume</th>
                 <th className="pb-2 pr-4 font-medium">Fees</th>
+                <th className="pb-2 pr-4 font-medium">Verified</th>
                 <th className="pb-2 font-medium" />
               </tr>
             </thead>
             <tbody>
               {(markets ?? []).map((m) => {
                 const fees = collectedFeesById.get(m.id) ?? 0n;
+                const isVerified = verifiedIds?.has(m.id) ?? false;
                 return (
                   <tr key={m.id} className="border-b border-gray-800/60 last:border-0">
                     <td className="py-2 pr-4">
-                      <Link href={`/markets/${m.id}`} className="text-gray-100 hover:underline">
+                      <Link href={`/markets/${m.id}`} className="text-gray-100 hover:underline flex items-center gap-1">
                         {titleFor(m)}
+                        {isVerified && <VerifiedBadge />}
                       </Link>
                     </td>
                     <td className="py-2 pr-4 text-gray-400">{shortenAddress(m.creator)}</td>
                     <td className="py-2 pr-4 text-gray-400">{m.state}</td>
                     <td className="py-2 pr-4 text-gray-300">${formatUsdc(m.volume)}</td>
                     <td className="py-2 pr-4 text-gray-300">${formatUsdc(fees)}</td>
+                    <td className="py-2 pr-4">
+                      <button
+                        disabled={pendingId === m.id}
+                        onClick={() => handleToggleVerify(m.id, !isVerified)}
+                        className={`rounded-lg text-xs font-semibold px-3 py-1.5 disabled:opacity-50 ${
+                          isVerified
+                            ? "border border-gray-700 text-gray-300 hover:bg-gray-800"
+                            : "bg-accent hover:bg-accent-dark text-gray-900"
+                        }`}
+                      >
+                        {isVerified ? "Unverify" : "Verify"}
+                      </button>
+                    </td>
                     <td className="py-2 text-right">
                       <button
                         disabled={fees === 0n || pendingId === m.id}

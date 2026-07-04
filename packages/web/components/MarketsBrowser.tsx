@@ -38,7 +38,8 @@ function PillButton({ label, active, onClick }: { label: string; active: boolean
   );
 }
 
-export function MarketsBrowser({ markets }: { markets: MarketRow[] }) {
+export function MarketsBrowser({ markets, verifiedIds = [] }: { markets: MarketRow[]; verifiedIds?: string[] }) {
+  const verifiedSet = useMemo(() => new Set(verifiedIds), [verifiedIds]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<CategoryPill>("All");
   const [sortBy, setSortBy] = useState<SortBy>("Trending");
@@ -129,7 +130,7 @@ export function MarketsBrowser({ markets }: { markets: MarketRow[] }) {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {displayed.map((market, index) => (
-            <MarketCard key={market.id} market={market} index={index} />
+            <MarketCard key={market.id} market={market} index={index} verified={verifiedSet.has(market.id)} />
           ))}
         </div>
       )}
