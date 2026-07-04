@@ -4,7 +4,17 @@
  * market has no separate resolution-criteria URI). Markets created before
  * either tag existed simply parse to `category: null` / `image: null`. */
 
-export const CATEGORIES = ["Politics", "Crypto", "Sports", "Culture", "Other"] as const;
+export const CATEGORIES = [
+  "Politics",
+  "Crypto",
+  "Sports",
+  "Business",
+  "Tech",
+  "Entertainment",
+  "World",
+  "Culture",
+  "Other",
+] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 const CATEGORY_TAG_RE = /^\[(\w+)\]/;
