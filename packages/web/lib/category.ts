@@ -6,13 +6,25 @@
 
 export const CATEGORIES = [
   "Politics",
+  "Elections",
+  "World",
+  "Economy",
+  "Business",
   "Crypto",
   "Sports",
-  "Business",
   "Tech",
+  "AI",
+  "Science",
+  "Space",
+  "Climate",
+  "Health",
   "Entertainment",
-  "World",
+  "Movies",
+  "Music",
+  "Gaming",
+  "Awards",
   "Culture",
+  "Law",
   "Other",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
