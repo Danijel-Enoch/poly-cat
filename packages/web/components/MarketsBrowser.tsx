@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { MarketRow } from "@/lib/ponder";
 import { CATEGORIES, parseMetadataURI, type Category } from "@/lib/category";
 import { MarketCard } from "@/components/MarketCard";
+import { SortMenu } from "@/components/SortMenu";
 import { useClickRipple } from "@/components/ClickRipple";
 
 type CategoryPill = "All" | Category;
@@ -91,30 +92,21 @@ export function MarketsBrowser({ markets, verifiedIds = [] }: { markets: MarketR
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+      <div className="flex gap-2">
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search markets..."
-          className="w-full sm:max-w-xs rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          className="w-full min-w-0 sm:max-w-xs rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
         />
-        <select
-          value={sortBy}
-          onChange={(e) => handleSortChange(e.target.value as SortBy)}
-          className="rounded-lg border border-gray-700 bg-gray-900 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
-        >
-          {SORT_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              Sort: {opt.label}
-            </option>
-          ))}
-        </select>
-        <div className="flex items-center gap-1 overflow-x-auto">
-          {STATUS_OPTIONS.map((s) => (
-            <PillButton key={s} label={s} active={status === s} onClick={() => setStatus(s)} />
-          ))}
-        </div>
+        <SortMenu value={sortBy} options={SORT_OPTIONS} onChange={handleSortChange} />
+      </div>
+
+      <div className="flex items-center gap-1 overflow-x-auto">
+        {STATUS_OPTIONS.map((s) => (
+          <PillButton key={s} label={s} active={status === s} onClick={() => setStatus(s)} />
+        ))}
       </div>
 
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
