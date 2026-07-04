@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { ALLOWED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/imageUpload";
-
-const PINATA_PIN_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+import { pinFileToIPFS } from "@/lib/pinata";
 
 // Proxies to Pinata instead of letting the browser call it directly, so the
 // PINATA_JWT secret never reaches the client.
@@ -28,18 +27,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Image is too large (max 5MB)." }, { status: 400 });
   }
 
-  const upstreamForm = new FormData();
-  upstreamForm.append("file", file, file.name);
-
-  const upstreamResponse = await fetch(PINATA_PIN_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${jwt}` },
-    body: upstreamForm,
-  });
-  if (!upstreamResponse.ok) {
+  try {
+    const cid = await pinFileToIPFS(file, jwt);
+    return NextResponse.json({ cid });
+  } catch {
     return NextResponse.json({ error: "Upload to Pinata failed." }, { status: 502 });
   }
-
-  const { IpfsHash: cid } = (await upstreamResponse.json()) as { IpfsHash: string };
-  return NextResponse.json({ cid });
 }

@@ -12,6 +12,7 @@ import { encodeMetadataURI, type Category } from "@/lib/category";
 import { formatUsdc, formatDate } from "@/lib/format";
 import { importRequestMessage } from "@/lib/adminImportMessage";
 import { currentTimestamp } from "@/lib/adminVerifyMessage";
+import { ipfsImageUrl } from "@/lib/ipfs";
 
 type ImportCandidate = {
   question: string;
@@ -19,6 +20,7 @@ type ImportCandidate = {
   closeTimeSeconds: number;
   polymarketId: string;
   sourceUrl: string;
+  imageCid: string | null;
 };
 
 type ImportPlanResponse = {
@@ -132,7 +134,7 @@ export function PolymarketImportPanel() {
               {
                 collateralToken: plan.collateralToken,
                 questionHash: keccak256(toHex(candidate.question)),
-                metadataURI: encodeMetadataURI(candidate.category, candidate.question),
+                metadataURI: encodeMetadataURI(candidate.category, candidate.question, candidate.imageCid ?? undefined),
                 closeTime: BigInt(candidate.closeTimeSeconds),
                 initialLiquidity: liquidityPerMarket,
               },
@@ -190,6 +192,7 @@ export function PolymarketImportPanel() {
             <div className="flex flex-col gap-2">
               {plan.candidates.map((c) => {
                 const candidateStatus = statuses[c.polymarketId];
+                const imageUrl = ipfsImageUrl(c.imageCid);
                 return (
                   <label
                     key={c.polymarketId}
@@ -202,6 +205,9 @@ export function PolymarketImportPanel() {
                       disabled={creating}
                       className="mt-1"
                     />
+                    {imageUrl && (
+                      <img src={imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-100">{c.question}</p>
                       <p className="text-xs text-gray-500 mt-0.5">

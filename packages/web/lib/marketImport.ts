@@ -7,6 +7,7 @@ import { getMarkets } from "./ponder";
 import { fetchTrendingPolymarketMarkets } from "./polymarket";
 import { filterLikelyDuplicates } from "./marketDedupe";
 import { selectMajorMarkets } from "./openrouter";
+import { pinImageFromUrl } from "./pinata";
 
 // Shared by app/api/admin/import-polymarket-markets (browser-triggered, admin
 // signs the resulting createMarket txs client-side) and
@@ -54,6 +55,7 @@ export type ImportCandidate = {
   closeTimeSeconds: number;
   polymarketId: string;
   sourceUrl: string;
+  imageCid: string | null;
 };
 
 export type ImportPlan = {
@@ -107,13 +109,16 @@ export async function buildImportPlan(adminAddress: `0x${string}`, requestedCoun
   const selected = await selectMajorMarkets({ candidates: filtered, existingTitles, count: effectiveCount });
 
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const candidates: ImportCandidate[] = selected.map((s) => ({
-    question: s.question,
-    category: s.category,
-    polymarketId: s.polymarketId,
-    sourceUrl: s.sourceUrl,
-    closeTimeSeconds: clampCloseTime(s.endDate, nowSeconds, minTradingDuration),
-  }));
+  const candidates: ImportCandidate[] = await Promise.all(
+    selected.map(async (s) => ({
+      question: s.question,
+      category: s.category,
+      polymarketId: s.polymarketId,
+      sourceUrl: s.sourceUrl,
+      closeTimeSeconds: clampCloseTime(s.endDate, nowSeconds, minTradingDuration),
+      imageCid: s.imageUrl ? await pinImageFromUrl(s.imageUrl) : null,
+    })),
+  );
 
   return { ...basePlan, candidates };
 }

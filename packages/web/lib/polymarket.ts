@@ -12,6 +12,7 @@ export type PolymarketMarket = {
   endDate: string | null; // ISO date string
   volume: number;
   url: string;
+  imageUrl: string | null;
 };
 
 // Gamma's raw market shape has dozens of fields we don't use — only pick out
@@ -27,6 +28,8 @@ type GammaMarket = {
   volume?: string | number;
   volume24hr?: string | number;
   slug?: string;
+  image?: string;
+  icon?: string;
 };
 
 function toNumber(value: string | number | undefined): number {
@@ -59,5 +62,6 @@ export async function fetchTrendingPolymarketMarkets(limit: number): Promise<Pol
       endDate: m.endDate ?? null,
       volume: toNumber(m.volume24hr ?? m.volume),
       url: m.slug ? `https://polymarket.com/event/${m.slug}` : "https://polymarket.com",
+      imageUrl: m.image ?? m.icon ?? null,
     }));
 }

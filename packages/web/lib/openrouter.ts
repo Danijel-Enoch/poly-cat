@@ -13,6 +13,7 @@ export type SelectedMarket = {
    * (lib/marketImport.ts) is responsible for clamping this to the contract's
    * MIN_TRADING_DURATION floor before it's used as an actual closeTime. */
   endDate: string | null;
+  imageUrl: string | null;
 };
 
 type SelectMajorMarketsArgs = {
@@ -46,6 +47,7 @@ function parseSelection(raw: unknown, candidatesById: Map<string, PolymarketMark
       polymarketId,
       sourceUrl: source.url,
       endDate: source.endDate,
+      imageUrl: source.imageUrl,
     });
   }
   return results;

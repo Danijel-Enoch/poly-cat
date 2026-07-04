@@ -105,7 +105,7 @@ async function main() {
           {
             collateralToken: plan.collateralToken,
             questionHash: keccak256(toHex(candidate.question)),
-            metadataURI: encodeMetadataURI(candidate.category, candidate.question),
+            metadataURI: encodeMetadataURI(candidate.category, candidate.question, candidate.imageCid ?? undefined),
             closeTime: BigInt(candidate.closeTimeSeconds),
             initialLiquidity: liquidityPerMarket,
           },
