@@ -29,13 +29,13 @@ export function AmbientBackground() {
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <motion.div style={{ x: parallaxX, y: parallaxY }} className="absolute inset-0">
         <motion.div
-          className="absolute rounded-full blur-3xl bg-accent/10"
+          className="absolute rounded-full blur-3xl bg-accent/5"
           style={{ width: 440, height: 440, top: "-10%", left: "5%" }}
           animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
           transition={{ duration: 26, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute rounded-full blur-3xl bg-emerald-400/8"
+          className="absolute rounded-full blur-3xl bg-emerald-400/4"
           style={{ width: 360, height: 360, top: "35%", right: "0%" }}
           animate={{ x: [0, -30, 20, 0], y: [0, 25, -20, 0] }}
           transition={{ duration: 22, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
