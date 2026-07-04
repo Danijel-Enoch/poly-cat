@@ -13,6 +13,7 @@ import { formatUsdc, formatDate, shortenAddress } from "@/lib/format";
 import { parseMetadataURI } from "@/lib/category";
 import { verificationMessage, currentTimestamp } from "@/lib/adminVerifyMessage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { PolymarketImportPanel } from "@/components/PolymarketImportPanel";
 import { useNow } from "@/lib/useNow";
 
 async function fetchVerifiedMarketIds(): Promise<Set<string>> {
@@ -236,6 +237,10 @@ export default function AdminPage() {
         <StatCard label="Markets" value={String((markets ?? []).length)} />
         <StatCard label="Ready to settle" value={String(readyToSettle.length)} />
       </div>
+
+      <Section title="Import from Polymarket" isEmpty={false} empty="">
+        <PolymarketImportPanel />
+      </Section>
 
       <Section title="Ready to settle" isEmpty={readyToSettle.length === 0} empty="No markets are waiting on settlement.">
         <div className="flex flex-col gap-2">

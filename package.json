@@ -11,6 +11,7 @@
     "web:dev": "pnpm --filter web dev",
     "web:build": "pnpm --filter web build",
     "web:test": "pnpm --filter web test",
+    "web:import-markets": "pnpm --filter web import-markets --",
     "prepare": "husky"
   },
   "devDependencies": {
