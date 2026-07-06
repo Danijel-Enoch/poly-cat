@@ -35,7 +35,7 @@ export default function DappLayout({ children }: { children: React.ReactNode }) 
               <Link
                 href="/create"
                 aria-label="Create Market"
-                className="flex items-center justify-center h-9 w-9 sm:h-auto sm:w-auto sm:px-4 sm:py-2 text-sm font-semibold rounded-full bg-accent text-gray-900 hover:bg-accent-dark transition-colors"
+                className="flex items-center justify-center h-9 w-9 sm:h-auto sm:w-auto sm:px-4 sm:py-2 text-sm font-semibold rounded-full bg-[#232810] text-accent hover:bg-black sm:bg-accent sm:text-gray-900 sm:hover:bg-accent-dark transition-colors [-webkit-tap-highlight-color:transparent]"
               >
                 <span className="sm:hidden text-lg leading-none">+</span>
                 <span className="hidden sm:inline">Create Market</span>
