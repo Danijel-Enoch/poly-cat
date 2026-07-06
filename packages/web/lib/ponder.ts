@@ -100,6 +100,45 @@ export async function getTradeHistory(marketId: string): Promise<TradeRow[]> {
   return [...data.trades.items].sort((a, b) => (BigInt(a.timestamp) < BigInt(b.timestamp) ? -1 : 1));
 }
 
+export type TradeSummaryRow = {
+  marketId: string;
+  trader: string;
+  collateralAmount: string;
+  feePaid: string;
+  timestamp: string;
+};
+
+const TRADE_PAGE_LIMIT = 1000;
+// Safety cap, not a real expected ceiling — stops a pagination bug from looping
+// forever rather than reflecting an actual ceiling on trade volume.
+const TRADE_PAGE_SAFETY_CAP = 50;
+
+/** Fetches every trade across all markets for platform-wide analytics (volume/fees
+ * per day, unique/returning traders, most-active markets). Paginates through
+ * Ponder's 1000-row page cap via its cursor, unlike `getTradeHistory` which only
+ * needs one market's worth and fits under a single page. */
+export async function getAllTrades(): Promise<TradeSummaryRow[]> {
+  const all: TradeSummaryRow[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < TRADE_PAGE_SAFETY_CAP; page++) {
+    const data: {
+      trades: { items: TradeSummaryRow[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+    } = await ponderQuery(
+      `query($after: String) {
+        trades(limit: ${TRADE_PAGE_LIMIT}, after: $after) {
+          items { marketId trader collateralAmount feePaid timestamp }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`,
+      { after },
+    );
+    all.push(...data.trades.items);
+    if (!data.trades.pageInfo.hasNextPage) break;
+    after = data.trades.pageInfo.endCursor;
+  }
+  return all;
+}
+
 export async function getPositionsForHolder(holder: string): Promise<PositionRow[]> {
   const data = await ponderQuery<{ positions: { items: PositionRow[] } }>(
     `query($holder: String!) {

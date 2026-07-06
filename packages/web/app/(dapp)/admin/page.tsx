@@ -8,14 +8,19 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract } from "@/lib/contracts";
-import { getMarkets, type MarketRow } from "@/lib/ponder";
+import { getAllTrades, getMarkets, type MarketRow } from "@/lib/ponder";
 import { formatUsdc, formatDate, shortenAddress } from "@/lib/format";
 import { parseMetadataURI } from "@/lib/category";
 import { verificationMessage, currentTimestamp } from "@/lib/adminVerifyMessage";
 import { delistMessage } from "@/lib/adminDelistMessage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { PolymarketImportPanel } from "@/components/PolymarketImportPanel";
+import { DailyBarChart } from "@/components/DailyBarChart";
 import { useNow } from "@/lib/useNow";
+import { dailySeries, marketActivity, returningTraderCount, uniqueTraderCount } from "@/lib/analytics";
+
+const ANALYTICS_WINDOW_DAYS = 14;
+const TOP_MARKETS_COUNT = 5;
 
 async function fetchVerifiedMarketIds(): Promise<Set<string>> {
   const res = await fetch("/api/verified-markets");
@@ -68,6 +73,13 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
+  const { data: trades } = useQuery({
+    queryKey: ["adminTrades"],
+    queryFn: getAllTrades,
+    refetchInterval: 30_000,
+    enabled: isAdmin,
+  });
+
   const { data: onChainMarkets, refetch: refetchOnChain } = useReadContracts({
     contracts: (markets ?? []).map((m) => ({
       ...marketFactoryContract,
@@ -97,6 +109,21 @@ export default function AdminPage() {
     collectedFeesById.forEach((v) => (sum += v));
     return sum;
   }, [collectedFeesById]);
+
+  const uniqueUsers = useMemo(() => uniqueTraderCount(trades ?? []), [trades]);
+  const returningUsers = useMemo(() => returningTraderCount(trades ?? []), [trades]);
+
+  const volumeByDay = useMemo(() => dailySeries(trades ?? [], "collateralAmount", ANALYTICS_WINDOW_DAYS), [trades]);
+  const feesByDay = useMemo(() => dailySeries(trades ?? [], "feePaid", ANALYTICS_WINDOW_DAYS), [trades]);
+
+  const mostTraded = useMemo(() => {
+    const activity = marketActivity(trades ?? []);
+    const marketsById = new Map((markets ?? []).map((m) => [m.id, m]));
+    return activity
+      .sort((a, b) => (a.volume < b.volume ? 1 : -1))
+      .slice(0, TOP_MARKETS_COUNT)
+      .map((a) => ({ ...a, market: marketsById.get(a.marketId) }));
+  }, [trades, markets]);
 
   const readyToSettle = useMemo(
     () => (markets ?? []).filter((m) => m.state === "Trading" && nowSeconds >= Number(m.closeTime)),
@@ -274,6 +301,49 @@ export default function AdminPage() {
         <StatCard label="Ready to settle" value={String(readyToSettle.length)} />
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="Users" value={String(uniqueUsers)} />
+        <StatCard
+          label="Returning users"
+          value={String(returningUsers)}
+          sublabel={uniqueUsers > 0 ? `${Math.round((returningUsers / uniqueUsers) * 100)}% of users` : undefined}
+        />
+        <StatCard label="Trades" value={String((trades ?? []).length)} />
+        <StatCard
+          label={`Volume · ${ANALYTICS_WINDOW_DAYS}d`}
+          value={`$${formatUsdc(volumeByDay.reduce((sum, p) => sum + p.value, 0n))}`}
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DailyBarChart title={`Volume per day (last ${ANALYTICS_WINDOW_DAYS}d)`} data={volumeByDay} formatValue={(v) => `$${formatUsdc(v)}`} />
+        <DailyBarChart title={`Fees per day (last ${ANALYTICS_WINDOW_DAYS}d)`} data={feesByDay} formatValue={(v) => `$${formatUsdc(v)}`} />
+      </div>
+
+      <Section title="Most traded markets" isEmpty={mostTraded.length === 0} empty="No trades yet.">
+        <div className="flex flex-col gap-2">
+          {mostTraded.map((m, i) => (
+            <Link
+              key={m.marketId}
+              href={`/markets/${m.marketId}`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950/40 p-3 hover:border-gray-600"
+            >
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 shrink-0">#{i + 1}</span>
+                <span className="text-sm font-semibold text-gray-100 truncate">
+                  {m.market ? titleFor(m.market) : `Market #${m.marketId}`}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 shrink-0 text-xs text-gray-400">
+                <span>{m.tradeCount} trades</span>
+                <span>{m.uniqueTraders} traders</span>
+                <span className="text-gray-100 font-semibold">${formatUsdc(m.volume)}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </Section>
+
       <Section title="Import from Polymarket" isEmpty={false} empty="">
         <PolymarketImportPanel />
       </Section>
@@ -434,11 +504,12 @@ export default function AdminPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
       <p className="text-xl font-extrabold text-gray-100 mt-1">{value}</p>
+      {sublabel && <p className="text-xs text-gray-500 mt-0.5">{sublabel}</p>}
     </div>
   );
 }
