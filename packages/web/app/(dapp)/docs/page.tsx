@@ -29,7 +29,7 @@ function MockMarketCard({ title, category, pct }: { title: string; category: str
           {title.charAt(0)}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-accent/30 text-gray-200 mb-1">
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#15290E] text-gray-200 mb-1">
             {category}
           </span>
           <p className="font-semibold text-sm leading-snug text-gray-100">{title}</p>

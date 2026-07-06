@@ -1,8 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --background: #030712;
-  --foreground: #f3f4f6;
+  --background: #0e1203;
+  --foreground: #eeefe9;
+}
+
+/* Tailwind's default gray scale is a subtle blue-gray (oklch hue ~250-265).
+   Overriding it here re-hues every gray utility class (bg, text, border, all
+   shades) to the app's olive-green palette in one place, instead of hunting
+   down every usage across the codebase. Lightness steps match Tailwind's
+   originals; hue is pinned near the accent's ~123 degrees. */
+@theme {
+  --color-gray-50: oklch(98% 0.004 120);
+  --color-gray-100: oklch(95% 0.008 120);
+  --color-gray-200: oklch(90% 0.014 120);
+  --color-gray-300: oklch(83% 0.022 120);
+  --color-gray-400: oklch(65% 0.045 120);
+  --color-gray-500: oklch(50% 0.058 120);
+  --color-gray-600: oklch(44% 0.062 120);
+  --color-gray-700: oklch(38.5% 0.0587 117.8); /* = #414822, "stroke" */
+  --color-gray-800: oklch(30% 0.052 120);
+  --color-gray-900: oklch(24% 0.045 121);
+  --color-gray-950: oklch(17.3% 0.0319 120.7); /* = #0e1203, "general background" */
 }
 
 @theme inline {
