@@ -16,6 +16,7 @@ import { delistMessage } from "@/lib/adminDelistMessage";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { PolymarketImportPanel } from "@/components/PolymarketImportPanel";
 import { DailyBarChart } from "@/components/DailyBarChart";
+import { MarketResearchPanel } from "@/components/MarketResearchPanel";
 import { useNow } from "@/lib/useNow";
 import { dailySeries, marketActivity, returningTraderCount, uniqueTraderCount } from "@/lib/analytics";
 
@@ -379,6 +380,8 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
+
+              <MarketResearchPanel marketId={m.id} />
 
               <div className="mt-3 pt-3 border-t border-gray-800 flex flex-col sm:flex-row gap-2">
                 <input
