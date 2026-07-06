@@ -9,7 +9,7 @@ export default function DappLayout({ children }: { children: React.ReactNode }) 
     <>
       <header className="sticky top-0 z-10 backdrop-blur">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-3">
-          <div className="relative rounded-2xl border border-gray-800 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+          <div className="relative rounded-2xl border border-gray-800 bg-[#070A00] backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0">
               <Link href="/app" className="flex items-center gap-2 shrink-0">
                 <Image src="/logo-mark.png" alt="HoodMarkets" width={51} height={36} className="h-9 w-auto" priority />
