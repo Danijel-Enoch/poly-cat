@@ -3,6 +3,7 @@ import { getMarkets } from "@/lib/ponder";
 import { getVerifiedMarketIds } from "@/lib/verifiedMarkets";
 import { getDelistedMarketIds } from "@/lib/delistedMarkets";
 import { MarketsBrowser } from "@/components/MarketsBrowser";
+import { TrendingCarousel } from "@/components/TrendingCarousel";
 
 export default async function Home() {
   const allMarkets = await getMarkets();
@@ -28,7 +29,10 @@ export default async function Home() {
           </Link>
         </div>
       ) : (
-        <MarketsBrowser markets={markets} verifiedIds={verifiedIds} />
+        <>
+          <TrendingCarousel markets={markets} />
+          <MarketsBrowser markets={markets} verifiedIds={verifiedIds} />
+        </>
       )}
     </div>
   );
