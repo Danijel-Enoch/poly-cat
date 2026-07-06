@@ -12,7 +12,7 @@ export default function DappLayout({ children }: { children: React.ReactNode }) 
           <div className="relative rounded-2xl border border-gray-800 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 sm:gap-6 min-w-0">
               <Link href="/app" className="flex items-center gap-2 shrink-0">
-                <Image src="/Icon.png" alt="HoodMarkets" width={36} height={36} className="h-9 w-9 rounded-full" priority />
+                <Image src="/logo-mark.png" alt="HoodMarkets" width={51} height={36} className="h-9 w-auto" priority />
                 <span className="font-semibold tracking-tight text-lg hidden sm:inline">HoodMarkets</span>
               </Link>
               <nav className="hidden sm:flex items-center gap-4 sm:gap-6">

@@ -74,7 +74,7 @@ export function MarketCard({
     >
       <Link
         href={`/markets/${market.id}`}
-        className="block rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-[box-shadow,border-color]"
+        className="block rounded-2xl border border-gray-800 bg-[#232810] p-4 hover:shadow-md hover:border-gray-600 transition-[box-shadow,border-color]"
       >
         <div className="flex items-start gap-3">
           {imageUrl ? (
