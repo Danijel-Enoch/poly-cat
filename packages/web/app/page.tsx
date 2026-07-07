@@ -31,6 +31,9 @@ export default function LandingPage() {
         >
           Launch App
         </Link>
+        <p className="mt-8 text-xs text-gray-500">
+          Backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures
+        </p>
       </main>
 
       <footer className="max-w-5xl w-full mx-auto px-6 py-8 flex items-center justify-center gap-6 text-xs text-gray-500">

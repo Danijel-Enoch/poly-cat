@@ -1,5 +1,6 @@
 const NAV = [
   { id: "what-is-hoodmarkets", title: "What is HoodMarkets?" },
+  { id: "backers", title: "Backers" },
   { id: "getting-started", title: "Getting started" },
   { id: "buying-and-selling", title: "Buying and selling" },
   { id: "creating-a-market", title: "Creating a market" },
@@ -140,6 +141,13 @@ export default function DocsPage() {
             shares in the outcome, and prices move in real time to reflect the market&apos;s implied probability.
             It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood launched in July 2026 —
             making HoodMarkets the first prediction market deployed there.
+          </p>
+        </section>
+
+        <section id="backers" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">Backers</h2>
+          <p className="text-sm text-gray-400 leading-relaxed">
+            HoodMarkets is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
           </p>
         </section>
 
