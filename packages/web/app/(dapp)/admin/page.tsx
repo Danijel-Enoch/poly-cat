@@ -6,9 +6,9 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract } from "@/lib/contracts";
+import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
-import { formatUsdc, formatDate, formatPriceWad } from "@/lib/format";
+import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { AddMarketPanel } from "@/components/AddMarketPanel";
 
@@ -122,7 +122,7 @@ export default function AdminPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <StatCard label="Markets" value={`${openCount} open / ${(slots ?? []).length} total`} />
-        <StatCard label="Unclaimed fees" value={`$${formatUsdc(totalUnclaimedFees)}`} />
+        <StatCard label="Unclaimed fees" value={`${formatEth(totalUnclaimedFees)} ${COLLATERAL_SYMBOL}`} />
         <StatCard label="Protocol fee" value="1%" />
       </div>
 
@@ -203,13 +203,15 @@ function SlotRow({
           </td>
           <td className="py-2 pr-4 text-gray-300">${formatPriceWad(market.startPriceWad)}</td>
           <td className="py-2 pr-4 text-gray-300 whitespace-nowrap">{formatDate(market.closeTime)}</td>
-          <td className="py-2 pr-4 text-gray-300">${formatUsdc(market.collectedFees)}</td>
+          <td className="py-2 pr-4 text-gray-300">
+            {formatEth(market.collectedFees)} {COLLATERAL_SYMBOL}
+          </td>
           <td className="py-2">
             <div className="flex flex-wrap items-center gap-1.5 justify-end">
               <button
                 disabled={pending || market.collectedFees === 0n}
                 onClick={onClaim}
-                className="rounded-lg bg-accent hover:bg-accent-dark text-white text-xs font-semibold px-2.5 py-1 disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
+                className="rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-semibold px-2.5 py-1 disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
               >
                 Claim
               </button>

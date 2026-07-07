@@ -20,7 +20,7 @@ export default function DappError({ error, reset }: { error: Error & { digest?: 
       <button
         type="button"
         onClick={reset}
-        className="rounded-full bg-accent hover:bg-accent-dark text-white text-sm font-semibold px-4 py-2"
+        className="rounded-full bg-accent hover:bg-accent-dark text-gray-950 text-sm font-semibold px-4 py-2"
       >
         Try again
       </button>

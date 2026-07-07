@@ -87,11 +87,6 @@ export const MarketFactoryAbi = [
         "internalType": "bool"
       },
       {
-        "name": "amountIn",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
         "name": "minSharesOut",
         "type": "uint256",
         "internalType": "uint256"
@@ -104,7 +99,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -140,19 +135,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "collateralToken",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "createMarket",
     "inputs": [
       {
@@ -183,7 +165,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -395,11 +377,6 @@ export const MarketFactoryAbi = [
     "inputs": [
       {
         "name": "_protocolTreasury",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_collateralToken",
         "type": "address",
         "internalType": "address"
       }
@@ -1244,6 +1221,11 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "IncorrectValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InsufficientLiquidity",
     "inputs": []
   },
@@ -1299,11 +1281,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
-    "name": "NotAContract",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NotInitializing",
     "inputs": []
   },
@@ -1346,17 +1323,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
-    "name": "SafeERC20FailedOperation",
-    "inputs": [
-      {
-        "name": "token",
-        "type": "address",
-        "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
     "name": "SettlementNotOpen",
     "inputs": []
   },
@@ -1368,6 +1334,11 @@ export const MarketFactoryAbi = [
   {
     "type": "error",
     "name": "SlotAlreadyOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TransferFailed",
     "inputs": []
   },
   {

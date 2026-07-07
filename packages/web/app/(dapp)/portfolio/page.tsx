@@ -6,8 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, useReadContract } from "wagmi";
 
 import { getUserPositions } from "@/lib/chainReads";
-import { formatUsdc } from "@/lib/format";
-import { marketFactoryContract } from "@/lib/contracts";
+import { formatEth } from "@/lib/format";
+import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { quoteSell, CurveQuoteError } from "@/lib/curveMath";
 import { assetDisplayName } from "@/lib/assets";
 
@@ -66,7 +66,7 @@ export default function PortfolioPage() {
       <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Total portfolio value</p>
         <p className="text-3xl font-extrabold text-gray-100 mt-1">
-          {totalValue === null ? "—" : `$${formatUsdc(totalValue)}`}
+          {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
         </p>
         <p className="text-xs text-gray-500 mt-1">
           What you&apos;d receive selling everything right now, or redeeming resolved positions.
@@ -90,10 +90,10 @@ export default function PortfolioPage() {
               <span className="text-sm font-semibold text-gray-100">{assetDisplayName(position.asset.symbol)}</span>
               <div className="flex gap-2 text-sm">
                 <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-semibold">
-                  Up: {formatUsdc(position.upBalance)}
+                  Up: {formatEth(position.upBalance)}
                 </span>
                 <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-semibold">
-                  Down: {formatUsdc(position.downBalance)}
+                  Down: {formatEth(position.downBalance)}
                 </span>
               </div>
             </Link>

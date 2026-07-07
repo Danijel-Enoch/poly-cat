@@ -5,21 +5,22 @@ import {Test} from "forge-std/Test.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {MarketFactory} from "../../src/MarketFactory.sol";
-import {MockUSDC} from "../../src/mocks/MockUSDC.sol";
 
 /// @dev Drives bounded-random sequences of createMarket/buy/sell/settle/redeem
 /// (plus cancel/claimRefund) against the real contracts, tracking ghost
 /// accounting totals so the invariant test can assert the core solvency
-/// property: every collateral unit that enters the factory is accounted for
-/// by what leaves it (sells, redemptions, refunds, fee withdrawals) plus what
-/// the factory still holds.
+/// property: every wei that enters the factory is accounted for by what
+/// leaves it (sells, redemptions, refunds, fee withdrawals) plus what the
+/// factory still holds.
 ///
 /// The Handler is made the factory's owner (see `MarketInvariantsTest.setUp`) so it
 /// can call `createMarket`/`settleMarket`/`cancelMarket` directly, mirroring the
-/// real cron-wallet-only flow.
+/// real cron-wallet-only flow. It also funds every `buyShares`/`createMarket`
+/// call: `vm.prank(actor)` only fakes `msg.sender` for the callee, the ETH
+/// `value` itself is still drawn from whichever contract executes the CALL
+/// opcode — the Handler — so it needs its own large balance, not the actors.
 contract Handler is Test {
     MarketFactory public factory;
-    MockUSDC public usdc;
 
     uint256[] public marketIds;
     address[] public actors;
@@ -37,25 +38,20 @@ contract Handler is Test {
     // the owner yet at construction time — the test owns the factory up
     // until it explicitly calls `transferOwnership(address(handler))`), then
     // passed in here.
-    constructor(MarketFactory _factory, MockUSDC _usdc, uint256[] memory _assetIds) {
+    constructor(MarketFactory _factory, uint256[] memory _assetIds) {
         factory = _factory;
-        usdc = _usdc;
         for (uint256 i = 0; i < _assetIds.length; i++) {
             assetIds.push(_assetIds[i]);
         }
 
-        // The Handler itself is the factory's owner (createMarket/settleMarket/
-        // cancelMarket are owner-only), so it needs its own funded+approved
-        // balance to seed new markets from.
-        usdc.mint(address(this), 1_000_000_000e6);
-        usdc.approve(address(factory), type(uint256).max);
+        // Funds every createMarket/buyShares call this Handler makes on
+        // behalf of itself or a pranked actor — see the contract-level note
+        // above for why actors themselves don't need their own balance.
+        vm.deal(address(this), 1_000_000_000 ether);
 
         for (uint256 i = 0; i < 4; i++) {
             address actor = address(uint160(uint256(keccak256(abi.encodePacked("actor", i)))));
             actors.push(actor);
-            usdc.mint(actor, 1_000_000_000e6);
-            vm.prank(actor);
-            usdc.approve(address(factory), type(uint256).max);
         }
     }
 
@@ -71,7 +67,7 @@ contract Handler is Test {
         uint256 startPrice = 1e18; // fixed reference — only its relation to the settled close price matters
         uint256 liquidity = factory.defaultInitialLiquidity();
 
-        try factory.createMarket(assetId, start, close, startPrice) returns (uint256 marketId) {
+        try factory.createMarket{value: liquidity}(assetId, start, close, startPrice) returns (uint256 marketId) {
             marketIds.push(marketId);
             ghost_totalIn += liquidity;
         } catch {}
@@ -84,9 +80,9 @@ contract Handler is Test {
         if (m.state != MarketFactory.MarketState.Trading || block.timestamp >= m.closeTime) return;
 
         address actor = _actor(actorSeed);
-        uint256 amountIn = bound(amountSeed, 1e6, 10_000e6);
+        uint256 amountIn = bound(amountSeed, 1e12, 10 ether);
         vm.prank(actor);
-        try factory.buyShares(marketId, isUp, amountIn, 0) {
+        try factory.buyShares{value: amountIn}(marketId, isUp, 0) {
             ghost_totalIn += amountIn;
         } catch {}
     }
@@ -170,21 +166,22 @@ contract Handler is Test {
     function marketIdsLength() external view returns (uint256) {
         return marketIds.length;
     }
+
+    // Lets the Handler receive ETH payouts routed back to it (it also acts as
+    // one of the msg.sender-pranked actors' proxy for value accounting).
+    receive() external payable {}
 }
 
 contract MarketInvariantsTest is Test {
     MarketFactory factory;
-    MockUSDC usdc;
     Handler handler;
 
     address treasury = makeAddr("treasury");
 
     function setUp() public {
-        usdc = new MockUSDC();
         MarketFactory implementation = new MarketFactory();
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(implementation), abi.encodeCall(MarketFactory.initialize, (treasury, address(usdc)))
-        );
+        ERC1967Proxy proxy =
+            new ERC1967Proxy(address(implementation), abi.encodeCall(MarketFactory.initialize, (treasury)));
         factory = MarketFactory(address(proxy));
 
         uint256[] memory assetIds = new uint256[](3);
@@ -194,7 +191,7 @@ contract MarketInvariantsTest is Test {
             "CASHCAT", MarketFactory.PriceSource.DexScreener, "0xa70fc67c9f69da90b63a0e4c05d229954574e313"
         );
 
-        handler = new Handler(factory, usdc, assetIds);
+        handler = new Handler(factory, assetIds);
         factory.transferOwnership(address(handler));
 
         bytes4[] memory selectors = new bytes4[](7);
@@ -209,15 +206,15 @@ contract MarketInvariantsTest is Test {
         targetContract(address(handler));
     }
 
-    /// @notice Every USDC unit that entered the factory (initial liquidity +
-    /// buys) is either still held by the factory, or accounted for by an equal amount
+    /// @notice Every wei that entered the factory (initial liquidity + buys)
+    /// is either still held by the factory, or accounted for by an equal amount
     /// leaving (sells + redemptions + refunds + fee withdrawals). No value can be created or
     /// destroyed by rounding, fee handling, or the settlement state machine.
     function invariant_CollateralConservation() public view {
         assertEq(
-            usdc.balanceOf(address(factory)) + handler.ghost_totalOut(),
+            address(factory).balance + handler.ghost_totalOut(),
             handler.ghost_totalIn(),
-            "factory balance + total paid out must equal total collateral ever deposited"
+            "factory balance + total paid out must equal total ETH ever deposited"
         );
     }
 

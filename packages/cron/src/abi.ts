@@ -6,7 +6,7 @@ export const MarketFactoryAbi = [
   {
     type: "function",
     name: "createMarket",
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
     inputs: [
       { name: "assetId", type: "uint256" },
       { name: "startTime", type: "uint64" },
@@ -14,6 +14,13 @@ export const MarketFactoryAbi = [
       { name: "startPriceWad", type: "uint256" },
     ],
     outputs: [{ name: "marketId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "defaultInitialLiquidity",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
   },
   {
     type: "function",

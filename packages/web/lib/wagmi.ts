@@ -21,10 +21,10 @@ export const connectors = [
         walletConnect({
           projectId: walletConnectProjectId,
           metadata: {
-            name: "Robin Markets",
-            description: "Trade BTC, ETH, and SOL Up or Down on 5-minute, 30-minute, and 1-hour windows",
+            name: "Polycat",
+            description: "Fixed 5-minute Up/Down markets on curated blue-chip and Robinhood Chain memecoin assets",
             url: appUrl,
-            icons: [`${appUrl}/icon.svg`],
+            icons: [`${appUrl}/icon.png`],
           },
           showQrModal: true,
         }),

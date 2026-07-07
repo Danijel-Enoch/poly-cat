@@ -56,12 +56,18 @@ async function processAsset(assetId: bigint, asset: AssetInfo, nowSeconds: bigin
   const alignedClose = alignedStart + duration;
 
   const startPrice = await fetchPriceWad(asset.source, asset.sourceId);
+  const initialLiquidity = await publicClient.readContract({
+    address: marketFactoryAddress,
+    abi: MarketFactoryAbi,
+    functionName: "defaultInitialLiquidity",
+  });
   console.log(`[${label}] opening window [${alignedStart}, ${alignedClose}) at start price ${startPrice}`);
   const hash = await walletClient.writeContract({
     address: marketFactoryAddress,
     abi: MarketFactoryAbi,
     functionName: "createMarket",
     args: [assetId, alignedStart, alignedClose, startPrice],
+    value: initialLiquidity,
   });
   await publicClient.waitForTransactionReceipt({ hash });
   console.log(`[${label}] opened new market (tx ${hash})`);

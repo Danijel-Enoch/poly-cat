@@ -122,7 +122,7 @@ export function AddMarketPanel({ onRegistered }: { onRegistered: () => void }) {
                   type="button"
                   disabled={registeringId === r.pairAddress}
                   onClick={() => handleRegister(r.symbol, PRICE_SOURCE_DEXSCREENER, r.pairAddress)}
-                  className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
                 >
                   Register
                 </button>
@@ -143,7 +143,7 @@ export function AddMarketPanel({ onRegistered }: { onRegistered: () => void }) {
                   type="button"
                   disabled={registeringId === r.currencyPair}
                   onClick={() => handleRegister(r.symbol, PRICE_SOURCE_GATE, r.currencyPair)}
-                  className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-white text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
                 >
                   Register
                 </button>

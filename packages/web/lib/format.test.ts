@@ -1,17 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatUsdc,
-  formatCollateral,
-  isPartialDecimalInput,
-  shortenAddress,
-  upProbabilityFromSupplies,
-} from "./format";
+import { formatEth, formatCollateral, isPartialDecimalInput, shortenAddress, upProbabilityFromSupplies } from "./format";
 
-describe("formatUsdc", () => {
-  it("formats a raw 6-decimal amount as dollars", () => {
-    expect(formatUsdc(123_450_000n)).toBe("123.45");
-    expect(formatUsdc("100000000")).toBe("100");
-    expect(formatUsdc(0n)).toBe("0");
+describe("formatEth", () => {
+  it("formats a raw 18-decimal amount as ETH", () => {
+    expect(formatEth(1_000_000_000_000_000_000n)).toBe("1");
+    expect(formatEth("500000000000000000")).toBe("0.5");
+    expect(formatEth(0n)).toBe("0");
   });
 });
 
@@ -19,6 +13,10 @@ describe("formatCollateral", () => {
   it("formats ETH (18 decimals) with more fraction digits than a stablecoin", () => {
     expect(formatCollateral(1_000_000_000_000_000_000n, 18)).toBe("1");
     expect(formatCollateral(5_000_000_000_000_000n, 18)).toBe("0.005");
+  });
+
+  it("formats a 6-decimal stablecoin amount with fewer fraction digits", () => {
+    expect(formatCollateral(123_450_000n, 6)).toBe("123.45");
   });
 });
 

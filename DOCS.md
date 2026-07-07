@@ -1,4 +1,4 @@
-# Robin Markets — technical documentation
+# Polycat — technical documentation
 
 This is the deeper architecture reference. For a setup quickstart, see
 [`README.md`](./README.md). For the in-product explainer users see, see the
@@ -21,7 +21,7 @@ This is the deeper architecture reference. For a setup quickstart, see
 ## Architecture
 
 ```
-packages/contracts   Foundry: MarketFactory (UUPS proxy), PythagoreanMath, MockUSDC
+packages/contracts   Foundry: MarketFactory (UUPS proxy), PythagoreanMath
 packages/cron        Node/TS: opens each registered asset's next 5-minute window
                       and settles the previous one off a live price feed, on a schedule
 packages/web         Next.js: trading UI, portfolio, docs, admin (incl. adding new assets)
@@ -94,10 +94,13 @@ selling is the inverse. The displayed "chance" percentage is
 drift in `c`, and independent of (and never used as a substitute for) the
 strike/close price that actually determines settlement.
 
-Buying supports two modes in the UI: spend an exact USDC amount ("spend"), or
-solve for the USDC needed to receive an exact number of shares ("receive") —
+Buying supports two modes in the UI: spend an exact ETH amount ("spend"), or
+solve for the ETH needed to receive an exact number of shares ("receive") —
 the contract only exposes a forward quote, so the inverse is solved client-side
-in `packages/web/lib/curveMath.ts`.
+in `packages/web/lib/curveMath.ts`. Every market is denominated in native
+ETH: `buyShares`/`createMarket` are `payable` and take payment as `msg.value`
+rather than pulling an ERC20 via `transferFrom`, and every payout (sell,
+redeem, refund, fee withdrawal) is a low-level `call{value: ...}`.
 
 ## Fees
 
@@ -152,13 +155,13 @@ annotation) so it needs no initializer call, unlike most of this contract's
 other base classes.
 
 `script/Deploy.s.sol` deploys the implementation, then the proxy with
-`abi.encodeCall(MarketFactory.initialize, (deployer, collateralToken))` as
-init data, and approves the factory to pull seed liquidity from the
-deployer's own balance. **The proxy's address is what every other package
-uses** — the implementation address is only needed for `upgradeToAndCall`.
+`abi.encodeCall(MarketFactory.initialize, (deployer))` as init data — there's
+no collateral token address to wire in, since every market is native ETH.
+**The proxy's address is what every other package uses** — the
+implementation address is only needed for `upgradeToAndCall`.
 
-This version's storage layout (single fixed collateral token, no
-creator/question fields, an owner-curated `assets` registry plus
+This version's storage layout (native ETH instead of an ERC20 collateral
+token, no creator/question fields, an owner-curated `assets` registry plus
 `assetId`/`startPriceWad` on each market instead) is a fresh design, not an
 in-place upgrade of the pre-pivot arbitrary-market contract — the two mean
 different things by nearly every field, so any real deployment of this
@@ -189,8 +192,8 @@ signatures):
 | Function | Who | Notes |
 |---|---|---|
 | `registerAsset(symbol, source, sourceId)` | owner | the entire "add a market" flow — `source` is `Gate` or `DexScreener` |
-| `createMarket(assetId, startTime, closeTime, startPriceWad)` | owner (cron) | pulls `defaultInitialLiquidity`, seeds the curve |
-| `buyShares(marketId, isUp, amountIn, minSharesOut)` | anyone | slippage-checked |
+| `createMarket(assetId, startTime, closeTime, startPriceWad)` (`payable`) | owner (cron) | seeds the curve with `msg.value`, which must equal `defaultInitialLiquidity` |
+| `buyShares(marketId, isUp, minSharesOut)` (`payable`) | anyone | pays with `msg.value`; slippage-checked |
 | `sellShares(marketId, isUp, sharesIn, minCollateralOut)` | anyone | slippage-checked |
 | `redeem(marketId)` | anyone | only after `Finalized` |
 | `settleMarket(marketId, closePriceWad)` | owner (cron) | only after `closeTime`; ties push instead of finalizing |
@@ -250,9 +253,10 @@ pairs` (proxies Gate.com's tradable USDT pairs, filtered server-side), and
 registering a result calls `registerAsset` directly. `packages/cron` picks up
 any newly registered asset on its next pass with no further action needed.
 
-USDC spending approval is a single `approve(spender, maxUint256)` call the
-first time a wallet trades — not a per-transaction approval — matching how
-real USDC's `_spendAllowance` treats a max allowance (never decrements it).
+Trading is a single transaction: `buyShares` is `payable` and takes payment as
+`msg.value`, so there's no ERC20 approval step before a wallet's first trade —
+unlike the pre-rewrite USDC/USDG version, `TradePanel` never submits a
+separate `approve` transaction.
 
 `lib/wagmi.ts`'s `createConfig` sets `ssr: true`, which is required for
 Next.js SSR + wagmi to agree on connection state during hydration: server
@@ -267,8 +271,8 @@ after mount instead of mismatching.
 ## Deploying the cron script with Docker
 
 ```bash
-docker build -t robin-markets-cron .
-docker run --rm --env-file packages/cron/.env.local robin-markets-cron
+docker build -t polycat-cron .
+docker run --rm --env-file packages/cron/.env.local polycat-cron
 ```
 
 Unlike a typical app image, this isn't a long-running server — the container
@@ -286,13 +290,13 @@ whatever pnpm is latest, which may need a newer Node than the image ships.
 
 Robinhood Chain's network parameters are known and filled in as real values
 across the `.env.example` files (confirmed, not guessed: chain ID via
-`eth_chainId` against the RPC URL, the collateral token via the block
-explorer's own API — it's **USDG** ("Global Dollar"), not USDC, though it
-shares USDC's 6 decimals):
+`eth_chainId` against the RPC URL). There's no collateral token to confirm —
+every market trades in the chain's own native ETH, the same asset gas is
+paid in:
 
-| | Chain ID | RPC | Explorer | Collateral token |
-|---|---|---|---|---|
-| Value | `4663` | `https://rpc.mainnet.chain.robinhood.com` | `https://robinhoodchain.blockscout.com` | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` (USDG) |
+| | Chain ID | RPC | Explorer |
+|---|---|---|---|
+| Value | `4663` | `https://rpc.mainnet.chain.robinhood.com` | `https://robinhoodchain.blockscout.com` |
 
 This version of `MarketFactory` (the fixed-timeframe Up/Down redesign) has
 **not** been deployed to mainnet yet — its storage layout and ABI are
@@ -302,17 +306,16 @@ design, so this is a fresh deployment, not an upgrade of an existing proxy.
 **`packages/contracts`** (`script/Deploy.s.sol`):
 
 ```bash
-USDC_ADDRESS=0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168 \
-  forge script script/Deploy.s.sol --rpc-url https://rpc.mainnet.chain.robinhood.com --broadcast --verify
+forge script script/Deploy.s.sol --rpc-url https://rpc.mainnet.chain.robinhood.com --broadcast --verify
 ```
 
-Setting `USDC_ADDRESS` skips deploying/minting `MockUSDC` and uses that
-address as the collateral token instead — `MockUSDC` deployment is otherwise
-unconditional, which is only correct for local/testnet. This logs the
-`MarketFactory` **proxy** address, which is what the steps below need. Before
-running this against real funds: reassign ownership away from the deploying
-key to whatever account will actually run `packages/cron` in production (and
-ideally put a multisig behind upgrade rights specifically).
+This logs the `MarketFactory` **proxy** address, which is what the steps
+below need. Before running this against real funds: reassign ownership away
+from the deploying key to whatever account will actually run `packages/cron`
+in production (and ideally put a multisig behind upgrade rights
+specifically) — and make sure that account's own ETH balance can cover both
+gas and the `defaultInitialLiquidity` each new market's `createMarket` call
+seeds from it.
 
 **`packages/web`** (`lib/wagmi.ts`, `lib/contracts.ts`):
 
@@ -325,9 +328,8 @@ ideally put a multisig behind upgrade rights specifically).
 | `NEXT_PUBLIC_MAINNET_EXPLORER_URL` | `https://robinhoodchain.blockscout.com` |
 | `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH — unconfirmed, but Robinhood Chain is an Arbitrum L2 and the explorer's own coin icon/price data both point to ETH) |
 | `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
-| `NEXT_PUBLIC_MAINNET_USDC_ADDRESS` | `0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168` (USDG) |
 
-If `NEXT_PUBLIC_NETWORK=mainnet` and either address var is unset, the app
+If `NEXT_PUBLIC_NETWORK=mainnet` and the address var is unset, the app
 throws immediately at startup (`lib/contracts.ts`'s `requireMainnetEnv`) —
 fail loudly, not silently-wrong.
 

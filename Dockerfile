@@ -12,8 +12,8 @@
 # lockfile + every workspace member's package.json to resolve correctly.
 # Build from the monorepo root, where this Dockerfile lives:
 #
-#   docker build -t robin-markets-cron .
-#   docker run --rm --env-file packages/cron/.env.local robin-markets-cron
+#   docker build -t polycat-cron .
+#   docker run --rm --env-file packages/cron/.env.local polycat-cron
 #
 # Scheduling: add a host crontab entry (or equivalent) that runs the command
 # above on an interval shorter than the shortest timeframe (5 minutes) — see

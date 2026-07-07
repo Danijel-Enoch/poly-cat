@@ -35,7 +35,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               {asset.symbol.slice(0, 4)}
             </span>
             <div className="flex-1 min-w-0">
-              <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#250a09] text-gray-200 mb-1">
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#1b1300] text-gray-200 mb-1">
                 5m window
               </span>
               <h1 className="text-xl font-extrabold text-gray-100">{assetDisplayName(asset.symbol)} Up or Down?</h1>

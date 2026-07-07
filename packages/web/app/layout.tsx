@@ -16,8 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Robin Markets",
-  description: "Trade BTC, ETH, and SOL Up or Down on 5-minute, 30-minute, and 1-hour windows.",
+  title: "Polycat",
+  description:
+    "Fixed 5-minute Up/Down markets on curated blue-chip and Robinhood Chain memecoin assets. Trade with ETH.",
 };
 
 export default function RootLayout({

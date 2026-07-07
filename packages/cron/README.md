@@ -1,4 +1,4 @@
-# Robin Markets — cron
+# Polycat — cron
 
 A single script (`src/run.ts`) that keeps every registered asset's 5-minute
 market running, with no admin dashboard and no human settlement judgment
@@ -33,12 +33,13 @@ pnpm start                   # one pass; from the repo root: pnpm cron:run
 
 `CRON_PRIVATE_KEY` must be the deployed `MarketFactory`'s current owner (see
 `packages/contracts`) — every call this script makes is owner-only and will
-revert otherwise. That account also needs native gas for transactions and a
-collateral-token approval to the factory, since `createMarket` pulls each new
-market's seed liquidity from the owner's own balance
-(`factory.setDefaultInitialLiquidity` controls how much). The same account
-is also the one that must call `registerAsset` to add new assets (or use the
-admin dashboard's "Add market" panel, signed with this same key's wallet).
+revert otherwise. That account also needs enough native ETH to cover both
+gas and each new market's seed liquidity, since `createMarket` sends
+`defaultInitialLiquidity` as `msg.value` straight from the owner's own
+balance (`factory.setDefaultInitialLiquidity` controls how much). The same
+account is also the one that must call `registerAsset` to add new assets (or
+use the admin dashboard's "Add market" panel, signed with this same key's
+wallet).
 
 ## Scheduling it
 
@@ -47,7 +48,7 @@ never missed by more than a few transactions' worth of latency — every
 30–60 seconds is reasonable. A plain crontab entry is enough:
 
 ```cron
-* * * * * cd /path/to/robin-markets/packages/cron && pnpm start >> /var/log/robin-cron.log 2>&1
+* * * * * cd /path/to/polycat/packages/cron && pnpm start >> /var/log/polycat-cron.log 2>&1
 ```
 
 Because each run is a self-contained pass, don't run overlapping instances —

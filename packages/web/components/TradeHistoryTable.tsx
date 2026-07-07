@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { getTradeHistory } from "@/lib/chainReads";
-import { formatUsdc, shortenAddress } from "@/lib/format";
+import { formatEth, shortenAddress } from "@/lib/format";
+import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 
 export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; startTime: bigint }) {
   const { data: trades, isLoading } = useQuery({
@@ -28,7 +29,7 @@ export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; s
                 <th className="pb-2 pr-4 font-medium">Trader</th>
                 <th className="pb-2 pr-4 font-medium">Side</th>
                 <th className="pb-2 pr-4 font-medium">Outcome</th>
-                <th className="pb-2 pr-4 font-medium">USDC</th>
+                <th className="pb-2 pr-4 font-medium">{COLLATERAL_SYMBOL}</th>
                 <th className="pb-2 font-medium">Shares</th>
               </tr>
             </thead>
@@ -49,8 +50,8 @@ export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; s
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-gray-300">{trade.isUp ? "UP" : "DOWN"}</td>
-                    <td className="py-2 pr-4 text-gray-300">{formatUsdc(trade.collateralAmount)}</td>
-                    <td className="py-2 text-gray-300">{formatUsdc(trade.sharesAmount)}</td>
+                    <td className="py-2 pr-4 text-gray-300">{formatEth(trade.collateralAmount)}</td>
+                    <td className="py-2 text-gray-300">{formatEth(trade.sharesAmount)}</td>
                   </tr>
                 ))}
             </tbody>

@@ -1,4 +1,4 @@
-# Robin Markets
+# Polycat
 
 Fixed 5-minute Up/Down markets on an open-ended, owner-curated list of
 assets — "blue chip" tokens priced via Gate.com (BTC, ETH, SOL to start),
@@ -6,7 +6,8 @@ and Robinhood Chain memecoins priced via DexScreener (CashCat, the first
 one). Pick an asset; its price when the window opens is the strike. Buy Up
 or Down (or sell back) before it closes via a bonding-curve AMM — Down wins
 if the close price is below the strike, Up wins if it's above, an exact
-match is a push. Positioned on **Robinhood Chain** (Robinhood's
+match is a push. Trading is entirely in native ETH — no approval step, no
+separate collateral token. Positioned on **Robinhood Chain** (Robinhood's
 Arbitrum-based L2).
 
 - `packages/contracts` — Foundry smart contracts (`MarketFactory`, UUPS upgradeable)
@@ -30,6 +31,8 @@ file is a quickstart.
   Pythagorean bonding curve (`reserve = c × √(upSupply² + downSupply²)`)
   rather than an order book or constant-product AMM — there's always a
   counterparty, even for the first trade in a brand-new window.
+- **Trading**: everything is native ETH — buying is a single transaction
+  (`buyShares` is `payable`), with no ERC20 approval step beforehand.
 - **Fees**: a flat protocol trading fee (1% by default, owner-adjustable up
   to 5%) applies to every buy/sell, all of it going to the protocol
   treasury (windows are protocol-seeded, not user-seeded, so there's no
@@ -62,13 +65,11 @@ pnpm contracts:deploy      # forge script script/Deploy.s.sol --broadcast
 ```
 
 Deploy logs the `MarketFactory` **proxy** address (not the implementation) —
-that's the address every other package needs. It also approves the factory
-to pull seed liquidity from the deployer's own balance, and registers the
-initial asset list: BTC/ETH/SOL (Gate-sourced) and CashCat (DexScreener-
-sourced, Robinhood Chain's first memecoin) — see `script/Deploy.s.sol`. Copy
-the proxy address into `packages/cron/.env.local`
-(`MARKET_FACTORY_ADDRESS`) and `packages/web/.env.local`
-(`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`).
+that's the address every other package needs. It also registers the initial
+asset list: BTC/ETH/SOL (Gate-sourced) and CashCat (DexScreener-sourced,
+Robinhood Chain's first memecoin) — see `script/Deploy.s.sol`. Copy the
+proxy address into `packages/cron/.env.local` (`MARKET_FACTORY_ADDRESS`) and
+`packages/web/.env.local` (`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`).
 
 **2. Run the cron script once to open the first windows, then start the frontend:**
 
@@ -90,8 +91,8 @@ pnpm contracts:test
 ## Deploying the cron script with Docker
 
 ```bash
-docker build -t robin-markets-cron .
-docker run --rm --env-file packages/cron/.env.local robin-markets-cron
+docker build -t polycat-cron .
+docker run --rm --env-file packages/cron/.env.local polycat-cron
 ```
 
 This runs one pass and exits — schedule it with a real cron entry or
@@ -104,7 +105,7 @@ The web app deploys to Vercel like any Next.js app — set the env vars from
 
 ## Moving to Robinhood Chain mainnet
 
-Every mainnet-specific value (chain ID, RPC URL, contract addresses) is env-var
+Every mainnet-specific value (chain ID, RPC URL, contract address) is env-var
 driven with no hardcoded fallback, so switching networks never requires a code
 change:
 

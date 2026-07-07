@@ -1,5 +1,5 @@
 const NAV = [
-  { id: "what-is-robin-markets", title: "What is Robin Markets?" },
+  { id: "what-is-polycat", title: "What is Polycat?" },
   { id: "backers", title: "Backers" },
   { id: "getting-started", title: "Getting started" },
   { id: "buying-and-selling", title: "Buying and selling" },
@@ -14,7 +14,7 @@ const NAV = [
  * point at something without needing a live wallet connection to screenshot. */
 function MockConnectButton() {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white">
+    <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-gray-950">
       Connect Wallet
     </span>
   );
@@ -28,7 +28,7 @@ function MockMarketCard({ asset, pct }: { asset: string; pct: number }) {
           {asset.slice(0, 4)}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#250a09] text-gray-200 mb-1">
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#1b1300] text-gray-200 mb-1">
             5m window
           </span>
           <p className="font-semibold text-sm leading-snug text-gray-100">Up or Down?</p>
@@ -57,10 +57,10 @@ function MockTradePanel() {
         <span className="text-center rounded-lg bg-gray-800 text-gray-400 text-xs font-semibold py-2">Down · 37¢</span>
       </div>
       <div className="mt-3 rounded-lg bg-gray-800 px-3 py-2 text-xs text-gray-400">
-        Amount (USDC)
-        <p className="text-gray-100 text-sm font-semibold mt-0.5">25.00</p>
+        Amount (ETH)
+        <p className="text-gray-100 text-sm font-semibold mt-0.5">0.10</p>
       </div>
-      <span className="mt-3 block text-center rounded-full bg-accent text-white text-sm font-semibold py-2">
+      <span className="mt-3 block text-center rounded-full bg-accent text-gray-950 text-sm font-semibold py-2">
         Buy Up
       </span>
     </div>
@@ -129,34 +129,34 @@ export default function DocsPage() {
       <div className="max-w-2xl flex flex-col gap-14">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-100">Docs</h1>
-          <p className="text-sm text-gray-400 mt-1">How Robin Markets works, and how to use it — in plain terms.</p>
+          <p className="text-sm text-gray-400 mt-1">How Polycat works, and how to use it — in plain terms.</p>
         </div>
 
-        <section id="what-is-robin-markets" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">What is Robin Markets?</h2>
+        <section id="what-is-polycat" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">What is Polycat?</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Robin Markets is a fixed 5-minute Up/Down market over a growing list of assets — not just BTC, ETH, and
+            Polycat is a fixed 5-minute Up/Down market over a growing list of assets — not just BTC, ETH, and
             SOL. &quot;Blue chip&quot; tokens are priced via Gate.com; on-chain pairs (starting with CashCat, the
             first memecoin on Robinhood Chain) are priced via DexScreener. Every market is scoped to one asset and
             one 5-minute window. The asset&apos;s price at the moment the window opens is the strike; Down wins if
             the price is below the strike when the window closes, Up wins if it&apos;s above. New windows open
             automatically the moment the previous one settles, so there&apos;s always a live market for every
             registered asset. It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood
-            launched in July 2026.
+            launched in July 2026 — and trades entirely in that chain&apos;s native ETH.
           </p>
         </section>
 
         <section id="backers" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Backers</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Robin Markets is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
+            Polycat is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
           </p>
         </section>
 
         <section id="getting-started" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Getting started</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            You need a crypto wallet (like MetaMask) and a little USDC to trade. Here&apos;s the full loop, start to
+            You need a crypto wallet (like MetaMask) and a little ETH to trade. Here&apos;s the full loop, start to
             finish.
           </p>
           <div className="flex flex-col gap-6">
@@ -180,7 +180,7 @@ export default function DocsPage() {
             <Step
               n={3}
               title="Open a market and trade"
-              body="Tap a card to see the live price chart against the strike, plus trade history. Use the trade panel to buy Up or Down shares — either by entering how much USDC to spend, or the exact number of shares you want."
+              body="Tap a card to see the live price chart against the strike, plus trade history. Use the trade panel to buy Up or Down shares — either by entering how much ETH to spend, or the exact number of shares you want. Buying is a single transaction — no separate approval step, since ETH is native."
             />
             <div className="pl-11 max-w-xs">
               <MockTradePanel />
@@ -188,7 +188,7 @@ export default function DocsPage() {
             <Step
               n={4}
               title="Hold, sell, or redeem"
-              body="Sell shares back into the market any time before the window closes. Once it settles, head back to the market page (or your Portfolio) and redeem — each winning share pays out $1. If the window closed at exactly the strike price, it's a push instead: claim a pro-rata refund rather than a win/loss."
+              body="Sell shares back into the market any time before the window closes. Once it settles, head back to the market page (or your Portfolio) and redeem — each winning share pays out 1 ETH. If the window closed at exactly the strike price, it's a push instead: claim a pro-rata refund rather than a win/loss."
             />
           </div>
         </section>
@@ -196,10 +196,10 @@ export default function DocsPage() {
         <section id="buying-and-selling" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Buying and selling</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            You can buy by specifying either the USDC amount you want to spend, or the exact number of Up/Down
+            You can buy by specifying either the ETH amount you want to spend, or the exact number of Up/Down
             shares you want to end up with — the app solves for the required cost either way. Selling always works
-            in shares. Every winning share redeems for exactly $1 of collateral once a market is settled, so the
-            number of shares you hold is exactly your potential payout if that side wins.
+            in shares. Every winning share redeems for exactly 1 ETH once a market is settled, so the number of
+            shares you hold is exactly your potential payout if that side wins.
           </p>
         </section>
 
@@ -244,7 +244,7 @@ export default function DocsPage() {
         <section id="roadmap" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Roadmap</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            Robin Markets is early. Here&apos;s where things stand today, and what&apos;s coming next.
+            Polycat is early. Here&apos;s where things stand today, and what&apos;s coming next.
           </p>
           <div className="flex flex-col gap-3">
             <RoadmapItem
@@ -260,7 +260,7 @@ export default function DocsPage() {
             <RoadmapItem
               status="live"
               title="No token"
-              body="There is no Robin Markets token, and none is being sold or airdropped right now. Trading uses USDC/USDG. Be wary of anyone claiming otherwise."
+              body="There is no Polycat token, and none is being sold or airdropped right now. Trading uses native ETH. Be wary of anyone claiming otherwise."
             />
             <RoadmapItem
               status="next"

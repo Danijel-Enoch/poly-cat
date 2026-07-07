@@ -1,9 +1,9 @@
 /** Bit-exact TypeScript mirror of `PythagoreanMath.sol`'s buy/sell quotes, used
- * client-side to preview trades and to invert `quoteBuy` (solve for the collateral
+ * client-side to preview trades and to invert `quoteBuy` (solve for the ETH
  * needed to receive a *specific* number of shares) — something the contract itself
  * has no view function for. The on-chain call is still the source of truth; this
  * only prefills the UI and computes the `amountIn` actually submitted when a user
- * specifies a desired share amount instead of a USDC amount. */
+ * specifies a desired share amount instead of an ETH amount. */
 
 const BPS_DENOMINATOR = 10_000n;
 

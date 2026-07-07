@@ -9,7 +9,7 @@ import { requireEnv } from "./config.js";
 // so it just needs a chain id + RPC URL.
 const chain = defineChain({
   id: Number(requireEnv("CHAIN_ID")),
-  name: "Robin Markets settlement chain",
+  name: "Polycat settlement chain",
   nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
   rpcUrls: { default: { http: [requireEnv("RPC_URL")] } },
 });

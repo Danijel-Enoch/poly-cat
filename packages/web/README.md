@@ -1,7 +1,7 @@
-# Robin Markets — web
+# Polycat — web
 
-Next.js (App Router) frontend: BTC/ETH/SOL Up/Down trading UI, portfolio,
-in-product docs, and a trimmed admin dashboard. See the repo root
+Next.js (App Router) frontend: fixed 5-minute Up/Down trading UI (native ETH),
+portfolio, in-product docs, and a trimmed admin dashboard. See the repo root
 [`README.md`](../../README.md) and [`DOCS.md`](../../DOCS.md) for the full
 picture — this file covers just this package.
 
@@ -31,8 +31,9 @@ wallet in production) — that's also where new assets get added.
 See `.env.example` for the full list with comments. In short:
 
 - `NEXT_PUBLIC_RPC_URL` — where to reach the chain.
-- `NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`, `NEXT_PUBLIC_MOCK_USDC_ADDRESS` — the
-  local/testnet deployment's contract addresses.
+- `NEXT_PUBLIC_MARKET_FACTORY_ADDRESS` — the local/testnet deployment's
+  contract address. Trading is native ETH, so there's no separate collateral
+  token address to set.
 - `NEXT_PUBLIC_NETWORK=mainnet` plus the `NEXT_PUBLIC_MAINNET_*` vars — switch
   the whole app to Robinhood Chain. See [`DOCS.md`](../../DOCS.md#moving-to-robinhood-chain-mainnet).
 
