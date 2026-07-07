@@ -1,6 +1,5 @@
 const NAV = [
   { id: "what-is-polycat", title: "What is Polycat?" },
-  { id: "backers", title: "Backers" },
   { id: "getting-started", title: "Getting started" },
   { id: "buying-and-selling", title: "Buying and selling" },
   { id: "assets-and-settlement", title: "Assets & settlement" },
@@ -143,13 +142,6 @@ export default function DocsPage() {
             automatically the moment the previous one settles, so there&apos;s always a live market for every
             registered asset. It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood
             launched in July 2026 — and trades entirely in that chain&apos;s native ETH.
-          </p>
-        </section>
-
-        <section id="backers" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Backers</h2>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            Polycat is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
           </p>
         </section>
 
