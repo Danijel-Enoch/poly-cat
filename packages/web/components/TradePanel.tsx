@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useClickRipple } from "@/components/ClickRipple";
-import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { maxUint256 } from "viem";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, usdcContract, collateralDecimals, collateralSymbol, isNativeCollateral } from "@/lib/contracts";
-import { formatCollateral, parseCollateral, isPartialDecimalInput, yesProbabilityFromSupplies } from "@/lib/format";
+import { marketFactoryContract, usdcContract, USDC_DECIMALS, COLLATERAL_SYMBOL } from "@/lib/contracts";
+import { formatCollateral, parseCollateral, isPartialDecimalInput, upProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
 
@@ -26,7 +26,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
   // outcome shares to end up with (the contract has no inverse-quote view, so the
   // required amountIn is solved for client-side — see lib/curveMath.ts).
   const [buyMode, setBuyMode] = useState<"spend" | "receive">("spend");
-  const [isYes, setIsYes] = useState(true);
+  const [isUp, setIsUp] = useState(true);
   const [amount, setAmount] = useState("10");
   const [status, setStatus] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -56,34 +56,30 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
     query: { enabled: !!address },
   });
 
-  const { data: ethBalance } = useBalance({ address, query: { enabled: !!address } });
-
-  const { data: yesBalance, refetch: refetchYes } = useReadContract({
+  const { data: upBalance, refetch: refetchUp } = useReadContract({
     ...marketFactoryContract,
     functionName: "shareBalanceOf",
     args: address ? [marketId, true, address] : undefined,
     query: { enabled: !!address },
   });
 
-  const { data: noBalance, refetch: refetchNo } = useReadContract({
+  const { data: downBalance, refetch: refetchDown } = useReadContract({
     ...marketFactoryContract,
     functionName: "shareBalanceOf",
     args: address ? [marketId, false, address] : undefined,
     query: { enabled: !!address },
   });
 
-  const sSame = market && isYes ? market.yesSupply : market?.noSupply;
-  const sOther = market && isYes ? market.noSupply : market?.yesSupply;
+  const sSame = market && isUp ? market.upSupply : market?.downSupply;
+  const sOther = market && isUp ? market.downSupply : market?.upSupply;
 
   // Live quote preview — best-effort, purely for display. Reverts to null on any
   // input that the curve would reject (zero, dust, insufficient shares, etc).
   const preview = useMemo(() => {
     if (!market || feeBps === undefined || sSame === undefined || sOther === undefined) return null;
-    const decimals = collateralDecimals(market.collateralToken);
-    const symbol = collateralSymbol(market.collateralToken);
     const parsed = (() => {
       try {
-        return parseCollateral(amount || "0", decimals);
+        return parseCollateral(amount || "0", USDC_DECIMALS);
       } catch {
         return 0n;
       }
@@ -97,10 +93,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       }
       if (side === "buy" && buyMode === "receive") {
         const amountIn = quoteAmountInForShares(market.reserve, sSame, sOther, parsed, BigInt(feeBps));
-        return { label: symbol, value: amountIn };
+        return { label: COLLATERAL_SYMBOL, value: amountIn };
       }
       const { collateralOut } = quoteSell(market.reserve, sSame, sOther, parsed, BigInt(feeBps));
-      return { label: symbol, value: collateralOut };
+      return { label: COLLATERAL_SYMBOL, value: collateralOut };
     } catch (err) {
       if (err instanceof CurveQuoteError) return null;
       throw err;
@@ -115,41 +111,41 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
     );
   }
 
-  const isTrading = market.state === MARKET_STATE_TRADING && now / 1000 < Number(market.closeTime);
-  const isNative = isNativeCollateral(market.collateralToken);
-  const decimals = collateralDecimals(market.collateralToken);
-  const symbol = collateralSymbol(market.collateralToken);
-  const collateralBalance = isNative ? (ethBalance?.value ?? 0n) : (usdcBalance ?? 0n);
-  const yesProb = yesProbabilityFromSupplies(market.yesSupply, market.noSupply);
-  const yesPct = Math.round(yesProb * 100);
-  const shareBalance = isYes ? yesBalance : noBalance;
-  const sideColor = isYes ? "emerald" : "rose";
+  // `market` only ever becomes defined client-side (wagmi's useReadContract has
+  // no SSR data, and the early-return above covers the undefined case), so by
+  // the time this line runs `now` has always resolved past its post-mount null
+  // — the `=== null` case here is just to satisfy the type, not a real state.
+  const isTrading = market.state === MARKET_STATE_TRADING && now !== null && now / 1000 < Number(market.closeTime);
+  const upProb = upProbabilityFromSupplies(market.upSupply, market.downSupply);
+  const upPct = Math.round(upProb * 100);
+  const shareBalance = isUp ? upBalance : downBalance;
+  const sideColor = isUp ? "emerald" : "rose";
   const reserve = market.reserve;
 
   async function refetchAll() {
-    await Promise.all([refetchMarket(), refetchAllowance(), refetchYes(), refetchNo()]);
+    await Promise.all([refetchMarket(), refetchAllowance(), refetchUp(), refetchDown()]);
   }
 
   function addToAmount(n: number) {
-    setAmount((prev) => (Math.max(0, Number(prev || "0") + n)).toString());
+    setAmount((prev) => Math.max(0, Number(prev || "0") + n).toString());
   }
 
   function setMax() {
     if (side === "sell") {
-      setAmount(formatCollateral(shareBalance ?? 0n, decimals).replace(/,/g, ""));
+      setAmount(formatCollateral(shareBalance ?? 0n, USDC_DECIMALS).replace(/,/g, ""));
       return;
     }
     if (buyMode === "receive" && sSame !== undefined && sOther !== undefined && feeBps !== undefined) {
       // Max shares affordable with the current balance.
       try {
-        const { sharesOut } = quoteBuy(reserve, sSame, sOther, collateralBalance, BigInt(feeBps));
-        setAmount(formatCollateral(sharesOut, decimals).replace(/,/g, ""));
+        const { sharesOut } = quoteBuy(reserve, sSame, sOther, usdcBalance ?? 0n, BigInt(feeBps));
+        setAmount(formatCollateral(sharesOut, USDC_DECIMALS).replace(/,/g, ""));
         return;
       } catch {
         // fall through to the raw balance below if the quote can't be computed
       }
     }
-    setAmount(formatCollateral(collateralBalance, decimals).replace(/,/g, ""));
+    setAmount(formatCollateral(usdcBalance ?? 0n, USDC_DECIMALS).replace(/,/g, ""));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -160,15 +156,16 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
     try {
       if (side === "buy") {
-        const parsed = parseCollateral(amount, decimals);
-        const amountIn = buyMode === "receive" ? quoteAmountInForShares(reserve, sSame, sOther, parsed, BigInt(feeBps)) : parsed;
+        const parsed = parseCollateral(amount, USDC_DECIMALS);
+        const amountIn =
+          buyMode === "receive" ? quoteAmountInForShares(reserve, sSame, sOther, parsed, BigInt(feeBps)) : parsed;
         const minSharesOut = buyMode === "receive" ? parsed : 0n;
 
-        if (!isNative && (!allowance || allowance < amountIn)) {
+        if (!allowance || allowance < amountIn) {
           // Approve once for (effectively) unlimited spending, matching how real USDC
           // treats a max-uint256 allowance: `_spendAllowance` skips decrementing it, so
           // this is the only approval a wallet ever needs to sign for this market.
-          setStatus(`Approving ${symbol}...`);
+          setStatus(`Approving ${COLLATERAL_SYMBOL}...`);
           const approveHash = await writeContractAsync({
             ...usdcContract,
             functionName: "approve",
@@ -180,17 +177,16 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         const hash = await writeContractAsync({
           ...marketFactoryContract,
           functionName: "buyShares",
-          args: [marketId, isYes, amountIn, minSharesOut],
-          value: isNative ? amountIn : 0n,
+          args: [marketId, isUp, amountIn, minSharesOut],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash });
       } else {
-        const sharesIn = parseCollateral(amount, decimals);
+        const sharesIn = parseCollateral(amount, USDC_DECIMALS);
         setStatus("Selling shares...");
         const hash = await writeContractAsync({
           ...marketFactoryContract,
           functionName: "sellShares",
-          args: [marketId, isYes, sharesIn, 0n],
+          args: [marketId, isUp, sharesIn, 0n],
         });
         await waitForTransactionReceipt(wagmiConfig, { hash });
       }
@@ -230,7 +226,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         </div>
         {isConnected && (
           <span className="text-xs text-gray-500">
-            Balance: <span className="text-gray-300 font-semibold">{formatCollateral(collateralBalance, decimals)} {symbol}</span>
+            Balance:{" "}
+            <span className="text-gray-300 font-semibold">
+              {formatCollateral(usdcBalance ?? 0n, USDC_DECIMALS)} {COLLATERAL_SYMBOL}
+            </span>
           </span>
         )}
       </div>
@@ -244,27 +243,27 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           <div className="grid grid-cols-2 gap-2">
             <motion.button
               type="button"
-              onClick={() => setIsYes(true)}
+              onClick={() => setIsUp(true)}
               whileTap={{ scale: 0.96 }}
               className={`rounded-xl py-3 font-bold text-sm transition-colors ${
-                isYes
+                isUp
                   ? "bg-emerald-600 text-white"
                   : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
               }`}
             >
-              Yes · {yesPct}¢
+              Up · {upPct}¢
             </motion.button>
             <motion.button
               type="button"
-              onClick={() => setIsYes(false)}
+              onClick={() => setIsUp(false)}
               whileTap={{ scale: 0.96 }}
               className={`rounded-xl py-3 font-bold text-sm transition-colors ${
-                !isYes
+                !isUp
                   ? "bg-rose-600 text-white"
                   : "bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900"
               }`}
             >
-              No · {100 - yesPct}¢
+              Down · {100 - upPct}¢
             </motion.button>
           </div>
 
@@ -277,7 +276,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                   buyMode === "spend" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                Spend {symbol}
+                Spend {COLLATERAL_SYMBOL}
               </button>
               <button
                 type="button"
@@ -293,10 +292,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
           <div>
             <label className="text-xs font-medium text-gray-400">
-              {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : `Amount (${symbol})`}
+              {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : `Amount (${COLLATERAL_SYMBOL})`}
             </label>
             <div className="relative mt-1">
-              {side === "buy" && buyMode === "spend" && !isNative && (
+              {side === "buy" && buyMode === "spend" && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 text-2xl font-bold text-gray-500">$</span>
               )}
               <input
@@ -306,31 +305,31 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
                 onChange={(e) => {
                   if (isPartialDecimalInput(e.target.value)) setAmount(e.target.value);
                 }}
-                className={`w-full text-2xl font-bold text-gray-100 bg-transparent border-b-2 border-gray-700 focus:border-accent outline-none py-1 ${side === "buy" && buyMode === "spend" && !isNative ? "pl-5" : ""}`}
+                className={`w-full text-2xl font-bold text-gray-100 bg-transparent border-b-2 border-gray-700 focus:border-accent outline-none py-1 ${side === "buy" && buyMode === "spend" ? "pl-5" : ""}`}
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
               {preview
                 ? preview.label === "shares"
-                  ? `If ${isYes ? "Yes" : "No"} wins → you get ${formatCollateral(preview.value, decimals)} ${symbol}`
-                  : `≈ ${formatCollateral(preview.value, decimals)} ${preview.label}`
+                  ? `If ${isUp ? "Up" : "Down"} wins → you get ${formatCollateral(preview.value, USDC_DECIMALS)} ${COLLATERAL_SYMBOL}`
+                  : `≈ ${formatCollateral(preview.value, USDC_DECIMALS)} ${preview.label}`
                 : side === "sell"
-                  ? `Balance: ${formatCollateral(shareBalance ?? 0n, decimals)} shares`
-                  : `Balance: ${formatCollateral(collateralBalance, decimals)} ${symbol}`}
+                  ? `Balance: ${formatCollateral(shareBalance ?? 0n, USDC_DECIMALS)} shares`
+                  : `Balance: ${formatCollateral(usdcBalance ?? 0n, USDC_DECIMALS)} ${COLLATERAL_SYMBOL}`}
             </p>
           </div>
 
           <div className="flex gap-2 text-xs font-semibold">
             {side === "buy" && buyMode === "spend" ? (
               <>
-                {(isNative ? [0.01, 0.05, 0.1] : [10, 50, 100]).map((increment) => (
+                {[10, 50, 100].map((increment) => (
                   <button
                     key={increment}
                     type="button"
                     onClick={() => addToAmount(increment)}
                     className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800"
                   >
-                    +{isNative ? increment : `$${increment}`}
+                    +${increment}
                   </button>
                 ))}
               </>
@@ -359,7 +358,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
             }`}
           >
             {submitRippleLayer}
-            {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} ${isYes ? "Yes" : "No"}`}
+            {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} ${isUp ? "Up" : "Down"}`}
           </motion.button>
           {status && <p className="text-sm text-gray-400">{status}</p>}
         </form>
@@ -368,10 +367,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       {isConnected && (
         <div className="mt-5 pt-4 border-t border-gray-800 flex gap-3 text-xs">
           <span className="flex-1 rounded-lg bg-emerald-950 text-emerald-400 px-3 py-2 font-semibold">
-            Yes: {formatCollateral(yesBalance ?? 0n, decimals)}
+            Up: {formatCollateral(upBalance ?? 0n, USDC_DECIMALS)}
           </span>
           <span className="flex-1 rounded-lg bg-rose-950 text-rose-400 px-3 py-2 font-semibold">
-            No: {formatCollateral(noBalance ?? 0n, decimals)}
+            Down: {formatCollateral(downBalance ?? 0n, USDC_DECIMALS)}
           </span>
         </div>
       )}

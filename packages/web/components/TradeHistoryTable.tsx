@@ -2,13 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { getTradeHistory } from "@/lib/ponder";
-import { formatUsdc, formatDate, shortenAddress } from "@/lib/format";
+import { getTradeHistory } from "@/lib/chainReads";
+import { formatUsdc, shortenAddress } from "@/lib/format";
 
-export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
+export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; startTime: bigint }) {
   const { data: trades, isLoading } = useQuery({
     queryKey: ["tradeHistory", marketId.toString()],
-    queryFn: () => getTradeHistory(marketId.toString()),
+    queryFn: () => getTradeHistory(marketId, startTime),
     refetchInterval: 10_000,
   });
 
@@ -29,15 +29,17 @@ export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
                 <th className="pb-2 pr-4 font-medium">Side</th>
                 <th className="pb-2 pr-4 font-medium">Outcome</th>
                 <th className="pb-2 pr-4 font-medium">USDC</th>
-                <th className="pb-2 pr-4 font-medium">Shares</th>
-                <th className="pb-2 font-medium">Time</th>
+                <th className="pb-2 font-medium">Shares</th>
               </tr>
             </thead>
             <tbody>
               {[...trades]
                 .reverse()
                 .map((trade) => (
-                  <tr key={trade.id} className="border-b border-gray-800/60 last:border-0">
+                  <tr
+                    key={`${trade.txHash}-${trade.logIndex}`}
+                    className="border-b border-gray-800/60 last:border-0"
+                  >
                     <td className="py-2 pr-4 text-gray-300">{shortenAddress(trade.trader)}</td>
                     <td className="py-2 pr-4">
                       <span
@@ -46,10 +48,9 @@ export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
                         {trade.side === "buy" ? "Buy" : "Sell"}
                       </span>
                     </td>
-                    <td className="py-2 pr-4 text-gray-300">{trade.isYes ? "YES" : "NO"}</td>
+                    <td className="py-2 pr-4 text-gray-300">{trade.isUp ? "UP" : "DOWN"}</td>
                     <td className="py-2 pr-4 text-gray-300">{formatUsdc(trade.collateralAmount)}</td>
-                    <td className="py-2 pr-4 text-gray-300">{formatUsdc(trade.sharesAmount)}</td>
-                    <td className="py-2 text-gray-500">{formatDate(trade.timestamp)}</td>
+                    <td className="py-2 text-gray-300">{formatUsdc(trade.sharesAmount)}</td>
                   </tr>
                 ))}
             </tbody>

@@ -7,7 +7,6 @@ import { AdminNavLink } from "@/components/AdminNavLink";
 
 const LINKS = [
   { href: "/app", label: "Markets" },
-  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/docs", label: "Docs" },
 ];

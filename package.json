@@ -1,17 +1,15 @@
 {
-  "name": "hoodmarkets",
+  "name": "robin-markets",
   "private": true,
   "packageManager": "pnpm@9.15.0",
   "scripts": {
     "contracts:build": "cd packages/contracts && forge build",
     "contracts:test": "cd packages/contracts && forge test -vvv",
     "contracts:deploy": "cd packages/contracts && forge script script/Deploy.s.sol --broadcast",
-    "indexer:dev": "pnpm --filter indexer dev",
-    "indexer:start": "pnpm --filter indexer start",
+    "cron:run": "pnpm --filter cron start",
     "web:dev": "pnpm --filter web dev",
     "web:build": "pnpm --filter web build",
     "web:test": "pnpm --filter web test",
-    "web:import-markets": "pnpm --filter web import-markets --",
     "prepare": "husky"
   },
   "devDependencies": {

@@ -1,40 +1,51 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0e1203;
-  --foreground: #eeefe9;
+  --background: #1c0a09;
+  --foreground: #f2e8e7;
 }
 
 /* Tailwind's default gray scale is a subtle blue-gray (oklch hue ~250-265).
    Overriding it here re-hues every gray utility class (bg, text, border, all
-   shades) to the app's olive-green palette in one place, instead of hunting
+   shades) to the app's dark red palette in one place, instead of hunting
    down every usage across the codebase. Lightness steps match Tailwind's
-   originals; hue is pinned near the accent's ~123 degrees. */
+   originals; hue is pinned near the accent's ~25 degrees. */
 @theme {
-  --color-gray-50: oklch(98% 0.004 120);
-  --color-gray-100: oklch(95% 0.008 120);
-  --color-gray-200: oklch(90% 0.014 120);
-  --color-gray-300: oklch(83% 0.022 120);
-  --color-gray-400: oklch(65% 0.045 120);
-  --color-gray-500: oklch(50% 0.058 120);
-  --color-gray-600: oklch(44% 0.062 120);
-  --color-gray-700: oklch(38.5% 0.0587 117.8); /* = #414822, "stroke" */
-  --color-gray-800: oklch(30% 0.052 120);
-  --color-gray-900: oklch(24% 0.045 121);
-  --color-gray-950: oklch(17.3% 0.0319 120.7); /* = #0e1203, "general background" */
+  --color-gray-50: oklch(98% 0.004 25);
+  --color-gray-100: oklch(95% 0.008 25);
+  --color-gray-200: oklch(90% 0.014 25);
+  --color-gray-300: oklch(83% 0.022 25);
+  --color-gray-400: oklch(65% 0.045 25);
+  --color-gray-500: oklch(50% 0.058 25);
+  --color-gray-600: oklch(44% 0.062 25);
+  --color-gray-700: oklch(38.5% 0.0587 25); /* = #5f3734, "stroke" */
+  --color-gray-800: oklch(30% 0.052 25);
+  --color-gray-900: oklch(24% 0.045 25);
+  --color-gray-950: oklch(17.3% 0.0319 25); /* = #1c0a09, "general background" */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-accent: #ccff00;
-  --color-accent-dark: #a8d600;
+  --color-accent: #ef4444;
+  --color-accent-dark: #dc2626;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Layered radial glows over the dark red base — a warm ember glow top-left,
+   a cooler deep-red counterpoint top-right, and a faint rise from the
+   bottom, all in the same ~25deg hue family as --color-accent so it reads
+   as one cohesive red gradient rather than competing light sources.
+   `background-attachment: fixed` keeps it steady while the page scrolls,
+   like a backdrop rather than content. */
 body {
-  background: var(--background);
+  background:
+    radial-gradient(ellipse 1400px 900px at 15% -10%, oklch(33% 0.13 25 / 0.85), transparent 60%),
+    radial-gradient(ellipse 1000px 800px at 100% 5%, oklch(26% 0.1 18 / 0.55), transparent 55%),
+    radial-gradient(ellipse 1200px 900px at 50% 115%, oklch(22% 0.09 30 / 0.5), transparent 60%),
+    var(--background);
+  background-attachment: fixed;
   color: var(--foreground);
 }
 

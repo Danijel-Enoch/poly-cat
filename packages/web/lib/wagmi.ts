@@ -21,10 +21,10 @@ export const connectors = [
         walletConnect({
           projectId: walletConnectProjectId,
           metadata: {
-            name: "HoodMarkets",
-            description: "The first prediction market on Robinhood Chain",
+            name: "Robin Markets",
+            description: "Trade BTC, ETH, and SOL Up or Down on 5-minute, 30-minute, and 1-hour windows",
             url: appUrl,
-            icons: [`${appUrl}/Icon.png`],
+            icons: [`${appUrl}/icon.svg`],
           },
           showQrModal: true,
         }),

@@ -2,12 +2,11 @@
 
 import { useEffect } from "react";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import { SpinningGlobe } from "@/components/SpinningGlobe";
 
-/** Lightweight CSS/framer-motion pseudo-3D backdrop — a handful of large blurred
- * gradient blobs that drift slowly and shift gently toward the cursor. Deliberately
- * not a WebGL/Three.js scene: this keeps the bundle small and matches the rest of
- * the app's flat, minimal aesthetic rather than introducing a heavier 3D look. */
+/** Soft, slow-drifting red glow layered on top of the CSS gradient in
+ * globals.css — pure blurred divs, no wireframe/3D shapes. Kept deliberately
+ * subtle (low opacity, slow motion) so it reads as depth behind the content
+ * rather than a distraction. */
 export function AmbientBackground() {
   const mvX = useMotionValue(0);
   const mvY = useMotionValue(0);
@@ -29,20 +28,23 @@ export function AmbientBackground() {
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
       <motion.div style={{ x: parallaxX, y: parallaxY }} className="absolute inset-0">
         <motion.div
-          className="absolute rounded-full blur-3xl bg-accent/5"
-          style={{ width: 440, height: 440, top: "-10%", left: "5%" }}
-          animate={{ x: [0, 40, -20, 0], y: [0, -30, 20, 0] }}
-          transition={{ duration: 26, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+          className="absolute rounded-full blur-3xl bg-accent/10"
+          style={{ width: 560, height: 560, top: "-15%", left: "0%" }}
+          animate={{ x: [0, 50, -20, 0], y: [0, -30, 20, 0] }}
+          transition={{ duration: 28, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute rounded-full blur-3xl bg-emerald-400/4"
-          style={{ width: 360, height: 360, top: "35%", right: "0%" }}
-          animate={{ x: [0, -30, 20, 0], y: [0, 25, -20, 0] }}
-          transition={{ duration: 22, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+          className="absolute rounded-full blur-3xl bg-accent-dark/10"
+          style={{ width: 480, height: 480, top: "40%", right: "-5%" }}
+          animate={{ x: [0, -40, 20, 0], y: [0, 30, -20, 0] }}
+          transition={{ duration: 24, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
-        <div className="absolute" style={{ top: "6%", right: "6%" }}>
-          <SpinningGlobe />
-        </div>
+        <motion.div
+          className="absolute rounded-full blur-3xl bg-accent/6"
+          style={{ width: 420, height: 420, bottom: "-10%", left: "30%" }}
+          animate={{ x: [0, 30, -30, 0], y: [0, -20, 20, 0] }}
+          transition={{ duration: 32, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
+        />
       </motion.div>
     </div>
   );

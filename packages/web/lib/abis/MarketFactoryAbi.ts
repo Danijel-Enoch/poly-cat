@@ -6,19 +6,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "CREATOR_FEE_SHARE_BPS",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "MAX_FEE_BPS",
     "inputs": [],
     "outputs": [
@@ -58,6 +45,35 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "assets",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "source",
+        "type": "uint8",
+        "internalType": "enum MarketFactory.PriceSource"
+      },
+      {
+        "name": "sourceId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "buyShares",
     "inputs": [
       {
@@ -66,7 +82,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "isYes",
+        "name": "isUp",
         "type": "bool",
         "internalType": "bool"
       },
@@ -88,7 +104,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -124,39 +140,40 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "collateralToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "createMarket",
     "inputs": [
       {
-        "name": "p",
-        "type": "tuple",
-        "internalType": "struct MarketFactory.CreateMarketParams",
-        "components": [
-          {
-            "name": "collateralToken",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "questionHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "metadataURI",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "closeTime",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "initialLiquidity",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
+        "name": "assetId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "startTime",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "closeTime",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "startPriceWad",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [
@@ -166,7 +183,39 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "payable"
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "currentMarketId",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "defaultInitialLiquidity",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -201,6 +250,42 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "getAsset",
+    "inputs": [
+      {
+        "name": "assetId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct MarketFactory.AssetInfo",
+        "components": [
+          {
+            "name": "symbol",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "source",
+            "type": "uint8",
+            "internalType": "enum MarketFactory.PriceSource"
+          },
+          {
+            "name": "sourceId",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getMarket",
     "inputs": [
       {
@@ -216,24 +301,14 @@ export const MarketFactoryAbi = [
         "internalType": "struct MarketFactory.Market",
         "components": [
           {
-            "name": "creator",
-            "type": "address",
-            "internalType": "address"
+            "name": "assetId",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
-            "name": "collateralToken",
-            "type": "address",
-            "internalType": "contract IERC20"
-          },
-          {
-            "name": "questionHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "metadataURI",
-            "type": "string",
-            "internalType": "string"
+            "name": "startTime",
+            "type": "uint64",
+            "internalType": "uint64"
           },
           {
             "name": "closeTime",
@@ -241,9 +316,14 @@ export const MarketFactoryAbi = [
             "internalType": "uint64"
           },
           {
-            "name": "createdAt",
-            "type": "uint64",
-            "internalType": "uint64"
+            "name": "startPriceWad",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "closePriceWad",
+            "type": "uint256",
+            "internalType": "uint256"
           },
           {
             "name": "reserve",
@@ -251,12 +331,12 @@ export const MarketFactoryAbi = [
             "internalType": "uint256"
           },
           {
-            "name": "yesSupply",
+            "name": "upSupply",
             "type": "uint256",
             "internalType": "uint256"
           },
           {
-            "name": "noSupply",
+            "name": "downSupply",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -267,11 +347,6 @@ export const MarketFactoryAbi = [
           },
           {
             "name": "collectedFees",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "creatorFees",
             "type": "uint256",
             "internalType": "uint256"
           },
@@ -302,12 +377,12 @@ export const MarketFactoryAbi = [
     ],
     "outputs": [
       {
-        "name": "yesProbWad",
+        "name": "upProbWad",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "noProbWad",
+        "name": "downProbWad",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -320,6 +395,11 @@ export const MarketFactoryAbi = [
     "inputs": [
       {
         "name": "_protocolTreasury",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_collateralToken",
         "type": "address",
         "internalType": "address"
       }
@@ -339,24 +419,14 @@ export const MarketFactoryAbi = [
     ],
     "outputs": [
       {
-        "name": "creator",
-        "type": "address",
-        "internalType": "address"
+        "name": "assetId",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
-        "name": "collateralToken",
-        "type": "address",
-        "internalType": "contract IERC20"
-      },
-      {
-        "name": "questionHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "metadataURI",
-        "type": "string",
-        "internalType": "string"
+        "name": "startTime",
+        "type": "uint64",
+        "internalType": "uint64"
       },
       {
         "name": "closeTime",
@@ -364,9 +434,14 @@ export const MarketFactoryAbi = [
         "internalType": "uint64"
       },
       {
-        "name": "createdAt",
-        "type": "uint64",
-        "internalType": "uint64"
+        "name": "startPriceWad",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "closePriceWad",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "reserve",
@@ -374,12 +449,12 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "yesSupply",
+        "name": "upSupply",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "noSupply",
+        "name": "downSupply",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -390,11 +465,6 @@ export const MarketFactoryAbi = [
       },
       {
         "name": "collectedFees",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "creatorFees",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -413,7 +483,7 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "minInitialLiquidity",
+    "name": "nextAssetId",
     "inputs": [],
     "outputs": [
       {
@@ -497,6 +567,35 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
+    "name": "registerAsset",
+    "inputs": [
+      {
+        "name": "symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "source",
+        "type": "uint8",
+        "internalType": "enum MarketFactory.PriceSource"
+      },
+      {
+        "name": "sourceId",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "assetId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "renounceOwnership",
     "inputs": [],
     "outputs": [],
@@ -512,7 +611,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "isYes",
+        "name": "isUp",
         "type": "bool",
         "internalType": "bool"
       },
@@ -538,12 +637,12 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "setFeeBps",
+    "name": "setDefaultInitialLiquidity",
     "inputs": [
       {
-        "name": "_feeBps",
-        "type": "uint16",
-        "internalType": "uint16"
+        "name": "_defaultInitialLiquidity",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -551,12 +650,12 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "setMinInitialLiquidity",
+    "name": "setFeeBps",
     "inputs": [
       {
-        "name": "_minInitialLiquidity",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_feeBps",
+        "type": "uint16",
+        "internalType": "uint16"
       }
     ],
     "outputs": [],
@@ -585,9 +684,9 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "outcome",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "closePriceWad",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -603,7 +702,7 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "isYes",
+        "name": "isUp",
         "type": "bool",
         "internalType": "bool"
       },
@@ -655,7 +754,7 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "function",
-    "name": "withdrawCreatorFees",
+    "name": "withdrawFees",
     "inputs": [
       {
         "name": "marketId",
@@ -667,17 +766,35 @@ export const MarketFactoryAbi = [
     "stateMutability": "nonpayable"
   },
   {
-    "type": "function",
-    "name": "withdrawFees",
+    "type": "event",
+    "name": "AssetRegistered",
     "inputs": [
       {
-        "name": "marketId",
+        "name": "assetId",
         "type": "uint256",
+        "indexed": true,
         "internalType": "uint256"
+      },
+      {
+        "name": "symbol",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "source",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum MarketFactory.PriceSource"
+      },
+      {
+        "name": "sourceId",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "anonymous": false
   },
   {
     "type": "event",
@@ -700,22 +817,10 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "event",
-    "name": "CreatorFeesWithdrawn",
+    "name": "DefaultInitialLiquiditySet",
     "inputs": [
       {
-        "name": "marketId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "creator",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
+        "name": "defaultInitialLiquidity",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -785,28 +890,16 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "creator",
-        "type": "address",
+        "name": "assetId",
+        "type": "uint256",
         "indexed": true,
-        "internalType": "address"
+        "internalType": "uint256"
       },
       {
-        "name": "collateralToken",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "questionHash",
-        "type": "bytes32",
+        "name": "startTime",
+        "type": "uint64",
         "indexed": false,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "metadataURI",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
+        "internalType": "uint64"
       },
       {
         "name": "closeTime",
@@ -815,7 +908,32 @@ export const MarketFactoryAbi = [
         "internalType": "uint64"
       },
       {
+        "name": "startPriceWad",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
         "name": "initialLiquidity",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "MarketPushed",
+    "inputs": [
+      {
+        "name": "marketId",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "closePriceWad",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -834,23 +952,16 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
+        "name": "closePriceWad",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
         "name": "outcome",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "MinInitialLiquiditySet",
-    "inputs": [
-      {
-        "name": "minInitialLiquidity",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -973,7 +1084,7 @@ export const MarketFactoryAbi = [
         "internalType": "address"
       },
       {
-        "name": "isYes",
+        "name": "isUp",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
@@ -997,13 +1108,13 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "newYesSupply",
+        "name": "newUpSupply",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
       },
       {
-        "name": "newNoSupply",
+        "name": "newDownSupply",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1028,7 +1139,7 @@ export const MarketFactoryAbi = [
         "internalType": "address"
       },
       {
-        "name": "isYes",
+        "name": "isUp",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
@@ -1052,13 +1163,13 @@ export const MarketFactoryAbi = [
         "internalType": "uint256"
       },
       {
-        "name": "newYesSupply",
+        "name": "newUpSupply",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
       },
       {
-        "name": "newNoSupply",
+        "name": "newDownSupply",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1123,16 +1234,6 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
-    "name": "EthAmountMismatch",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "EthTransferFailed",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "FailedCall",
     "inputs": []
   },
@@ -1154,6 +1255,11 @@ export const MarketFactoryAbi = [
   {
     "type": "error",
     "name": "InsufficientShares",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidAsset",
     "inputs": []
   },
   {
@@ -1188,22 +1294,12 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
-    "name": "NoCreatorFeesToWithdraw",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NoFeesToWithdraw",
     "inputs": []
   },
   {
     "type": "error",
     "name": "NotAContract",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotCreator",
     "inputs": []
   },
   {
@@ -1271,6 +1367,11 @@ export const MarketFactoryAbi = [
   },
   {
     "type": "error",
+    "name": "SlotAlreadyOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "UUPSUnauthorizedCallContext",
     "inputs": []
   },
@@ -1284,11 +1385,6 @@ export const MarketFactoryAbi = [
         "internalType": "bytes32"
       }
     ]
-  },
-  {
-    "type": "error",
-    "name": "UnexpectedEthValue",
-    "inputs": []
   },
   {
     "type": "error",

@@ -7,7 +7,7 @@ import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
-import { marketFactoryContract, collateralDecimals, collateralSymbol } from "@/lib/contracts";
+import { marketFactoryContract, USDC_DECIMALS, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatCollateral } from "@/lib/format";
 import { useClickRipple } from "@/components/ClickRipple";
 
@@ -48,7 +48,7 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
       setStatus("Redeemed!");
       // hasWinnings gates this button, so a successful redeem here always means a
       // real payout — this is the "you won" moment worth celebrating.
-      confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ["#ccff00", "#059669", "#ffffff"] });
+      confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 }, colors: ["#ef4444", "#059669", "#ffffff"] });
       await refetch();
     } catch (err) {
       setStatus(err instanceof Error ? err.message : "Transaction failed");
@@ -58,7 +58,6 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
   }
 
   const hasWinnings = winningBalance !== undefined && winningBalance > 0n;
-  const decimals = collateralDecimals(market.collateralToken);
 
   return (
     <motion.div
@@ -69,15 +68,15 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
     >
       <h2 className="font-bold text-gray-100 mb-2">Redeem</h2>
       <p className="text-sm text-gray-300 mb-4">
-        Outcome: <strong>{market.outcome ? "YES" : "NO"}</strong>. Your winning shares:{" "}
-        {formatCollateral(winningBalance ?? 0n, decimals)} {collateralSymbol(market.collateralToken)}
+        Outcome: <strong>{market.outcome ? "UP" : "DOWN"}</strong>. Your winning shares:{" "}
+        {formatCollateral(winningBalance ?? 0n, USDC_DECIMALS)} {COLLATERAL_SYMBOL}
       </p>
       <motion.button
         whileTap={{ scale: 0.97 }}
         onClick={handleRedeem}
         onPointerDown={onRedeemRipple}
         disabled={submitting || !hasWinnings}
-        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-900 py-2.5 px-5 text-sm font-semibold disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
+        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-white py-2.5 px-5 text-sm font-semibold disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500"
       >
         {redeemRippleLayer}
         {hasWinnings ? "Redeem winnings" : "Nothing to redeem"}

@@ -40,7 +40,7 @@ export function ConnectButton() {
       <button
         onClick={() => connector && connect({ connector })}
         disabled={!connector || isPending}
-        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-gray-900 hover:bg-accent-dark disabled:opacity-50"
+        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-white hover:bg-accent-dark disabled:opacity-50"
       >
         {isPending ? "Connecting..." : "Connect Wallet"}
       </button>
@@ -52,7 +52,7 @@ export function ConnectButton() {
       <button
         onClick={() => setMenuOpen((open) => !open)}
         disabled={isPending}
-        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-gray-900 hover:bg-accent-dark disabled:opacity-50"
+        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-white hover:bg-accent-dark disabled:opacity-50"
       >
         {isPending ? "Connecting..." : "Connect Wallet"}
       </button>

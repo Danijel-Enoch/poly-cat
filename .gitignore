@@ -15,6 +15,3 @@ out/
 packages/contracts/cache/
 packages/contracts/out/
 packages/contracts/broadcast/
-
-# Ponder
-.ponder/

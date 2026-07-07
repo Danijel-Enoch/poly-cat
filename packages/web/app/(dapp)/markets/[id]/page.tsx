@@ -1,79 +1,82 @@
 import { notFound } from "next/navigation";
-import { getMarket } from "@/lib/ponder";
+import { getMarket, getAsset } from "@/lib/chainReads";
 import { TradePanel } from "@/components/TradePanel";
-import { SettleActions } from "@/components/SettleActions";
 import { RedeemButton } from "@/components/RedeemButton";
 import { ClaimRefundButton } from "@/components/ClaimRefundButton";
-import { CreatorFeesPanel } from "@/components/CreatorFeesPanel";
 import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { ProbabilityDisplay, ProbabilityBar } from "@/components/ProbabilityDisplay";
-import { formatDate, shortenAddress, yesProbabilityFromSupplies } from "@/lib/format";
-import { avatarColorFor } from "@/lib/avatarColor";
-import { parseMetadataURI } from "@/lib/category";
-import { ipfsImageUrl } from "@/lib/ipfs";
-import { isMarketVerified } from "@/lib/verifiedMarkets";
-import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { formatDate, upProbabilityFromSupplies, formatPriceWad } from "@/lib/format";
+import { assetDisplayName, assetColor } from "@/lib/assets";
+
+// See app/(dapp)/app/page.tsx for why this must stay dynamic — same reason:
+// live chain reads, never build-time prerendered.
+export const dynamic = "force-dynamic";
 
 export default async function MarketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const market = await getMarket(id);
+  const market = await getMarket(BigInt(id));
 
   if (!market) notFound();
 
-  const marketId = BigInt(id);
-  const { category, image, title: parsedTitle } = parseMetadataURI(market.metadataURI);
-  const title = parsedTitle || market.questionHash;
-  const imageUrl = ipfsImageUrl(image);
-  const verified = await isMarketVerified(id);
-  const yesPct = Math.round(yesProbabilityFromSupplies(market.yesSupply, market.noSupply) * 100);
+  const asset = await getAsset(market.assetId);
+  const upPct = Math.round(upProbabilityFromSupplies(market.upSupply, market.downSupply) * 100);
+  const isTrading = market.state === "Trading";
 
   return (
     <div className="grid gap-6 lg:grid-cols-3 items-start">
       <div className="min-w-0 lg:col-span-2 flex flex-col gap-6">
         <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
           <div className="flex items-start gap-3">
-            {imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
-            ) : (
-              <span
-                className={`h-12 w-12 shrink-0 rounded-full ${avatarColorFor(market.id)} flex items-center justify-center text-white font-bold`}
-              >
-                {title.replace("ipfs://", "").charAt(0).toUpperCase()}
-              </span>
-            )}
+            <span
+              className="h-12 w-12 shrink-0 rounded-full flex items-center justify-center text-white font-bold"
+              style={{ backgroundColor: assetColor(asset.symbol) }}
+            >
+              {asset.symbol.slice(0, 4)}
+            </span>
             <div className="flex-1 min-w-0">
-              {category && (
-                <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#15290E] text-gray-200 mb-1">
-                  {category}
-                </span>
-              )}
-              <h1 className="text-xl font-extrabold text-gray-100 break-words flex items-center gap-1.5">
-                {title}
-                {verified && <VerifiedBadge size={18} />}
-              </h1>
+              <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#250a09] text-gray-200 mb-1">
+                5m window
+              </span>
+              <h1 className="text-xl font-extrabold text-gray-100">{assetDisplayName(asset.symbol)} Up or Down?</h1>
               <p className="text-sm text-gray-400 mt-1">
-                Created by {shortenAddress(market.creator)} · Closes {formatDate(market.closeTime)}
+                Strike ${formatPriceWad(market.startPriceWad)} at {formatDate(market.startTime)} · Closes{" "}
+                {formatDate(market.closeTime)}
               </p>
+              {market.state === "Finalized" && (
+                <p className="text-sm font-semibold mt-1 text-gray-200">
+                  Settled at ${formatPriceWad(market.closePriceWad)} — {market.outcome ? "Up" : "Down"} won
+                </p>
+              )}
+              {market.state === "Cancelled" && (
+                <p className="text-sm font-semibold mt-1 text-gray-200">
+                  Pushed — close price matched the strike exactly
+                </p>
+              )}
             </div>
-            <ProbabilityDisplay yesPct={yesPct} />
+            <ProbabilityDisplay upPct={upPct} />
           </div>
-          <ProbabilityBar yesPct={yesPct} />
+          <ProbabilityBar upPct={upPct} />
         </div>
 
-        <PriceHistoryChart marketId={marketId} createdAt={BigInt(market.createdAt)} closeTime={BigInt(market.closeTime)} />
+        <PriceHistoryChart
+          assetId={asset.id}
+          source={asset.source}
+          sourceId={asset.sourceId}
+          startTime={market.startTime}
+          closeTime={market.closeTime}
+          startPriceWad={market.startPriceWad}
+          isTrading={isTrading}
+        />
 
-        <TradeHistoryTable marketId={marketId} />
+        <TradeHistoryTable marketId={market.id} startTime={market.startTime} />
 
-        <SettleActions marketId={marketId} closeTime={BigInt(market.closeTime)} state={market.state} />
-        <RedeemButton marketId={marketId} />
-        <ClaimRefundButton marketId={marketId} />
-        <CreatorFeesPanel marketId={marketId} />
+        <RedeemButton marketId={market.id} />
+        <ClaimRefundButton marketId={market.id} />
       </div>
 
       <div className="min-w-0 lg:sticky lg:top-20">
-        <TradePanel marketId={marketId} />
+        <TradePanel marketId={market.id} />
       </div>
     </div>
   );

@@ -1,13 +1,11 @@
 const NAV = [
-  { id: "what-is-hoodmarkets", title: "What is HoodMarkets?" },
+  { id: "what-is-robin-markets", title: "What is Robin Markets?" },
   { id: "backers", title: "Backers" },
   { id: "getting-started", title: "Getting started" },
   { id: "buying-and-selling", title: "Buying and selling" },
-  { id: "creating-a-market", title: "Creating a market" },
-  { id: "settlement", title: "Settlement" },
+  { id: "assets-and-settlement", title: "Assets & settlement" },
   { id: "bonding-curve", title: "How prices work" },
   { id: "fees", title: "Fees" },
-  { id: "categories", title: "Categories" },
   { id: "roadmap", title: "Roadmap" },
   { id: "developer-docs", title: "Developer docs" },
 ];
@@ -16,28 +14,28 @@ const NAV = [
  * point at something without needing a live wallet connection to screenshot. */
 function MockConnectButton() {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-gray-900">
+    <span className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-1.5 text-xs font-semibold text-white">
       Connect Wallet
     </span>
   );
 }
 
-function MockMarketCard({ title, category, pct }: { title: string; category: string; pct: number }) {
+function MockMarketCard({ asset, pct }: { asset: string; pct: number }) {
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
       <div className="flex items-start gap-3">
         <span className="h-9 w-9 shrink-0 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-sm">
-          {title.charAt(0)}
+          {asset.slice(0, 4)}
         </span>
         <div className="flex-1 min-w-0">
-          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#15290E] text-gray-200 mb-1">
-            {category}
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#250a09] text-gray-200 mb-1">
+            5m window
           </span>
-          <p className="font-semibold text-sm leading-snug text-gray-100">{title}</p>
+          <p className="font-semibold text-sm leading-snug text-gray-100">Up or Down?</p>
         </div>
         <div className="text-right shrink-0">
           <p className={`text-xl font-extrabold ${pct >= 50 ? "text-emerald-400" : "text-rose-400"}`}>{pct}%</p>
-          <p className="text-[10px] text-gray-500 -mt-1">chance</p>
+          <p className="text-[10px] text-gray-500 -mt-1">chance Up</p>
         </div>
       </div>
       <div className="mt-3 h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
@@ -55,15 +53,15 @@ function MockTradePanel() {
         <span className="flex-1 text-center py-1.5 text-gray-400">Sell</span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <span className="text-center rounded-lg bg-emerald-950 text-emerald-400 text-xs font-semibold py-2">Yes · 63¢</span>
-        <span className="text-center rounded-lg bg-gray-800 text-gray-400 text-xs font-semibold py-2">No · 37¢</span>
+        <span className="text-center rounded-lg bg-emerald-950 text-emerald-400 text-xs font-semibold py-2">Up · 63¢</span>
+        <span className="text-center rounded-lg bg-gray-800 text-gray-400 text-xs font-semibold py-2">Down · 37¢</span>
       </div>
       <div className="mt-3 rounded-lg bg-gray-800 px-3 py-2 text-xs text-gray-400">
         Amount (USDC)
         <p className="text-gray-100 text-sm font-semibold mt-0.5">25.00</p>
       </div>
-      <span className="mt-3 block text-center rounded-full bg-accent text-gray-900 text-sm font-semibold py-2">
-        Buy Yes
+      <span className="mt-3 block text-center rounded-full bg-accent text-white text-sm font-semibold py-2">
+        Buy Up
       </span>
     </div>
   );
@@ -131,23 +129,27 @@ export default function DocsPage() {
       <div className="max-w-2xl flex flex-col gap-14">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-100">Docs</h1>
-          <p className="text-sm text-gray-400 mt-1">How HoodMarkets works, and how to use it — in plain terms.</p>
+          <p className="text-sm text-gray-400 mt-1">How Robin Markets works, and how to use it — in plain terms.</p>
         </div>
 
-        <section id="what-is-hoodmarkets" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">What is HoodMarkets?</h2>
+        <section id="what-is-robin-markets" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">What is Robin Markets?</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            HoodMarkets is a permissionless prediction market: anyone can create a yes/no question, anyone can trade
-            shares in the outcome, and prices move in real time to reflect the market&apos;s implied probability.
-            It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood launched in July 2026 —
-            making HoodMarkets the first prediction market deployed there.
+            Robin Markets is a fixed 5-minute Up/Down market over a growing list of assets — not just BTC, ETH, and
+            SOL. &quot;Blue chip&quot; tokens are priced via Gate.com; on-chain pairs (starting with CashCat, the
+            first memecoin on Robinhood Chain) are priced via DexScreener. Every market is scoped to one asset and
+            one 5-minute window. The asset&apos;s price at the moment the window opens is the strike; Down wins if
+            the price is below the strike when the window closes, Up wins if it&apos;s above. New windows open
+            automatically the moment the previous one settles, so there&apos;s always a live market for every
+            registered asset. It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood
+            launched in July 2026.
           </p>
         </section>
 
         <section id="backers" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Backers</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            HoodMarkets is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
+            Robin Markets is backed by Umbrella Labs, Alphatoken Capital, and Web3 Ventures.
           </p>
         </section>
 
@@ -168,17 +170,17 @@ export default function DocsPage() {
             </div>
             <Step
               n={2}
-              title="Browse markets"
-              body="Head to the Markets tab. Filter by category, or sort by trending, newest, closing soonest, or most recently resolved. Each card shows the live implied chance of Yes."
+              title="Pick an asset"
+              body="Head to the Markets tab. Each card is a live 5-minute window for one registered asset, showing the strike price and the current implied chance of Up."
             />
             <div className="pl-11 grid gap-3">
-              <MockMarketCard title="Will the Fed cut rates this quarter?" category="Economy" pct={28} />
-              <MockMarketCard title="Team Alpha wins the championship?" category="Sports" pct={64} />
+              <MockMarketCard asset="BTC" pct={64} />
+              <MockMarketCard asset="CASHCAT" pct={41} />
             </div>
             <Step
               n={3}
               title="Open a market and trade"
-              body="Tap a card to see its full price history and detail. Use the trade panel to buy Yes or No shares — either by entering how much USDC to spend, or the exact number of shares you want."
+              body="Tap a card to see the live price chart against the strike, plus trade history. Use the trade panel to buy Up or Down shares — either by entering how much USDC to spend, or the exact number of shares you want."
             />
             <div className="pl-11 max-w-xs">
               <MockTradePanel />
@@ -186,7 +188,7 @@ export default function DocsPage() {
             <Step
               n={4}
               title="Hold, sell, or redeem"
-              body="Sell shares back into the market any time before it closes. If you hold winning shares once a market settles, head to your Portfolio and redeem — each winning share pays out $1."
+              body="Sell shares back into the market any time before the window closes. Once it settles, head back to the market page (or your Portfolio) and redeem — each winning share pays out $1. If the window closed at exactly the strike price, it's a push instead: claim a pro-rata refund rather than a win/loss."
             />
           </div>
         </section>
@@ -194,37 +196,27 @@ export default function DocsPage() {
         <section id="buying-and-selling" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Buying and selling</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            You can buy by specifying either the USDC amount you want to spend, or the exact number of outcome shares
-            you want to end up with — the app solves for the required cost either way. Selling always works in
-            shares. Every winning share redeems for exactly $1 of collateral once a market is settled, so the number
-            of shares you hold is exactly your potential payout if that outcome wins.
+            You can buy by specifying either the USDC amount you want to spend, or the exact number of Up/Down
+            shares you want to end up with — the app solves for the required cost either way. Selling always works
+            in shares. Every winning share redeems for exactly $1 of collateral once a market is settled, so the
+            number of shares you hold is exactly your potential payout if that side wins.
           </p>
         </section>
 
-        <section id="creating-a-market" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Creating a market</h2>
-          <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            Anyone can create a market from the <span className="text-gray-200 font-medium">Create Market</span>{" "}
-            button in the header.
-          </p>
-          <div className="flex flex-col gap-4">
-            <Step n={1} title="Write your question" body='Keep it a clear yes/no question, e.g. "Will X happen by Y date?"' />
-            <Step n={2} title="Pick a category and close date" body="This is what people use to find your market, and when trading stops." />
-            <Step
-              n={3}
-              title="Seed initial liquidity"
-              body="You provide the USDC that backs the market's starting price curve. You don't get shares for this — it's what lets the very first trader buy or sell. In return, you earn a share of every trading fee collected on your market, withdrawable any time."
-            />
-          </div>
-        </section>
-
-        <section id="settlement" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Settlement</h2>
+        <section id="assets-and-settlement" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">Assets & settlement</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Markets are settled by an AI agent (an LLM) that determines the outcome once trading closes — a single
-            on-chain call sets the final outcome. There&apos;s no bond, no dispute window, and no oracle module. This
-            is a deliberate simplicity tradeoff: it keeps the protocol small and fast to reason about, in exchange for
-            trusting a single settlement agent rather than a decentralized dispute process.
+            New assets are added from the admin dashboard, not by writing code: search DexScreener (scoped to
+            Robinhood Chain pairs) or Gate.com&apos;s tradable tokens, and registering one is the entire &quot;add a
+            market&quot; action. From there it&apos;s fully automatic — a small script (see{" "}
+            <code className="text-gray-300">packages/cron</code> in the repo) keeps every registered asset&apos;s
+            5-minute window running on a schedule, aligned to the clock (a window always starts on a multiple of 5
+            minutes since epoch). The same script settles a window the moment it closes: it reads the asset&apos;s
+            live price — from Gate.com or DexScreener, whichever it was registered with — and submits it in a single
+            transaction. The contract compares that price to the strike recorded when the window opened — below is
+            a Down win, above is an Up win, an exact match is a push — and finalizes the outcome immediately.
+            There&apos;s no admin judgment call and no dispute window; the rule is mechanical and the same every
+            time.
           </p>
         </section>
 
@@ -232,58 +224,53 @@ export default function DocsPage() {
           <h2 className="text-lg font-bold text-gray-100 mb-2">How prices work: the bonding curve</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
             Instead of matching buyers with sellers order-book style, every market is its own automated market maker
-            using a Pythagorean bonding curve: reserve = c × √(yesSupply² + noSupply²). Buying Yes shares increases
-            yesSupply and pulls the price of Yes up (and No down) continuously — there&apos;s always someone to trade
-            with, even for the very first trade in a brand-new market. The displayed &quot;chance&quot; percentage is
-            exactly yesSupply² / (yesSupply² + noSupply²), independent of trading fees.
+            using a Pythagorean bonding curve: reserve = c × √(upSupply² + downSupply²). Buying Up shares increases
+            upSupply and pulls the price of Up up (and Down down) continuously — there&apos;s always someone to
+            trade with, even for the very first trade in a brand-new window. The displayed &quot;chance&quot;
+            percentage is exactly upSupply² / (upSupply² + downSupply²), independent of trading fees — and separate
+            from the strike price itself, which only the recorded start/close price (not the curve) determines.
           </p>
         </section>
 
         <section id="fees" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Fees</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            A flat protocol trading fee (1% by default) applies to every buy and sell, set globally by the platform
-            admin. It is not configurable per market. 5% of every fee collected goes to that market&apos;s creator
-            rather than the protocol treasury — withdrawable any time from the market page — as the only return a
-            creator earns on the liquidity they seeded.
-          </p>
-        </section>
-
-        <section id="categories" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Categories</h2>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            Every market can be tagged with a category (Politics, Elections, World, Economy, Business, Crypto,
-            Sports, Tech, AI, Science, Space, Climate, Health, Entertainment, Movies, Music, Gaming, Awards, Culture,
-            Law, or Other) at creation time, so the markets list can be searched, filtered, and sorted — by category,
-            by trending volume, by newest, by soonest-to-close, or by most-recently-resolved.
+            A flat protocol trading fee (1% by default) applies to every buy and sell, set globally by the protocol
+            owner. It is not configurable per market. Every window is seeded with protocol-owned liquidity rather
+            than a user-provided one, so all collected fees go to the protocol treasury.
           </p>
         </section>
 
         <section id="roadmap" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Roadmap</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            HoodMarkets is early. Here&apos;s where things stand today, and what&apos;s coming next.
+            Robin Markets is early. Here&apos;s where things stand today, and what&apos;s coming next.
           </p>
           <div className="flex flex-col gap-3">
             <RoadmapItem
               status="live"
-              title="Trading on Robinhood Chain"
-              body="Create markets, trade Yes/No shares, and redeem winnings — live today."
+              title="Up/Down trading on Robinhood Chain"
+              body="Fixed 5-minute windows over a growing asset list — BTC/ETH/SOL via Gate.com, CashCat (and any future Robinhood Chain memecoin) via DexScreener — opened and settled automatically."
+            />
+            <RoadmapItem
+              status="live"
+              title="Admin-added markets"
+              body="New assets are added by searching DexScreener or Gate.com from the admin dashboard — no code change or redeploy needed."
             />
             <RoadmapItem
               status="live"
               title="No token"
-              body="There is no HoodMarkets token, and none is being sold or airdropped right now. Trading uses USDC/USDG. Be wary of anyone claiming otherwise."
+              body="There is no Robin Markets token, and none is being sold or airdropped right now. Trading uses USDC/USDG. Be wary of anyone claiming otherwise."
             />
             <RoadmapItem
               status="next"
               title="Native mobile app"
-              body="A dedicated iOS/Android app for browsing and trading markets on the go."
+              body="A dedicated iOS/Android app for trading windows on the go."
             />
             <RoadmapItem
               status="next"
-              title="Multichain support"
-              body="Bringing HoodMarkets to additional chains beyond Robinhood Chain, so liquidity isn't locked to one network."
+              title="More chains"
+              body="Sourcing on-chain pairs from beyond Robinhood Chain as more memecoin activity moves there."
             />
           </div>
         </section>
@@ -291,10 +278,11 @@ export default function DocsPage() {
         <section id="developer-docs" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Developer docs</h2>
           <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-            <p className="text-sm font-semibold text-gray-100">Coming soon</p>
+            <p className="text-sm font-semibold text-gray-100">See the repo</p>
             <p className="text-sm text-gray-400 leading-relaxed mt-1">
-              Contract addresses, ABI reference, and integration guides for building on top of HoodMarkets are on the
-              way.
+              Contract source and tests live in <code className="text-gray-300">packages/contracts</code>, the
+              settlement/creation script in <code className="text-gray-300">packages/cron</code>, and the full
+              architecture writeup in the repo&apos;s <code className="text-gray-300">DOCS.md</code>.
             </p>
           </div>
         </section>

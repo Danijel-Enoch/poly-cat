@@ -4,19 +4,19 @@ import { useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 
-import { getTradeHistory } from "@/lib/ponder";
-import { yesProbabilityFromSupplies } from "@/lib/format";
+import { fetchAssetPrice, type PricePoint } from "@/lib/priceApi";
 import { useNow } from "@/lib/useNow";
+import type { PriceSourceName } from "@/lib/chainReads";
+import { DexScreenerEmbed } from "@/components/DexScreenerEmbed";
 
-// SVG fill/stroke colors can't be styled with Tailwind classes, so they're plain
-// hex constants matching the dark theme used everywhere else in the app.
 const colors = {
-  yes: "#34d399", // emerald-400
-  no: "#fb7185", // rose-400
+  up: "#34d399", // emerald-400
+  down: "#fb7185", // rose-400
+  strike: "#9ca3af", // gray-400
   grid: "#374151", // gray-700
   axisText: "#6b7280", // gray-500
   valueText: "#f3f4f6", // gray-100
-  markerRing: "#111827", // gray-900, matches the card background so the ring blends in
+  markerRing: "#111827", // gray-900, matches the card background
   hoverLine: "#6b7280",
   tooltipBg: "#111827",
   tooltipBorder: "#1f2937",
@@ -25,87 +25,88 @@ const colors = {
 
 const WIDTH = 640;
 const HEIGHT = 260;
-const MARGIN = { top: 20, right: 54, bottom: 28, left: 36 };
+const MARGIN = { top: 20, right: 60, bottom: 28, left: 8 };
 const PLOT_WIDTH = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
 
-type Point = { t: number; yes: number }; // t = unix seconds, yes = 0-100
-
-function shortDateTime(unixSeconds: number): string {
-  return new Date(unixSeconds * 1000).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+function shortTime(unixSeconds: number): string {
+  return new Date(unixSeconds * 1000).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-/** Step-after path: price holds at the previous value until the instant of the next
- * trade, then jumps — this is what actually happens in the AMM, unlike a smoothed
- * line between trades which would imply a gradual drift that never occurred. */
-function stepPath(points: Point[], x: (t: number) => number, y: (v: number) => number): string {
+function linePath(points: PricePoint[], x: (t: number) => number, y: (v: number) => number): string {
   if (points.length === 0) return "";
-  let d = `M ${x(points[0].t)} ${y(points[0].yes)}`;
+  let d = `M ${x(points[0].t)} ${y(points[0].price)}`;
   for (let i = 1; i < points.length; i++) {
-    d += ` L ${x(points[i].t)} ${y(points[i - 1].yes)}`;
-    d += ` L ${x(points[i].t)} ${y(points[i].yes)}`;
+    d += ` L ${x(points[i].t)} ${y(points[i].price)}`;
   }
   return d;
 }
 
-export function PriceHistoryChart({
-  marketId,
-  createdAt,
+/** Custom SVG chart fed by Gate.com candlesticks (via the app's own
+ * `/api/price/[assetId]` proxy) — used for Gate-sourced ("blue chip")
+ * markets. DexScreener-sourced ones render `DexScreenerEmbed` instead; see
+ * `PriceHistoryChart` below. */
+function GateChart({
+  assetId,
+  startTime,
   closeTime,
+  startPriceWad,
+  isTrading,
 }: {
-  marketId: bigint;
-  createdAt: bigint;
+  assetId: bigint;
+  startTime: bigint;
   closeTime: bigint;
+  startPriceWad: bigint;
+  isTrading: boolean;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-  const now = useNow();
+  // `now` is null pre-mount (see lib/useNow.ts). Rendering a `Date.now()`
+  // fallback during render would trip this repo's purity lint rule (render
+  // must be a pure function of props/state); falling back to `closeTime`
+  // instead keeps every value below a deterministic function of props until
+  // the real clock is available, and the query stays `enabled: false` for
+  // that same brief window so it never fetches against the placeholder.
+  const now = useNow(isTrading ? 5_000 : 60_000);
+  const nowMs = now ?? Number(closeTime) * 1000;
 
-  const { data: trades, isLoading } = useQuery({
-    queryKey: ["tradeHistory", marketId.toString()],
-    queryFn: () => getTradeHistory(marketId.toString()),
-    refetchInterval: 10_000,
+  const strike = Number(startPriceWad) / 1e18;
+  const from = Number(startTime);
+  const to = Math.min(Math.floor(nowMs / 1000), Number(closeTime)) + 60;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["assetPrice", assetId.toString(), from, isTrading ? Math.floor(nowMs / 60_000) : "final"],
+    queryFn: () => fetchAssetPrice(assetId, from, to),
+    refetchInterval: isTrading ? 15_000 : false,
+    enabled: now !== null,
   });
 
-  const points = useMemo<Point[]>(() => {
-    const start = Number(createdAt);
-    const pts: Point[] = [{ t: start, yes: 50 }];
-    for (const trade of trades ?? []) {
-      pts.push({
-        t: Number(trade.timestamp),
-        yes: yesProbabilityFromSupplies(trade.yesSupplyAfter, trade.noSupplyAfter) * 100,
-      });
-    }
-    const end = Math.min(now / 1000, Number(closeTime));
-    if (end > pts[pts.length - 1].t) {
-      pts.push({ t: end, yes: pts[pts.length - 1].yes });
-    }
-    return pts;
-  }, [trades, createdAt, closeTime, now]);
+  const points = useMemo(() => data?.points ?? [], [data]);
+  const current = data?.current ?? (points.length > 0 ? points[points.length - 1].price : strike);
 
-  const tMin = points[0].t;
-  const tMax = Math.max(points[points.length - 1].t, tMin + 1);
+  const { tMin, tMax, yMin, yMax } = useMemo(() => {
+    const times = points.map((p) => p.t);
+    const prices = points.map((p) => p.price);
+    const tLo = times.length > 0 ? Math.min(...times, from) : from;
+    const tHi = Math.max(times.length > 0 ? Math.max(...times) : from, Math.floor(nowMs / 1000));
+    const pLo = Math.min(strike, ...(prices.length > 0 ? prices : [strike]));
+    const pHi = Math.max(strike, ...(prices.length > 0 ? prices : [strike]));
+    const pad = Math.max((pHi - pLo) * 0.15, strike * 0.0005, 0.01);
+    return { tMin: tLo, tMax: Math.max(tHi, tLo + 1), yMin: pLo - pad, yMax: pHi + pad };
+  }, [points, strike, from, nowMs]);
 
   const xScale = (t: number) => MARGIN.left + ((t - tMin) / (tMax - tMin)) * PLOT_WIDTH;
-  const yScale = (v: number) => MARGIN.top + ((100 - v) / 100) * PLOT_HEIGHT;
+  const yScale = (v: number) => MARGIN.top + ((yMax - v) / (yMax - yMin)) * PLOT_HEIGHT;
 
-  const yesPath = stepPath(points, xScale, yScale);
-  const noPath = stepPath(
-    points.map((p) => ({ t: p.t, yes: 100 - p.yes })),
-    xScale,
-    yScale,
-  );
-
-  const lastYes = points[points.length - 1].yes;
+  const isUp = current >= strike;
+  const lineColor = isUp ? colors.up : colors.down;
+  const path = linePath(points, xScale, yScale);
+  const pctChange = strike > 0 ? ((current - strike) / strike) * 100 : 0;
+  const priceDigits = current >= 100 ? 2 : current >= 1 ? 4 : current >= 0.01 ? 6 : 8;
 
   function handlePointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg || points.length === 0) return;
     const rect = svg.getBoundingClientRect();
     const svgX = ((e.clientX - rect.left) / rect.width) * WIDTH;
     const t = tMin + ((svgX - MARGIN.left) / PLOT_WIDTH) * (tMax - tMin);
@@ -122,27 +123,25 @@ export function PriceHistoryChart({
     setHoverIndex(nearest);
   }
 
-  const gridLines = [0, 25, 50, 75, 100];
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
     <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-100">Price history</h2>
-        <div className="flex items-center gap-4 text-xs font-semibold">
-          <span className="flex items-center gap-1.5 text-gray-300">
-            <span className="inline-block w-3 h-0.5 rounded-full" style={{ backgroundColor: colors.yes }} />
-            Yes
-          </span>
-          <span className="flex items-center gap-1.5 text-gray-300">
-            <span className="inline-block w-3 h-0.5 rounded-full" style={{ backgroundColor: colors.no }} />
-            No
-          </span>
+        <h2 className="font-bold text-gray-100">Price</h2>
+        <div className="text-right">
+          <p className={`text-lg font-extrabold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+            ${current.toLocaleString(undefined, { maximumFractionDigits: priceDigits })}
+          </p>
+          <p className={`text-xs font-semibold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+            {isUp ? "+" : ""}
+            {pctChange.toFixed(2)}% vs strike
+          </p>
         </div>
       </div>
 
-      {isLoading ? (
-        <p className="text-sm text-gray-400 py-16 text-center">Loading price history...</p>
+      {isLoading && points.length === 0 ? (
+        <p className="text-sm text-gray-400 py-16 text-center">Loading price...</p>
       ) : (
         <div className="relative">
           <svg
@@ -152,60 +151,62 @@ export function PriceHistoryChart({
             onPointerMove={handlePointerMove}
             onPointerLeave={() => setHoverIndex(null)}
           >
-            {gridLines.map((g) => (
-              <g key={g}>
-                <line
-                  x1={MARGIN.left}
-                  x2={WIDTH - MARGIN.right}
-                  y1={yScale(g)}
-                  y2={yScale(g)}
-                  stroke={colors.grid}
-                  strokeWidth={1}
-                />
-                <text x={MARGIN.left - 8} y={yScale(g)} textAnchor="end" dominantBaseline="middle" fontSize={10} fill={colors.axisText}>
-                  {g}%
-                </text>
-              </g>
-            ))}
+            <line
+              x1={MARGIN.left}
+              x2={WIDTH - MARGIN.right}
+              y1={yScale(strike)}
+              y2={yScale(strike)}
+              stroke={colors.strike}
+              strokeWidth={1}
+              strokeDasharray="4 4"
+            />
+            <text x={WIDTH - MARGIN.right + 6} y={yScale(strike)} dominantBaseline="middle" fontSize={10} fill={colors.strike}>
+              strike
+            </text>
 
             <text x={MARGIN.left} y={HEIGHT - 8} textAnchor="start" fontSize={10} fill={colors.axisText}>
-              {shortDateTime(tMin)}
+              {shortTime(tMin)}
             </text>
             <text x={WIDTH - MARGIN.right} y={HEIGHT - 8} textAnchor="end" fontSize={10} fill={colors.axisText}>
-              {shortDateTime(tMax)}
+              {shortTime(tMax)}
             </text>
 
-            <motion.path
-              d={noPath}
-              fill="none"
-              stroke={colors.no}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            />
-            <motion.path
-              d={yesPath}
-              fill="none"
-              stroke={colors.yes}
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            />
+            {path && (
+              <motion.path
+                d={path}
+                fill="none"
+                stroke={lineColor}
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            )}
 
-            <circle cx={xScale(tMax)} cy={yScale(lastYes)} r={4} fill={colors.yes} stroke={colors.markerRing} strokeWidth={2} />
-            <circle cx={xScale(tMax)} cy={yScale(100 - lastYes)} r={4} fill={colors.no} stroke={colors.markerRing} strokeWidth={2} />
-            <text x={xScale(tMax) + 8} y={yScale(lastYes)} dominantBaseline="middle" fontSize={11} fontWeight={700} fill={colors.valueText}>
-              {Math.round(lastYes)}%
-            </text>
-            <text x={xScale(tMax) + 8} y={yScale(100 - lastYes)} dominantBaseline="middle" fontSize={11} fontWeight={700} fill={colors.valueText}>
-              {Math.round(100 - lastYes)}%
-            </text>
+            {points.length > 0 && (
+              <>
+                <circle
+                  cx={xScale(points[points.length - 1].t)}
+                  cy={yScale(current)}
+                  r={4}
+                  fill={lineColor}
+                  stroke={colors.markerRing}
+                  strokeWidth={2}
+                />
+                <text
+                  x={xScale(points[points.length - 1].t) + 8}
+                  y={yScale(current)}
+                  dominantBaseline="middle"
+                  fontSize={11}
+                  fontWeight={700}
+                  fill={colors.valueText}
+                >
+                  ${current.toLocaleString(undefined, { maximumFractionDigits: priceDigits })}
+                </text>
+              </>
+            )}
 
             {hovered && (
               <line
@@ -228,20 +229,17 @@ export function PriceHistoryChart({
                 transition={{ duration: 0.12 }}
                 className="absolute top-2 pointer-events-none rounded-lg shadow-md px-3 py-2 text-xs"
                 style={{
-                  left: `${Math.min(85, Math.max(2, (xScale(hovered.t) / WIDTH) * 100))}%`,
+                  left: `${Math.min(80, Math.max(2, (xScale(hovered.t) / WIDTH) * 100))}%`,
                   transform: xScale(hovered.t) / WIDTH > 0.7 ? "translateX(-100%)" : undefined,
                   backgroundColor: colors.tooltipBg,
                   border: `1px solid ${colors.tooltipBorder}`,
                 }}
               >
                 <p className="mb-1" style={{ color: colors.tooltipText }}>
-                  {shortDateTime(hovered.t)}
+                  {shortTime(hovered.t)}
                 </p>
-                <p className="font-bold" style={{ color: colors.yes }}>
-                  Yes {Math.round(hovered.yes)}%
-                </p>
-                <p className="font-bold" style={{ color: colors.no }}>
-                  No {Math.round(100 - hovered.yes)}%
+                <p className="font-bold" style={{ color: hovered.price >= strike ? colors.up : colors.down }}>
+                  ${hovered.price.toLocaleString(undefined, { maximumFractionDigits: priceDigits })}
                 </p>
               </motion.div>
             )}
@@ -249,5 +247,42 @@ export function PriceHistoryChart({
         </div>
       )}
     </div>
+  );
+}
+
+/** Dispatches to whichever chart fits the market's asset: DexScreener's own
+ * embedded widget for on-chain (memecoin) pairs, or a custom chart fed by
+ * Gate.com candlesticks for centralized-exchange-listed assets — see
+ * DexScreenerEmbed.tsx and the price API route for why these can't share
+ * one implementation (DexScreener's public API has no historical-candles
+ * endpoint to build a custom chart from). */
+export function PriceHistoryChart({
+  assetId,
+  source,
+  sourceId,
+  startTime,
+  closeTime,
+  startPriceWad,
+  isTrading,
+}: {
+  assetId: bigint;
+  source: PriceSourceName;
+  sourceId: string;
+  startTime: bigint;
+  closeTime: bigint;
+  startPriceWad: bigint;
+  isTrading: boolean;
+}) {
+  if (source === "dexscreener") {
+    return <DexScreenerEmbed pairAddress={sourceId} />;
+  }
+  return (
+    <GateChart
+      assetId={assetId}
+      startTime={startTime}
+      closeTime={closeTime}
+      startPriceWad={startPriceWad}
+      isTrading={isTrading}
+    />
   );
 }

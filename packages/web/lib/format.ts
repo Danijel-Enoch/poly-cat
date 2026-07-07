@@ -43,14 +43,31 @@ export function shortenAddress(address: string): string {
 
 /** Implied probability display only — derived client-side from the Pythagorean
  * bonding curve's virtual supplies, mirrors `PythagoreanMath.probabilityWad`
- * (`sYes^2 / (sYes^2+sNo^2)`). This is independent of accrued-fee drift in the
+ * (`sUp^2 / (sUp^2+sDown^2)`). This is independent of accrued-fee drift in the
  * curve's `c` coefficient, unlike the raw tradeable price. Never used to
- * determine settlement, only for the UI. */
-export function yesProbabilityFromSupplies(yesSupply: string | bigint, noSupply: string | bigint): number {
-  const yes = typeof yesSupply === "string" ? BigInt(yesSupply) : yesSupply;
-  const no = typeof noSupply === "string" ? BigInt(noSupply) : noSupply;
-  const yesSq = yes * yes;
-  const noSq = no * no;
-  if (yesSq + noSq === 0n) return 0.5;
-  return Number(yesSq) / Number(yesSq + noSq);
+ * determine settlement (that's the recorded start/close price — see
+ * lib/chainReads.ts), only for the UI's "Up X¢ / Down Y¢" display. */
+export function upProbabilityFromSupplies(upSupply: string | bigint, downSupply: string | bigint): number {
+  const up = typeof upSupply === "string" ? BigInt(upSupply) : upSupply;
+  const down = typeof downSupply === "string" ? BigInt(downSupply) : downSupply;
+  const upSq = up * up;
+  const downSq = down * down;
+  if (upSq + downSq === 0n) return 0.5;
+  return Number(upSq) / Number(upSq + downSq);
+}
+
+const WAD_DECIMALS = 18;
+
+/** `startPriceWad`/`closePriceWad` are WAD (1e18) fixed-point USD prices —
+ * this formats one as a dollar string, scaling precision to the asset's
+ * price magnitude: whole-dollar assets like BTC need only cents, but a
+ * memecoin trading at fractions of a cent (e.g. CashCat at $0.009771) needs
+ * several more decimal places just to show a nonzero, meaningfully-precise
+ * value at all. */
+export function formatPriceWad(wad: bigint, options?: { maximumFractionDigits?: number }): string {
+  const value = Number(formatUnits(wad, WAD_DECIMALS));
+  const defaultDigits = value >= 100 ? 2 : value >= 1 ? 4 : value >= 0.01 ? 6 : 8;
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: options?.maximumFractionDigits ?? defaultDigits,
+  });
 }

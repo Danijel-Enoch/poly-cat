@@ -1,30 +1,43 @@
-# HoodMarkets
+# Robin Markets
 
-A permissionless prediction market: anyone can create a yes/no question, anyone
-can trade shares in the outcome via a bonding-curve AMM, and prices move in real
-time to reflect the market's implied probability. Positioned as the first
-prediction market on **Robinhood Chain** (Robinhood's Arbitrum-based L2).
+Fixed 5-minute Up/Down markets on an open-ended, owner-curated list of
+assets — "blue chip" tokens priced via Gate.com (BTC, ETH, SOL to start),
+and Robinhood Chain memecoins priced via DexScreener (CashCat, the first
+one). Pick an asset; its price when the window opens is the strike. Buy Up
+or Down (or sell back) before it closes via a bonding-curve AMM — Down wins
+if the close price is below the strike, Up wins if it's above, an exact
+match is a push. Positioned on **Robinhood Chain** (Robinhood's
+Arbitrum-based L2).
 
 - `packages/contracts` — Foundry smart contracts (`MarketFactory`, UUPS upgradeable)
-- `packages/indexer` — Ponder indexer
+- `packages/cron` — settlement/creation script: opens each new window and
+  settles the previous one off a live price feed, on a schedule
 - `packages/web` — Next.js frontend
 
-See [`DOCS.md`](./DOCS.md) for the full architecture writeup (pricing math, fee
-split, settlement model, deployment/upgrade flow, mainnet migration). This file
-is a quickstart.
+See [`DOCS.md`](./DOCS.md) for the full architecture writeup (pricing math,
+fee model, settlement rule, deployment/upgrade flow, mainnet migration). This
+file is a quickstart.
 
 ## How it works, briefly
 
-- **Pricing**: each market is its own automated market maker on a Pythagorean
-  bonding curve (`reserve = c × √(yesSupply² + noSupply²)`) rather than an
-  order book or constant-product AMM — there's always a counterparty, even for
-  the first trade in a brand-new market.
-- **Fees**: a flat protocol trading fee (1% by default, admin-adjustable up to
-  5%) applies to every buy/sell. 95% goes to the protocol treasury, 5% to the
-  market's creator (withdrawable any time from the market page).
-- **Settlement**: an AI agent (LLM) determines the outcome and calls
-  `settleMarket` once a market closes — no bond, no dispute window, no oracle
-  module. A deliberate simplicity tradeoff, not a gap to fix.
+- **Markets aren't user-created**, but assets are admin-added. `packages/cron`
+  keeps every registered asset's 5-minute window running, opening the next
+  wall-clock-aligned window the moment the previous one settles. Adding a new
+  asset is a search-and-click action in the admin dashboard (DexScreener for
+  Robinhood Chain pairs, Gate.com for centralized-exchange tokens) — the cron
+  script picks it up automatically on its next pass.
+- **Pricing**: each open window is its own automated market maker on a
+  Pythagorean bonding curve (`reserve = c × √(upSupply² + downSupply²)`)
+  rather than an order book or constant-product AMM — there's always a
+  counterparty, even for the first trade in a brand-new window.
+- **Fees**: a flat protocol trading fee (1% by default, owner-adjustable up
+  to 5%) applies to every buy/sell, all of it going to the protocol
+  treasury (windows are protocol-seeded, not user-seeded, so there's no
+  creator to share it with).
+- **Settlement**: fully automatic and mechanical. The cron script submits
+  the asset's observed close price in one transaction; the contract compares
+  it to the strike recorded at open and finalizes the outcome — no admin
+  judgment call, no bond, no dispute window.
 - **Upgradeability**: `MarketFactory` sits behind a UUPS (`ERC1967Proxy`)
   proxy, so logic can be upgraded later without migrating market state.
 
@@ -37,7 +50,7 @@ pnpm install
 ```
 
 Each package needs its own env file — copy the `.env.example` in each of
-`packages/{contracts,indexer,web}` to `.env.local` (`.env.local` for contracts
+`packages/{contracts,cron,web}` to `.env.local` (`.env.local` for contracts
 is optional; it defaults to Anvil's well-known account #0 key) and fill in
 values as needed. Defaults are wired for the local flow below.
 
@@ -49,16 +62,24 @@ pnpm contracts:deploy      # forge script script/Deploy.s.sol --broadcast
 ```
 
 Deploy logs the `MarketFactory` **proxy** address (not the implementation) —
-that's the address every other package needs. Copy it into
-`packages/indexer/.env.local` (`MARKET_FACTORY_ADDRESS`) and
-`packages/web/.env.local` (`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`).
+that's the address every other package needs. It also approves the factory
+to pull seed liquidity from the deployer's own balance, and registers the
+initial asset list: BTC/ETH/SOL (Gate-sourced) and CashCat (DexScreener-
+sourced, Robinhood Chain's first memecoin) — see `script/Deploy.s.sol`. Copy
+the proxy address into `packages/cron/.env.local`
+(`MARKET_FACTORY_ADDRESS`) and `packages/web/.env.local`
+(`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`).
 
-**2. Start the indexer and frontend:**
+**2. Run the cron script once to open the first windows, then start the frontend:**
 
 ```bash
-pnpm indexer:dev   # Ponder dev server + GraphQL API at :42069
+pnpm cron:run      # one pass: opens any missing windows, settles any closed ones
 pnpm web:dev        # Next.js dev server at :3000
 ```
+
+Re-run `pnpm cron:run` periodically (or set up a real crontab entry — see
+`packages/cron/README.md`) to keep windows opening and settling as they
+close.
 
 **3. Run the contract test suite:**
 
@@ -66,14 +87,15 @@ pnpm web:dev        # Next.js dev server at :3000
 pnpm contracts:test
 ```
 
-## Deploying the indexer with Docker
+## Deploying the cron script with Docker
 
 ```bash
-docker build -t hoodmarkets-indexer .
-docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local hoodmarkets-indexer
+docker build -t robin-markets-cron .
+docker run --rm --env-file packages/cron/.env.local robin-markets-cron
 ```
 
-See `packages/indexer/README.md` for production notes (Postgres, `DATABASE_SCHEMA`).
+This runs one pass and exits — schedule it with a real cron entry or
+equivalent (a Kubernetes CronJob, etc.). See `packages/cron/README.md`.
 
 ## Deploying the frontend
 
@@ -88,8 +110,8 @@ change:
 
 1. Deploy `MarketFactory` to Robinhood Chain (`pnpm contracts:deploy` with
    `--rpc-url` pointed at it) and note the proxy address.
-2. Fill in the `NEXT_PUBLIC_MAINNET_*` vars in `packages/web` and the
-   `*_ROBINHOOD` vars in `packages/indexer`, then set
+2. Fill in the `NEXT_PUBLIC_MAINNET_*` vars in `packages/web` and point
+   `packages/cron`'s `RPC_URL`/`CHAIN_ID` at Robinhood Chain, then set
    `NEXT_PUBLIC_NETWORK=mainnet` for the frontend.
 3. Redeploy both. Missing a required mainnet var fails loudly at startup
    instead of silently pointing at the wrong chain — see `lib/contracts.ts`.

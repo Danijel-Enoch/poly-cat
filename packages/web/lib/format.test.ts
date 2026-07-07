@@ -4,7 +4,7 @@ import {
   formatCollateral,
   isPartialDecimalInput,
   shortenAddress,
-  yesProbabilityFromSupplies,
+  upProbabilityFromSupplies,
 } from "./format";
 
 describe("formatUsdc", () => {
@@ -22,19 +22,19 @@ describe("formatCollateral", () => {
   });
 });
 
-describe("yesProbabilityFromSupplies", () => {
+describe("upProbabilityFromSupplies", () => {
   it("returns 0.5 when both supplies are zero (no trades yet)", () => {
-    expect(yesProbabilityFromSupplies(0n, 0n)).toBe(0.5);
-    expect(yesProbabilityFromSupplies("0", "0")).toBe(0.5);
+    expect(upProbabilityFromSupplies(0n, 0n)).toBe(0.5);
+    expect(upProbabilityFromSupplies("0", "0")).toBe(0.5);
   });
 
   it("returns 0.5 when supplies are equal", () => {
-    expect(yesProbabilityFromSupplies(100n, 100n)).toBe(0.5);
+    expect(upProbabilityFromSupplies(100n, 100n)).toBe(0.5);
   });
 
   it("weights probability toward the larger supply, squared", () => {
     // 3^2 / (3^2 + 4^2) = 9/25 = 0.36 — Pythagorean curve, not linear.
-    expect(yesProbabilityFromSupplies(3n, 4n)).toBeCloseTo(0.36);
+    expect(upProbabilityFromSupplies(3n, 4n)).toBeCloseTo(0.36);
   });
 });
 

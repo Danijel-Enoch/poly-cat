@@ -11,27 +11,25 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 
 import {PythagoreanMath} from "./libraries/PythagoreanMath.sol";
 
-/// @notice Permissionless prediction-market factory, bonding-curve AMM, and
-/// collateral custody hub. Settlement is handled by an AI agent (LLM): the
-/// contract owner calls `settleMarket` directly once a market's close time has
-/// passed — no bond, no dispute, no oracle module. Market price/probability is
-/// never read as a settlement signal anywhere in this contract.
+/// @notice Robin Markets: fixed-5-minute-window Up/Down markets over an
+/// owner-curated, open-ended list of assets — not just BTC/ETH/SOL. A single
+/// contract instance serves every asset and every market (no per-asset or
+/// per-market clones, no chained oracle/indexer contracts). The owner (an
+/// off-chain cron script — see packages/cron) registers new assets via
+/// `registerAsset`, each tagged with which off-chain price API to read it
+/// from (`PriceSource`), then opens/settles markets for them exactly like
+/// the original fixed 3-asset design: a market is created for one asset at a
+/// time with the asset's price at `startTime` recorded on-chain, then
+/// settled once `closeTime` passes by submitting the observed close price —
+/// Down wins if it's below the recorded start price, Up wins if above, and
+/// an exact tie is a push (see `settleMarket`).
 ///
-/// Pricing uses a Pythagorean bonding curve (`reserve = c*sqrt(yesSupply^2 +
-/// noSupply^2)`, see `PythagoreanMath`) rather than a constant-product AMM — this
-/// matches PNP Exchange / Azuro-style prediction market design.
+/// Pricing uses the same Pythagorean bonding curve as before (`reserve =
+/// c*sqrt(upSupply^2 + downSupply^2)`, see `PythagoreanMath`) — the math has
+/// no coupling to what a market's two outcomes represent, or to how many
+/// assets exist.
 ///
-/// One contract instance serves every market (keyed by `marketId`), rather than one
-/// clone/proxy per market: this keeps outcome shares as cheap internal balances
-/// instead of per-market ERC20s, and gives an indexer (Ponder) a single address and
-/// ABI to track instead of discovering N child contracts.
-///
-/// Deployed behind a UUPS proxy (`ERC1967Proxy`, see `script/Deploy.s.sol`) so
-/// logic can be upgraded later without migrating market state to a new address —
-/// see `initialize`/`_authorizeUpgrade` below. `ReentrancyGuardTransient` is used
-/// instead of the classic storage-based guard specifically because it needs no
-/// initialization (it's stateless between transactions via EIP-1153 transient
-/// storage), which sidesteps proxy-initialization pitfalls entirely.
+/// Deployed behind a UUPS proxy (`ERC1967Proxy`, see `script/Deploy.s.sol`).
 contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -41,107 +39,116 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         Cancelled
     }
 
-    /// @notice Sentinel used as `collateralToken` to mean "this market is
-    /// backed by native ETH" instead of an ERC20. Robinhood Chain's native
-    /// currency is ETH itself and no canonical WETH contract is assumed to
-    /// exist, so native ETH is handled directly (payable in, low-level
-    /// `.call` out) rather than wrapped.
-    address private constant NATIVE_TOKEN = address(0);
+    /// @notice Which off-chain API `packages/cron` reads an asset's price
+    /// from. Gate for centralized-exchange-listed ("blue chip") tokens,
+    /// DexScreener for on-chain pairs (memecoins, starting with Robinhood
+    /// Chain's own).
+    enum PriceSource {
+        Gate,
+        DexScreener
+    }
+
+    /// @notice `sourceId` is the identifier `packages/cron` passes straight
+    /// through to whichever API `source` points at: a Gate.com currency pair
+    /// like `"BTC_USDT"`, or a DexScreener pair address like
+    /// `"0xa70fc67c9f69da90b63a0e4c05d229954574e313"`. Not validated
+    /// on-chain — the owner (cron wallet) is trusted the same way it's
+    /// already trusted to submit settlement prices.
+    struct AssetInfo {
+        string symbol;
+        PriceSource source;
+        string sourceId;
+    }
 
     struct Market {
-        address creator;
-        IERC20 collateralToken;
-        bytes32 questionHash; // keccak256 of the question text; full text/criteria live at metadataURI
-        string metadataURI;
+        uint256 assetId;
+        uint64 startTime;
         uint64 closeTime;
-        uint64 createdAt;
+        uint256 startPriceWad; // asset price (WAD, 1e18) at startTime, recorded by the cron
+        uint256 closePriceWad; // asset price (WAD) at settlement; 0 until settled
         uint256 reserve; // r: real collateral custodied for this market's curve
-        uint256 yesSupply; // sYes: virtual accounting supply, not a real token
-        uint256 noSupply; // sNo: virtual accounting supply, not a real token
-        uint256 genesisSupply; // s0 baked into yesSupply/noSupply at creation, held by no one — see claimRefund
-        uint256 collectedFees; // protocol's share, withdrawable by the admin via withdrawFees
-        uint256 creatorFees; // creator's share, withdrawable by the creator via withdrawCreatorFees
+        uint256 upSupply; // sUp: virtual accounting supply, not a real token
+        uint256 downSupply; // sDown: virtual accounting supply, not a real token
+        uint256 genesisSupply; // s0 baked into upSupply/downSupply at creation, held by no one — see claimRefund
+        uint256 collectedFees; // withdrawable by the owner via withdrawFees
         MarketState state;
-        bool outcome; // valid only when state == Finalized
+        bool outcome; // valid only when state == Finalized; true = Up won
     }
 
-    struct CreateMarketParams {
-        address collateralToken;
-        bytes32 questionHash;
-        string metadataURI;
-        uint64 closeTime;
-        uint256 initialLiquidity;
-    }
-
-    uint64 public constant MIN_TRADING_DURATION = 1 hours;
+    uint64 public constant MIN_TRADING_DURATION = 4 minutes;
     uint16 public constant MAX_FEE_BPS = 500; // 5% ceiling on the admin-settable protocol fee
     uint256 private constant BPS_DENOMINATOR = 10_000;
 
-    /// @notice Fixed share of every collected trading fee that goes to a market's
-    /// creator instead of the protocol treasury (500 = 5% of the fee itself, e.g.
-    /// 0.05% of volume at the default 1% protocol fee — not an additional fee on
-    /// top of what traders already pay).
-    uint16 public constant CREATOR_FEE_SHARE_BPS = 500;
+    /// @notice The single ERC20 every market is denominated and settled in. Fixed at
+    /// `initialize` — markets are protocol-created on a schedule now, not user-created
+    /// with a per-market collateral choice, so there's no reason for this to vary.
+    IERC20 public collateralToken;
 
     address public protocolTreasury;
 
     /// @notice Protocol-wide trading fee, in basis points, charged on both buys
-    /// (taken from the input) and sells (taken from the output), split between the
-    /// protocol treasury and the market's creator per `CREATOR_FEE_SHARE_BPS`.
-    /// Applies uniformly to every market — not creator-configurable.
+    /// (taken from the input) and sells (taken from the output). Applies uniformly to
+    /// every market.
     uint16 public feeBps;
 
     uint256 public nextMarketId; // 0 is reserved/invalid
 
-    /// @notice Admin-settable floor in raw collateral units on a market's
-    /// initial liquidity, avoids degenerate pools (PythagoreanMath.seedGenesis
-    /// reverts outright on an amount too small to seed any virtual supply —
-    /// this exists to fail earlier, with a friendlier error, well above that
-    /// hard mathematical floor). Was a fixed constant (1e6) before this field
-    /// existed; see `setMinInitialLiquidity`.
-    uint256 public minInitialLiquidity;
+    /// @notice Collateral seeded into a new market's bonding curve by `createMarket`,
+    /// pulled from the owner's (cron wallet's) own balance. Owner-settable so the
+    /// depth/starting price sensitivity of every future market can be tuned without
+    /// redeploying.
+    uint256 public defaultInitialLiquidity;
+
+    /// @notice Owner-curated asset registry. `assetId`s are assigned
+    /// sequentially starting at 0 and never reused — see `registerAsset`.
+    mapping(uint256 => AssetInfo) public assets;
+    uint256 public nextAssetId;
 
     mapping(uint256 => Market) public markets;
-    // marketId => isYes => holder => balance. Internal balances (not per-market ERC20s)
-    // — cheaper, and keeps everything indexable from this single contract's events.
+    // marketId => isUp => holder => balance. Internal balances (not per-market ERC20s).
     mapping(uint256 => mapping(bool => mapping(address => uint256))) internal shareBalances;
 
+    /// @notice The currently open (or most recently created) market for each
+    /// asset, so the cron and the frontend can both find "the current market
+    /// for CASHCAT" in a single read with no off-chain bookkeeping.
+    mapping(uint256 => uint256) public currentMarketId;
+
+    event AssetRegistered(uint256 indexed assetId, string symbol, PriceSource source, string sourceId);
     event MarketCreated(
         uint256 indexed marketId,
-        address indexed creator,
-        address indexed collateralToken,
-        bytes32 questionHash,
-        string metadataURI,
+        uint256 indexed assetId,
+        uint64 startTime,
         uint64 closeTime,
+        uint256 startPriceWad,
         uint256 initialLiquidity
     );
     event SharesBought(
         uint256 indexed marketId,
         address indexed buyer,
-        bool isYes,
+        bool isUp,
         uint256 collateralIn,
         uint256 sharesOut,
         uint256 feePaid,
-        uint256 newYesSupply,
-        uint256 newNoSupply
+        uint256 newUpSupply,
+        uint256 newDownSupply
     );
     event SharesSold(
         uint256 indexed marketId,
         address indexed seller,
-        bool isYes,
+        bool isUp,
         uint256 sharesIn,
         uint256 collateralOut,
         uint256 feePaid,
-        uint256 newYesSupply,
-        uint256 newNoSupply
+        uint256 newUpSupply,
+        uint256 newDownSupply
     );
     event Redeemed(uint256 indexed marketId, address indexed redeemer, uint256 payout, bool outcome);
     event FeesWithdrawn(uint256 indexed marketId, address indexed to, uint256 amount);
-    event CreatorFeesWithdrawn(uint256 indexed marketId, address indexed creator, uint256 amount);
     event ProtocolTreasurySet(address indexed treasury);
     event ProtocolFeeSet(uint16 feeBps);
-    event MinInitialLiquiditySet(uint256 minInitialLiquidity);
-    event MarketSettled(uint256 indexed marketId, bool outcome);
+    event DefaultInitialLiquiditySet(uint256 defaultInitialLiquidity);
+    event MarketSettled(uint256 indexed marketId, uint256 closePriceWad, bool outcome);
+    event MarketPushed(uint256 indexed marketId, uint256 closePriceWad);
     event CloseTimeExtended(uint256 indexed marketId, uint64 newCloseTime);
     event MarketCancelled(uint256 indexed marketId);
     event RefundClaimed(uint256 indexed marketId, address indexed claimant, uint256 payout);
@@ -156,8 +163,6 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     error InsufficientShareBalance();
     error NothingToRedeem();
     error NoFeesToWithdraw();
-    error NoCreatorFeesToWithdraw();
-    error NotCreator();
     error CloseTimeTooSoon();
     error LiquidityTooLow();
     error FeeTooHigh();
@@ -165,22 +170,23 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
     error CloseTimeNotExtended();
     error MarketNotCancelled();
     error NothingToRefund();
-    error UnexpectedEthValue();
-    error EthAmountMismatch();
-    error EthTransferFailed();
+    error SlotAlreadyOpen();
+    error InvalidAsset();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(address _protocolTreasury) external initializer {
+    function initialize(address _protocolTreasury, address _collateralToken) external initializer {
         __Ownable_init(msg.sender);
         require(_protocolTreasury != address(0));
+        if (_collateralToken.code.length == 0) revert NotAContract();
         protocolTreasury = _protocolTreasury;
+        collateralToken = IERC20(_collateralToken);
         feeBps = 100; // 1% — inline field initializers don't run against proxy storage, so this must live here
         nextMarketId = 1; // 0 is reserved/invalid
-        minInitialLiquidity = 1e4; // $0.01 for a 6-decimal token like USDC/USDG
+        defaultInitialLiquidity = 1_000e6; // $1,000 for a 6-decimal token like USDC/USDG; owner-adjustable
     }
 
     function setProtocolTreasury(address _protocolTreasury) external onlyOwner {
@@ -197,63 +203,78 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit ProtocolFeeSet(_feeBps);
     }
 
-    /// @notice Admin-only update to the minimum initial liquidity required to
-    /// create a market, in raw collateral units. Must stay nonzero — setting
-    /// it to 0 wouldn't actually allow zero-liquidity markets, it would just
-    /// move the revert to the less legible `InsufficientLiquidity` deeper in
-    /// `PythagoreanMath.seedGenesis` instead of the friendlier check here.
-    function setMinInitialLiquidity(uint256 _minInitialLiquidity) external onlyOwner {
-        if (_minInitialLiquidity == 0) revert LiquidityTooLow();
-        minInitialLiquidity = _minInitialLiquidity;
-        emit MinInitialLiquiditySet(_minInitialLiquidity);
+    /// @notice Admin-only update to the collateral seeded into every newly created
+    /// market's bonding curve.
+    function setDefaultInitialLiquidity(uint256 _defaultInitialLiquidity) external onlyOwner {
+        if (_defaultInitialLiquidity == 0) revert LiquidityTooLow();
+        defaultInitialLiquidity = _defaultInitialLiquidity;
+        emit DefaultInitialLiquiditySet(_defaultInitialLiquidity);
     }
 
-    /// @notice Permissionlessly create a new binary prediction market on any topic.
-    /// Pulls `initialLiquidity` from the caller and seeds the bonding curve. The
-    /// creator receives no shares for this — it purely seeds the curve's starting
-    /// depth/price and backs solvency; the creator's only return is a
-    /// `CREATOR_FEE_SHARE_BPS` cut of trading fees if and when people trade.
-    function createMarket(CreateMarketParams calldata p) external payable nonReentrant returns (uint256 marketId) {
-        if (p.closeTime < block.timestamp + MIN_TRADING_DURATION) revert CloseTimeTooSoon();
-        if (p.initialLiquidity < minInitialLiquidity) revert LiquidityTooLow();
+    /// @notice Owner-only registration of a new tradeable asset — this is
+    /// the entire "add a market" flow; once registered, `createMarket` can
+    /// open windows for it. `symbol` is display-only; `sourceId` is
+    /// whatever identifier `source`'s API needs (see `AssetInfo`). Neither
+    /// is validated beyond non-empty, the same trust level as the owner's
+    /// existing settlement authority.
+    function registerAsset(string calldata symbol, PriceSource source, string calldata sourceId)
+        external
+        onlyOwner
+        returns (uint256 assetId)
+    {
+        if (bytes(symbol).length == 0 || bytes(sourceId).length == 0) revert InvalidAsset();
+        assetId = nextAssetId++;
+        assets[assetId] = AssetInfo({symbol: symbol, source: source, sourceId: sourceId});
+        emit AssetRegistered(assetId, symbol, source, sourceId);
+    }
 
-        bool isNative = p.collateralToken == NATIVE_TOKEN;
-        if (isNative) {
-            if (msg.value != p.initialLiquidity) revert EthAmountMismatch();
-        } else {
-            if (msg.value != 0) revert UnexpectedEthValue();
-            if (p.collateralToken.code.length == 0) revert NotAContract();
+    /// @notice Owner-only (the cron wallet) creation of a new 5-minute market
+    /// window for one registered asset. `startPriceWad` is the asset's price
+    /// at `startTime`, observed off-chain by the cron and recorded here as
+    /// the strike every later buy/sell/settlement is judged against.
+    /// Reverts if that asset's current market is still within its trading
+    /// window — an asset has at most one open market at a time.
+    function createMarket(uint256 assetId, uint64 startTime, uint64 closeTime, uint256 startPriceWad)
+        external
+        onlyOwner
+        nonReentrant
+        returns (uint256 marketId)
+    {
+        if (assetId >= nextAssetId) revert InvalidAsset();
+        if (closeTime < startTime + MIN_TRADING_DURATION) revert CloseTimeTooSoon();
+        if (startPriceWad == 0) revert ZeroAmount();
+
+        uint256 existing = currentMarketId[assetId];
+        if (existing != 0 && markets[existing].state == MarketState.Trading && block.timestamp < markets[existing].closeTime)
+        {
+            revert SlotAlreadyOpen();
         }
 
-        uint256 s0 = PythagoreanMath.seedGenesis(p.initialLiquidity);
+        uint256 initialLiquidity = defaultInitialLiquidity;
+        uint256 s0 = PythagoreanMath.seedGenesis(initialLiquidity);
 
         marketId = nextMarketId++;
         Market storage m = markets[marketId];
-        m.creator = msg.sender;
-        m.collateralToken = IERC20(p.collateralToken);
-        m.questionHash = p.questionHash;
-        m.metadataURI = p.metadataURI;
-        m.closeTime = p.closeTime;
-        m.createdAt = uint64(block.timestamp);
-        m.reserve = p.initialLiquidity;
-        m.yesSupply = s0;
-        m.noSupply = s0;
+        m.assetId = assetId;
+        m.startTime = startTime;
+        m.closeTime = closeTime;
+        m.startPriceWad = startPriceWad;
+        m.reserve = initialLiquidity;
+        m.upSupply = s0;
+        m.downSupply = s0;
         m.genesisSupply = s0;
         m.state = MarketState.Trading;
 
-        if (!isNative) {
-            IERC20(p.collateralToken).safeTransferFrom(msg.sender, address(this), p.initialLiquidity);
-        }
+        currentMarketId[assetId] = marketId;
 
-        emit MarketCreated(
-            marketId, msg.sender, p.collateralToken, p.questionHash, p.metadataURI, p.closeTime, p.initialLiquidity
-        );
+        collateralToken.safeTransferFrom(msg.sender, address(this), initialLiquidity);
+
+        emit MarketCreated(marketId, assetId, startTime, closeTime, startPriceWad, initialLiquidity);
     }
 
-    /// @notice Buy `isYes` shares by depositing `amountIn` collateral via the bonding curve.
-    function buyShares(uint256 marketId, bool isYes, uint256 amountIn, uint256 minSharesOut)
+    /// @notice Buy `isUp` shares by depositing `amountIn` collateral via the bonding curve.
+    function buyShares(uint256 marketId, bool isUp, uint256 amountIn, uint256 minSharesOut)
         external
-        payable
         nonReentrant
         returns (uint256 sharesOut)
     {
@@ -262,14 +283,7 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         if (block.timestamp >= m.closeTime) revert MarketClosed();
         if (amountIn == 0) revert ZeroAmount();
 
-        bool isNative = address(m.collateralToken) == NATIVE_TOKEN;
-        if (isNative) {
-            if (msg.value != amountIn) revert EthAmountMismatch();
-        } else if (msg.value != 0) {
-            revert UnexpectedEthValue();
-        }
-
-        (uint256 sSame, uint256 sOther) = isYes ? (m.yesSupply, m.noSupply) : (m.noSupply, m.yesSupply);
+        (uint256 sSame, uint256 sOther) = isUp ? (m.upSupply, m.downSupply) : (m.downSupply, m.upSupply);
         uint256 newR;
         uint256 newSSame;
         uint256 feePaid;
@@ -277,23 +291,21 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         if (sharesOut < minSharesOut) revert SlippageExceeded();
 
         m.reserve = newR;
-        if (isYes) {
-            m.yesSupply = newSSame;
+        if (isUp) {
+            m.upSupply = newSSame;
         } else {
-            m.noSupply = newSSame;
+            m.downSupply = newSSame;
         }
-        _splitFee(m, feePaid);
-        shareBalances[marketId][isYes][msg.sender] += sharesOut;
+        m.collectedFees += feePaid;
+        shareBalances[marketId][isUp][msg.sender] += sharesOut;
 
-        if (!isNative) {
-            m.collateralToken.safeTransferFrom(msg.sender, address(this), amountIn);
-        }
+        collateralToken.safeTransferFrom(msg.sender, address(this), amountIn);
 
-        emit SharesBought(marketId, msg.sender, isYes, amountIn, sharesOut, feePaid, m.yesSupply, m.noSupply);
+        emit SharesBought(marketId, msg.sender, isUp, amountIn, sharesOut, feePaid, m.upSupply, m.downSupply);
     }
 
-    /// @notice Sell `sharesIn` shares of `isYes` back to the pool for collateral.
-    function sellShares(uint256 marketId, bool isYes, uint256 sharesIn, uint256 minCollateralOut)
+    /// @notice Sell `sharesIn` shares of `isUp` back to the pool for collateral.
+    function sellShares(uint256 marketId, bool isUp, uint256 sharesIn, uint256 minCollateralOut)
         external
         nonReentrant
         returns (uint256 collateralOut)
@@ -302,9 +314,9 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         if (m.state != MarketState.Trading) revert MarketNotTrading();
         if (block.timestamp >= m.closeTime) revert MarketClosed();
         if (sharesIn == 0) revert ZeroAmount();
-        if (shareBalances[marketId][isYes][msg.sender] < sharesIn) revert InsufficientShareBalance();
+        if (shareBalances[marketId][isUp][msg.sender] < sharesIn) revert InsufficientShareBalance();
 
-        (uint256 sSame, uint256 sOther) = isYes ? (m.yesSupply, m.noSupply) : (m.noSupply, m.yesSupply);
+        (uint256 sSame, uint256 sOther) = isUp ? (m.upSupply, m.downSupply) : (m.downSupply, m.upSupply);
         uint256 newR;
         uint256 newSSame;
         uint256 feePaid;
@@ -312,41 +324,18 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
             PythagoreanMath.quoteSell(m.reserve, sSame, sOther, sharesIn, feeBps);
         if (collateralOut < minCollateralOut) revert SlippageExceeded();
 
-        shareBalances[marketId][isYes][msg.sender] -= sharesIn;
+        shareBalances[marketId][isUp][msg.sender] -= sharesIn;
         m.reserve = newR;
-        if (isYes) {
-            m.yesSupply = newSSame;
+        if (isUp) {
+            m.upSupply = newSSame;
         } else {
-            m.noSupply = newSSame;
+            m.downSupply = newSSame;
         }
-        _splitFee(m, feePaid);
+        m.collectedFees += feePaid;
 
-        _payOut(m, msg.sender, collateralOut);
+        collateralToken.safeTransfer(msg.sender, collateralOut);
 
-        emit SharesSold(marketId, msg.sender, isYes, sharesIn, collateralOut, feePaid, m.yesSupply, m.noSupply);
-    }
-
-    /// @dev Splits a just-collected fee between the market's creator and the
-    /// protocol treasury per `CREATOR_FEE_SHARE_BPS`, e.g. at the default 1%
-    /// protocol fee, 5% of that (0.05% of volume) accrues to the creator.
-    function _splitFee(Market storage m, uint256 feePaid) private {
-        uint256 creatorShare = (feePaid * CREATOR_FEE_SHARE_BPS) / BPS_DENOMINATOR;
-        m.creatorFees += creatorShare;
-        m.collectedFees += feePaid - creatorShare;
-    }
-
-    /// @dev Pays out `amount` to `to` in whichever collateral the market
-    /// uses. Always called after this market's storage has already been
-    /// updated (balances/reserve/fees zeroed or decremented), so the
-    /// checks-effects-interactions ordering that makes `safeTransfer` safe
-    /// under `nonReentrant` carries over unchanged to the low-level ETH call.
-    function _payOut(Market storage m, address to, uint256 amount) private {
-        if (address(m.collateralToken) == NATIVE_TOKEN) {
-            (bool ok,) = to.call{value: amount}("");
-            if (!ok) revert EthTransferFailed();
-        } else {
-            m.collateralToken.safeTransfer(to, amount);
-        }
+        emit SharesSold(marketId, msg.sender, isUp, sharesIn, collateralOut, feePaid, m.upSupply, m.downSupply);
     }
 
     /// @notice Redeem winning shares 1:1 for collateral after the market is finalized.
@@ -362,29 +351,40 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         shareBalances[marketId][true][msg.sender] = 0;
         shareBalances[marketId][false][msg.sender] = 0;
 
-        _payOut(m, msg.sender, payout);
+        collateralToken.safeTransfer(msg.sender, payout);
 
         emit Redeemed(marketId, msg.sender, payout, outcome);
     }
 
-    /// @notice Settlement by AI agent (LLM). The owner account, operated by the
-    /// settlement agent, is the sole source of truth for every market's outcome —
-    /// no bond, no dispute, no oracle module. Callable only once a market has
-    /// closed, and only once per market.
-    function settleMarket(uint256 marketId, bool outcome) external onlyOwner {
+    /// @notice Owner-only (the cron wallet) settlement: submits the asset's observed
+    /// close price. Down wins if it's strictly below the recorded start price, Up
+    /// wins if strictly above. An exact tie is a push — rather than inventing new
+    /// payout math for a case that isn't really a win for either side, the market is
+    /// marked `Cancelled` and reuses the same pro-rata `claimRefund` path a manually
+    /// cancelled market already uses. Callable only once a market has closed, and
+    /// only once per market.
+    function settleMarket(uint256 marketId, uint256 closePriceWad) external onlyOwner {
         Market storage m = markets[marketId];
         if (m.state != MarketState.Trading) revert AlreadyResolved();
         if (block.timestamp < m.closeTime) revert SettlementNotOpen();
+        if (closePriceWad == 0) revert ZeroAmount();
+
+        m.closePriceWad = closePriceWad;
+
+        if (closePriceWad == m.startPriceWad) {
+            m.state = MarketState.Cancelled;
+            emit MarketPushed(marketId, closePriceWad);
+            return;
+        }
+
         m.state = MarketState.Finalized;
-        m.outcome = outcome;
-        emit MarketSettled(marketId, outcome);
+        m.outcome = closePriceWad > m.startPriceWad;
+        emit MarketSettled(marketId, closePriceWad, m.outcome);
     }
 
-    /// @notice Push a market's close time further out, e.g. when the settlement
-    /// agent needs more time after the original deadline passed without a
-    /// settlement. Note this also reopens trading until the new deadline,
-    /// since `closeTime` gates both — the same field doing the same dual job
-    /// it already does at creation, just moved later.
+    /// @notice Push a market's close time further out, e.g. when the cron script is
+    /// down past the original deadline. Note this also reopens trading until the new
+    /// deadline, since `closeTime` gates both.
     function extendCloseTime(uint256 marketId, uint64 newCloseTime) external onlyOwner {
         Market storage m = markets[marketId];
         if (m.state != MarketState.Trading) revert MarketNotTrading();
@@ -393,10 +393,10 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit CloseTimeExtended(marketId, newCloseTime);
     }
 
-    /// @notice Abandon a market instead of settling it, letting every share
-    /// holder reclaim a pro-rata slice of the pool via `claimRefund`. Callable
-    /// any time the market is `Trading` — same fully-trusted-owner model as
-    /// `settleMarket`, no bond, no dispute.
+    /// @notice Emergency abandon of a market instead of settling it, letting every
+    /// share holder reclaim a pro-rata slice of the pool via `claimRefund`. Callable
+    /// any time the market is `Trading` — an operator safety valve, distinct from the
+    /// automatic tie/push case in `settleMarket`.
     function cancelMarket(uint256 marketId) external onlyOwner {
         Market storage m = markets[marketId];
         if (m.state != MarketState.Trading) revert MarketNotTrading();
@@ -404,18 +404,13 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         emit MarketCancelled(marketId);
     }
 
-    /// @notice Claim a pro-rata refund from a cancelled market's reserve.
-    /// Paying every YES/NO share 1:1 (like `redeem` does for the winning side)
-    /// would be insolvent here: the Pythagorean curve guarantees
-    /// `reserve <= yesSupply + noSupply`, not equality. Splitting `reserve`
-    /// proportionally across each holder's combined YES+NO balance instead
-    /// sums to exactly `reserve` once everyone claims — but `yesSupply`/
-    /// `noSupply` themselves are net of `genesisSupply` first, since that
-    /// seed liquidity is virtual accounting baked in at creation and isn't
-    /// held by any address (see the `Market.genesisSupply` field doc). For
-    /// markets created before this field existed, `genesisSupply` reads as 0
-    /// and refunds fall back to the pre-upgrade (still solvent, just slightly
-    /// under-distributing) behavior rather than reverting.
+    /// @notice Claim a pro-rata refund from a cancelled (or pushed) market's reserve.
+    /// Paying every Up/Down share 1:1 would be insolvent here: the Pythagorean curve
+    /// guarantees `reserve <= upSupply + downSupply`, not equality. Splitting
+    /// `reserve` proportionally across each holder's combined Up+Down balance instead
+    /// sums to exactly `reserve` once everyone claims — `upSupply`/`downSupply`
+    /// themselves are net of `genesisSupply` first, since that seed liquidity is
+    /// virtual accounting baked in at creation and isn't held by any address.
     function claimRefund(uint256 marketId) external nonReentrant returns (uint256 payout) {
         Market storage m = markets[marketId];
         if (m.state != MarketState.Cancelled) revert MarketNotCancelled();
@@ -423,13 +418,13 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         uint256 userShares = shareBalances[marketId][true][msg.sender] + shareBalances[marketId][false][msg.sender];
         if (userShares == 0) revert NothingToRefund();
 
-        uint256 totalShares = (m.yesSupply - m.genesisSupply) + (m.noSupply - m.genesisSupply);
+        uint256 totalShares = (m.upSupply - m.genesisSupply) + (m.downSupply - m.genesisSupply);
         payout = Math.mulDiv(m.reserve, userShares, totalShares);
 
         shareBalances[marketId][true][msg.sender] = 0;
         shareBalances[marketId][false][msg.sender] = 0;
 
-        _payOut(m, msg.sender, payout);
+        collateralToken.safeTransfer(msg.sender, payout);
         emit RefundClaimed(marketId, msg.sender, payout);
     }
 
@@ -438,44 +433,33 @@ contract MarketFactory is Initializable, OwnableUpgradeable, UUPSUpgradeable, Re
         uint256 amount = m.collectedFees;
         if (amount == 0) revert NoFeesToWithdraw();
         m.collectedFees = 0;
-        _payOut(m, protocolTreasury, amount);
+        collateralToken.safeTransfer(protocolTreasury, amount);
         emit FeesWithdrawn(marketId, protocolTreasury, amount);
     }
 
-    /// @notice Lets a market's creator withdraw their accrued share of trading
-    /// fees (`CREATOR_FEE_SHARE_BPS` of `feeBps` on every buy/sell in their
-    /// market). Only the creator can call this for their own market.
-    function withdrawCreatorFees(uint256 marketId) external nonReentrant {
-        Market storage m = markets[marketId];
-        if (msg.sender != m.creator) revert NotCreator();
-        uint256 amount = m.creatorFees;
-        if (amount == 0) revert NoCreatorFeesToWithdraw();
-        m.creatorFees = 0;
-        _payOut(m, m.creator, amount);
-        emit CreatorFeesWithdrawn(marketId, m.creator, amount);
-    }
-
     /// @notice Display-only implied probabilities in WAD (1e18). NEVER used for settlement.
-    function getProbability(uint256 marketId) external view returns (uint256 yesProbWad, uint256 noProbWad) {
+    function getProbability(uint256 marketId) external view returns (uint256 upProbWad, uint256 downProbWad) {
         Market storage m = markets[marketId];
-        yesProbWad = PythagoreanMath.probabilityWad(m.yesSupply, m.noSupply);
-        noProbWad = PythagoreanMath.probabilityWad(m.noSupply, m.yesSupply);
+        upProbWad = PythagoreanMath.probabilityWad(m.upSupply, m.downSupply);
+        downProbWad = PythagoreanMath.probabilityWad(m.downSupply, m.upSupply);
     }
 
     function getMarket(uint256 marketId) external view returns (Market memory) {
         return markets[marketId];
     }
 
-    function shareBalanceOf(uint256 marketId, bool isYes, address holder) external view returns (uint256) {
-        return shareBalances[marketId][isYes][holder];
+    function getAsset(uint256 assetId) external view returns (AssetInfo memory) {
+        return assets[assetId];
+    }
+
+    function shareBalanceOf(uint256 marketId, bool isUp, address holder) external view returns (uint256) {
+        return shareBalances[marketId][isUp][holder];
     }
 
     /// @dev Required by UUPSUpgradeable — restricts who can push a new implementation.
     function _authorizeUpgrade(address) internal override onlyOwner {}
 
     /// @dev Reserved storage slots so future upgrades can add new state variables
-    /// without corrupting the layout of variables declared after this point in a
-    /// derived/future version of this contract. Shrunk from 50 to 49 when
-    /// `minInitialLiquidity` was added — that slot now belongs to it.
-    uint256[49] private __gap;
+    /// without corrupting the layout of variables declared after this point.
+    uint256[43] private __gap;
 }

@@ -1,4 +1,4 @@
-import { getAddress, isAddress, zeroAddress } from "viem";
+import { getAddress, isAddress } from "viem";
 import { MarketFactoryAbi } from "./abis/MarketFactoryAbi";
 import { MockUSDCAbi } from "./abis/MockUSDCAbi";
 
@@ -38,7 +38,7 @@ const LOCAL_USDC_ADDRESS = cleanAddress(
   process.env.NEXT_PUBLIC_MOCK_USDC_ADDRESS ?? "0x5fbdb2315678afecb367f032d93f642f64180aa3",
 );
 
-// On mainnet neither address has a hardcoded fallback: HoodMarkets' own contract
+// On mainnet neither address has a hardcoded fallback: Robin Markets' own contract
 // address only exists once it's actually deployed there, and USDC is a real,
 // already-deployed token whose address must come from Robinhood Chain's own
 // docs/explorer, not a guess. Missing either env var fails loudly at startup
@@ -50,6 +50,10 @@ export const MARKET_FACTORY_ADDRESS = isMainnet
     )
   : LOCAL_MARKET_FACTORY_ADDRESS;
 
+// The single collateral token every market is denominated in (set once on the
+// contract at `initialize` — see MarketFactory.sol). There's no more
+// per-market collateral choice: markets are cron-created against one fixed
+// token, not user-created with a choice of token.
 export const USDC_ADDRESS = isMainnet
   ? requireMainnetEnv("NEXT_PUBLIC_MAINNET_USDC_ADDRESS", process.env.NEXT_PUBLIC_MAINNET_USDC_ADDRESS)
   : LOCAL_USDC_ADDRESS;
@@ -70,21 +74,3 @@ export const usdcContract = {
 } as const;
 
 export const USDC_DECIMALS = 6;
-
-// Sentinel `collateralToken` value meaning "this market is backed by native
-// ETH", matching `NATIVE_TOKEN` in MarketFactory.sol — there's no canonical
-// WETH on Robinhood Chain to wrap into, so native ETH is a first-class
-// collateral option alongside any ERC20, picked per-market at creation.
-export const NATIVE_TOKEN = zeroAddress;
-
-export function isNativeCollateral(token: string): boolean {
-  return token.toLowerCase() === NATIVE_TOKEN;
-}
-
-export function collateralDecimals(token: string): number {
-  return isNativeCollateral(token) ? 18 : USDC_DECIMALS;
-}
-
-export function collateralSymbol(token: string): string {
-  return isNativeCollateral(token) ? "ETH" : COLLATERAL_SYMBOL;
-}

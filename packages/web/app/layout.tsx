@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HoodMarkets",
-  description: "The first permissionless prediction market on Robinhood Chain.",
+  title: "Robin Markets",
+  description: "Trade BTC, ETH, and SOL Up or Down on 5-minute, 30-minute, and 1-hour windows.",
 };
 
 export default function RootLayout({
