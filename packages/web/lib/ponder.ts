@@ -66,13 +66,39 @@ const MARKET_FIELDS = `
   state outcome yesSupply noSupply volume settledAt
 `;
 
+const MARKET_PAGE_LIMIT = 1000;
+// Safety cap, not a real expected ceiling — stops a pagination bug from looping
+// forever rather than reflecting an actual ceiling on market count.
+const MARKET_PAGE_SAFETY_CAP = 20;
+
 export async function getMarkets(): Promise<MarketRow[]> {
   // Sort by `id` (monotonically increasing marketId), not `createdAt` — ordering by a
   // non-primary-key bigint column returns an empty result set in this Ponder version.
-  const data = await ponderQuery<{ markets: { items: MarketRow[] } }>(
-    `{ markets(orderBy: "id", orderDirection: "desc") { items { ${MARKET_FIELDS} } } }`,
-  );
-  return data.markets.items;
+  //
+  // Paginates through Ponder's cursor rather than a single request — Ponder's GraphQL
+  // API silently caps an unpaginated query at 50 rows (DEFAULT_LIMIT), so past 50
+  // markets this was quietly dropping everything older than the 50 most recent, on
+  // both the admin dashboard and the public markets list (see getAllTrades below for
+  // the same pattern already used for trades).
+  const all: MarketRow[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < MARKET_PAGE_SAFETY_CAP; page++) {
+    const data: {
+      markets: { items: MarketRow[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+    } = await ponderQuery(
+      `query($after: String) {
+        markets(orderBy: "id", orderDirection: "desc", limit: ${MARKET_PAGE_LIMIT}, after: $after) {
+          items { ${MARKET_FIELDS} }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`,
+      { after },
+    );
+    all.push(...data.markets.items);
+    if (!data.markets.pageInfo.hasNextPage) break;
+    after = data.markets.pageInfo.endCursor;
+  }
+  return all;
 }
 
 export async function getMarket(id: string): Promise<MarketRow | null> {
