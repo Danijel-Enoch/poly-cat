@@ -249,15 +249,25 @@ injected connector. Every write flow (`TradePanel`, `RedeemButton`,
 be exact and live: trade quoting (`TradePanel`), a specific open market's own
 page, redeem/refund, and the portfolio page's "Ur bag" sell-value estimate
 (`getUserPositions`, a bounded ~300-market scan — deliberately not exact,
-since a live `reserve` figure only exists on-chain). It deliberately avoids
-the `multicall` client action (it needs a `Multicall3` contract registered on
-the target chain, which a fresh local Anvil instance doesn't have) in favor
-of `Promise.all` over individual reads with HTTP request batching enabled on
-the transport. Per-market trade history uses `getContractEvents` scoped to
-that market's own short (5min) block range rather than an unbounded scan,
-found via a binary search for the block at the market's `startTime` — cheap
-regardless of how long the chain has been running, since it's O(log blocks)
-point lookups, not a range scan.
+since a live `reserve` figure only exists on-chain). Its `publicClient` sets
+`batch: { multicall: true }`, which folds every `readContract` call issued
+within the same tick (e.g. `getUserPositions`'s `Promise.all` loop over N
+markets) into one `eth_call` against Robinhood Chain's deployed Multicall3
+contract (registered on `robinhoodChain` in `lib/chains.ts`) instead of N
+individual RPC requests — confirmed empirically to collapse 30 individual
+calls into 1. This is what actually relieves pressure on the public RPC
+endpoint's rate limit, unlike the transport's own `batch: true` (still just
+HTTP-level JSON-RPC batching, which most providers still rate-limit per
+underlying call). Only enabled when the active chain actually has a
+Multicall3 address configured — a fresh local Anvil instance doesn't have
+one deployed by default, so `anvil` in `lib/chains.ts` registers none and
+those reads just stay unbatched there. Per-market trade history uses
+`getContractEvents` scoped to that market's own short (5min) block range
+rather than an unbounded scan, found via a binary search for the block at
+the market's `startTime` (cached per market afterward, since a block's
+timestamp never changes and the search itself isn't an `eth_call` so
+multicall can't help it) — cheap regardless of how long the chain has been
+running, since it's O(log blocks) point lookups, not a range scan.
 
 Everything else — anything that's either browsing (not trading) or needs
 full history — reads `packages/indexer` instead, as plain GraphQL over HTTP
@@ -369,6 +379,7 @@ seeds from it.
 | `NEXT_PUBLIC_MAINNET_EXPLORER_URL` | `https://robinhoodchain.blockscout.com` |
 | `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH — unconfirmed, but Robinhood Chain is an Arbitrum L2 and the explorer's own coin icon/price data both point to ETH) |
 | `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
+| `NEXT_PUBLIC_MAINNET_MULTICALL3_ADDRESS` | optional — defaults to Robinhood Chain's real deployed Multicall3 (`0x2cAC2D899eCC914d704FeaAE33ac1bF36277DaD1`); only override if pointing at a different deployment (e.g. the testnet's `0xa432504b6F04Cafe775b09D8AA92e8dbe41Ec7a8`) |
 | `NEXT_PUBLIC_PONDER_URL` | `packages/indexer`'s deployed API server URL |
 | `REDIS_URL` | backs the admin dashboard's delist/reorder controls (`lib/assetDisplayStore.ts`) — optional, degrades to "nothing delisted, natural order" if unset |
 

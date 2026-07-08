@@ -41,6 +41,22 @@ export const robinhoodChain = defineChain({
         },
       }
     : {}),
+  // Real, deployed L2 Multicall contract (not the canonical
+  // 0xcA11bde05977b3631167028862bE2a173976CA11 most chains share — Robinhood
+  // Chain deployed its own at a different address). Registering it here is
+  // what lets viem's public client batch many `readContract` calls into one
+  // `eth_call` (see lib/chainReads.ts's `batch: { multicall: true }`) instead
+  // of firing them individually — the fix for hitting the public RPC's rate
+  // limit on read-heavy pages like the portfolio's position scan. Local Anvil
+  // has no Multicall3 deployed by default (confirmed empty bytecode at the
+  // canonical address on a fresh instance), so `anvil` below deliberately
+  // doesn't register one — those reads just stay unbatched.
+  contracts: {
+    multicall3: {
+      address: (process.env.NEXT_PUBLIC_MAINNET_MULTICALL3_ADDRESS ??
+        "0x2cAC2D899eCC914d704FeaAE33ac1bF36277DaD1") as `0x${string}`,
+    },
+  },
 });
 
 // Single toggle for which network the whole app targets. Defaults to local Anvil

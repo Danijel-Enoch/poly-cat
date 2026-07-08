@@ -25,7 +25,15 @@ export function AdminNavLink({
   onNavigate?: () => void;
 }) {
   const { address } = useAccount();
-  const { data: owner } = useReadContract({ ...marketFactoryContract, functionName: "owner" });
+  // Gated on a connected wallet — this is mounted globally in the sidebar
+  // (see components/Sidebar.tsx), so an unconditional read here would fire
+  // an owner() RPC call on every single page for every visitor, including
+  // the (vast majority) who never connect a wallet at all.
+  const { data: owner } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "owner",
+    query: { enabled: !!address },
+  });
   const ownPathname = usePathname();
   const isAdmin = !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
 

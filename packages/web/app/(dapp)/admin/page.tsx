@@ -21,7 +21,11 @@ export default function AdminPage() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  const { data: owner } = useReadContract({ ...marketFactoryContract, functionName: "owner" });
+  const { data: owner } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "owner",
+    query: { enabled: !!address },
+  });
   const isAdmin = !!address && !!owner && address.toLowerCase() === owner.toLowerCase();
 
   const { data: slots, refetch } = useQuery({

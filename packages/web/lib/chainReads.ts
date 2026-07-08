@@ -14,16 +14,22 @@ import { MarketFactoryAbi } from "./abis/MarketFactoryAbi";
  * lifetime, which is cheap without an indexer specifically because these
  * markets are short-lived rather than an unbounded, ever-growing set.
  *
- * Deliberately doesn't use viem's `multicall` client action: that requires a
- * Multicall3 contract deployed on the target chain and registered in the
- * chain's `contracts` config (see lib/chains.ts) — true for most real
- * chains, but not for a fresh local Anvil instance, which this app also
- * needs to run against out of the box. Plain `Promise.all` over individual
- * reads works everywhere; the transport's `batch: true` still coalesces
- * concurrent calls into one HTTP round trip. */
+ * `batch: { multicall: true }` below folds every `readContract` call issued
+ * within the same tick (e.g. a `Promise.all` loop over N markets in
+ * getUserPositions) into one `eth_call` against Robinhood Chain's deployed
+ * Multicall3 contract, instead of N individual RPC requests — this is what
+ * actually relieves pressure on the public RPC endpoint's rate limit, unlike
+ * the transport's own `batch: true` (still just HTTP-level JSON-RPC batching,
+ * which most providers still rate-limit per underlying call). Only safe
+ * because `robinhoodChain` in lib/chains.ts registers a real Multicall3
+ * address; a fresh local Anvil instance has no Multicall3 deployed by
+ * default, so this only turns on when `activeChain` actually has one
+ * configured — otherwise every call would fail trying to batch against a
+ * contract that doesn't exist. */
 const publicClient = createPublicClient({
   chain: activeChain,
   transport: http(activeChain.rpcUrls.default.http[0], { batch: true }),
+  batch: { multicall: !!activeChain.contracts?.multicall3 },
 });
 
 export type PriceSourceName = "gate" | "dexscreener";
@@ -161,25 +167,6 @@ export async function getMarket(id: bigint): Promise<MarketRow | null> {
   return toMarketRow(id, raw);
 }
 
-/** Up to `count` most recent *resolved* markets for one asset, newest first —
- * powers a "past windows" strip on the trade page. Scans back at most
- * `lookback` global market ids (bounded and cheap: assets churn a window
- * every 5 minutes, a few hundred ids comfortably covers a day or more per
- * asset), since there's no per-asset history index on-chain, only
- * `currentMarketId` (the latest one). */
-export async function getRecentMarkets(assetId: bigint, count = 8, lookback = 300): Promise<MarketRow[]> {
-  const nextId = await readNextMarketId();
-  if (nextId <= 1n) return [];
-
-  const oldestId = nextId - 1n > BigInt(lookback) ? nextId - 1n - BigInt(lookback) : 1n;
-  const ids: bigint[] = [];
-  for (let id = nextId - 1n; id >= oldestId; id--) ids.push(id);
-
-  const rows = await Promise.all(ids.map((id) => readMarket(id).then((raw) => toMarketRow(id, raw))));
-
-  return rows.filter((row) => row.assetId === assetId).slice(0, count);
-}
-
 export type TradeRow = {
   side: "buy" | "sell";
   isUp: boolean;
@@ -194,15 +181,30 @@ export type TradeRow = {
   txHash: `0x${string}`;
 };
 
+/** A block's timestamp never changes, so once the search below actually
+ * resolves an answer for a given `targetTimestamp` (a market's `startTime`),
+ * that answer is valid forever — cached here so `getTradeHistory`'s 10-second
+ * refetch (see TradeHistoryTable) only re-runs the `getContractEvents` calls,
+ * not the ~log2(block height) `getBlock` point lookups too. `getBlock` isn't
+ * an `eth_call`, so unlike the rest of this file it can't be folded into a
+ * multicall batch — this cache is what actually keeps it cheap on repeat. */
+const blockAtOrAfterCache = new Map<string, bigint>();
+
 /** Binary-searches for the first block at or after `targetTimestamp`, so
  * `getTradeHistory` can scope its event query to a market's own short
  * lifetime instead of scanning from genesis — a handful of `eth_getBlockBy
  * Number` point lookups (~O(log blocks)), not a range scan, so it stays
  * cheap regardless of how long the chain has been running. */
 async function findBlockAtOrAfter(targetTimestamp: bigint): Promise<bigint> {
+  const cacheKey = targetTimestamp.toString();
+  const cached = blockAtOrAfterCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
   let lo = 0n;
   let hi = await publicClient.getBlockNumber();
   const latest = await publicClient.getBlock({ blockNumber: hi });
+  // Target is beyond the chain's current head (e.g. a market that just this
+  // moment opened) — there's no stable answer yet, so don't cache it.
   if (latest.timestamp < targetTimestamp) return hi;
 
   while (lo < hi) {
@@ -214,6 +216,7 @@ async function findBlockAtOrAfter(targetTimestamp: bigint): Promise<bigint> {
       hi = mid;
     }
   }
+  blockAtOrAfterCache.set(cacheKey, lo);
   return lo;
 }
 
