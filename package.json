@@ -7,6 +7,8 @@
     "contracts:test": "cd packages/contracts && forge test -vvv",
     "contracts:deploy": "cd packages/contracts && forge script script/Deploy.s.sol --broadcast",
     "cron:run": "pnpm --filter cron start",
+    "indexer:dev": "pnpm --filter indexer dev",
+    "indexer:start": "pnpm --filter indexer start",
     "web:dev": "pnpm --filter web dev",
     "web:build": "pnpm --filter web build",
     "web:test": "pnpm --filter web test",

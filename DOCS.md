@@ -24,6 +24,9 @@ This is the deeper architecture reference. For a setup quickstart, see
 packages/contracts   Foundry: MarketFactory (UUPS proxy), PythagoreanMath
 packages/cron        Node/TS: opens each registered asset's next 5-minute window
                       and settles the previous one off a live price feed, on a schedule
+packages/indexer     Ponder: indexes MarketFactory's event log for full-history
+                      queries (every market ever created; every market a user
+                      has ever entered and still needs to redeem/refund)
 packages/web         Next.js: trading UI, portfolio, docs, admin (incl. adding new assets)
 ```
 
@@ -31,10 +34,13 @@ One `MarketFactory` contract instance serves every market, keyed by
 `marketId`, rather than one clone/proxy per market. Outcome shares are cheap
 internal balances
 (`mapping(marketId => mapping(isUp => mapping(holder => balance)))`), not
-per-market ERC20s. There's no indexer anywhere in this stack — `packages/web`
-reads chain state directly (`lib/chainReads.ts`), and `packages/cron` is the
-only thing that ever writes to the contract other than traders themselves and
-the owner registering new assets.
+per-market ERC20s. Live/current state (a market's curve, an asset's
+in-progress window) still comes from direct chain reads — `packages/web`
+reads those straight off the contract (`lib/chainReads.ts`) the same as
+before. `packages/indexer` exists alongside that for the two queries a
+direct read can't do cheaply (see [Frontend](#frontend)); `packages/cron` is
+still the only thing that ever writes to the contract other than traders
+themselves and the owner registering new assets.
 
 ## Assets and market lifecycle
 
@@ -224,15 +230,31 @@ injected connector. Every write flow (`TradePanel`, `RedeemButton`,
 `ClaimRefundButton`, `AddMarketPanel`, `/admin`) follows the same shape:
 `writeContractAsync` → `waitForTransactionReceipt` → refetch the relevant reads.
 
-There's no indexer to talk to — `lib/chainReads.ts` reads the chain directly
-via `viem`, deliberately avoiding the `multicall` client action (it needs a
-`Multicall3` contract registered on the target chain, which a fresh local
-Anvil instance doesn't have) in favor of `Promise.all` over individual reads
-with HTTP request batching enabled on the transport. Per-market trade
-history uses `getContractEvents` scoped to that market's own short (5min)
-block range rather than an unbounded scan, found via a binary search for the
-block at the market's `startTime` — cheap regardless of how long the chain
-has been running, since it's O(log blocks) point lookups, not a range scan.
+Most reads still skip the indexer entirely — `lib/chainReads.ts` reads the
+chain directly via `viem`, deliberately avoiding the `multicall` client
+action (it needs a `Multicall3` contract registered on the target chain,
+which a fresh local Anvil instance doesn't have) in favor of `Promise.all`
+over individual reads with HTTP request batching enabled on the transport.
+Per-market trade history uses `getContractEvents` scoped to that market's own
+short (5min) block range rather than an unbounded scan, found via a binary
+search for the block at the market's `startTime` — cheap regardless of how
+long the chain has been running, since it's O(log blocks) point lookups, not
+a range scan. `getUserPositions` there is the one exception that's only a
+bounded approximation (the most recent ~300 markets) rather than exact —
+which is exactly what `packages/indexer` exists to answer precisely instead.
+
+Two views specifically read from `packages/indexer` rather than the chain,
+via `@ponder/client`/`@ponder/react` (`lib/ponder.ts`, `lib/ponderQueries.ts`)
+querying its SQL-over-HTTP API: the admin dashboard's "All markets ever
+created" table (`components/AdminMarketHistory.tsx` — a direct chain read
+only ever exposes each asset's *current* market via `currentMarketId`, not
+its full history), and the portfolio page's "Needs redeeming" list
+(`components/NeedsRedeemingList.tsx` — every market a wallet has ever held a
+position in that's now resolved and still unclaimed, exact regardless of how
+long ago it was opened). Both queries use `usePonderQuery`'s live-subscription
+mode by default, so claiming a win/refund updates the list as soon as the
+indexer observes the `Redeemed`/`RefundClaimed` event, with no manual
+refetch. See `packages/indexer/README.md` for the indexer itself.
 
 The price chart on a market's page depends on the asset's source: a
 Gate-sourced ("blue chip") market plots real candlesticks (from
@@ -328,6 +350,7 @@ seeds from it.
 | `NEXT_PUBLIC_MAINNET_EXPLORER_URL` | `https://robinhoodchain.blockscout.com` |
 | `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH — unconfirmed, but Robinhood Chain is an Arbitrum L2 and the explorer's own coin icon/price data both point to ETH) |
 | `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
+| `NEXT_PUBLIC_PONDER_URL` | `packages/indexer`'s deployed API server URL |
 
 If `NEXT_PUBLIC_NETWORK=mainnet` and the address var is unset, the app
 throws immediately at startup (`lib/contracts.ts`'s `requireMainnetEnv`) —
@@ -341,3 +364,13 @@ fail loudly, not silently-wrong.
 | `CHAIN_ID` | `4663` |
 | `MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
 | `CRON_PRIVATE_KEY` | a dedicated hot wallet that is the factory's owner — see `packages/cron/README.md` for what it needs (gas, collateral approval) |
+
+**`packages/indexer`** (`.env.local`):
+
+| Env var | Purpose |
+|---|---|
+| `RPC_URL` | `https://rpc.mainnet.chain.robinhood.com` |
+| `CHAIN_ID` | `4663` |
+| `MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
+| `START_BLOCK` | the block the deploy step above logged — indexing from 0 against a live chain scans every block back to genesis |
+| `DATABASE_URL` | a real Postgres connection string — the default on-disk SQLite is fine for local dev, not a long-lived deployment |

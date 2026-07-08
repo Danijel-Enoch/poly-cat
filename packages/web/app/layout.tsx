@@ -4,7 +4,6 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";
-import { AmbientBackground } from "@/components/AmbientBackground";
 import { Sidebar } from "@/components/Sidebar";
 
 // Degen font stack: Chakra Petch (angular cyberpunk display — headlines,
@@ -41,7 +40,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${chakraPetch.variable} ${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-gray-950 text-gray-100">
-        <AmbientBackground />
         <Providers>
           {/* Sidebar is global (whole app, incl. the landing page) so chrome is
               consistent everywhere. Desktop: fixed left; the content area is

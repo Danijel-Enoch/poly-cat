@@ -11,6 +11,7 @@ import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
 import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { AddMarketPanel } from "@/components/AddMarketPanel";
+import { AdminMarketHistory } from "@/components/AdminMarketHistory";
 import { HoloCard } from "@/components/HoloCard";
 
 export default function AdminPage() {
@@ -204,6 +205,8 @@ export default function AdminPage() {
           </table>
         </div>
       </div>
+
+      <AdminMarketHistory />
 
       {status && <p className="text-sm text-gray-400">{status}</p>}
     </div>

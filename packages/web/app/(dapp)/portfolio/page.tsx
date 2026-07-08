@@ -11,6 +11,7 @@ import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { quoteSell, CurveQuoteError } from "@/lib/curveMath";
 import { assetDisplayName } from "@/lib/assets";
 import { PortfolioClaimButton } from "@/components/PortfolioClaimButton";
+import { NeedsRedeemingList } from "@/components/NeedsRedeemingList";
 import { HoloCard } from "@/components/HoloCard";
 
 export default function PortfolioPage() {
@@ -78,6 +79,8 @@ export default function PortfolioPage() {
           What you&apos;d pull exiting everything now, or redeeming resolved bags.
         </p>
       </HoloCard>
+
+      <NeedsRedeemingList />
 
       {isLoading ? (
         <p className="text-sm text-gray-400">Loading...</p>

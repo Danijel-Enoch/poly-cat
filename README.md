@@ -13,6 +13,8 @@ Arbitrum-based L2).
 - `packages/contracts` — Foundry smart contracts (`MarketFactory`, UUPS upgradeable)
 - `packages/cron` — settlement/creation script: opens each new window and
   settles the previous one off a live price feed, on a schedule
+- `packages/indexer` — Ponder indexer: full market history and per-wallet
+  redeemable positions, for queries a direct chain read can't do cheaply
 - `packages/web` — Next.js frontend
 
 See [`DOCS.md`](./DOCS.md) for the full architecture writeup (pricing math,
@@ -53,9 +55,9 @@ pnpm install
 ```
 
 Each package needs its own env file — copy the `.env.example` in each of
-`packages/{contracts,cron,web}` to `.env.local` (`.env.local` for contracts
-is optional; it defaults to Anvil's well-known account #0 key) and fill in
-values as needed. Defaults are wired for the local flow below.
+`packages/{contracts,cron,indexer,web}` to `.env.local` (`.env.local` for
+contracts is optional; it defaults to Anvil's well-known account #0 key) and
+fill in values as needed. Defaults are wired for the local flow below.
 
 **1. Start a local chain and deploy the contracts:**
 
@@ -68,14 +70,16 @@ Deploy logs the `MarketFactory` **proxy** address (not the implementation) —
 that's the address every other package needs. It also registers the initial
 asset list: BTC/ETH/SOL (Gate-sourced) and CashCat (DexScreener-sourced,
 Robinhood Chain's first memecoin) — see `script/Deploy.s.sol`. Copy the
-proxy address into `packages/cron/.env.local` (`MARKET_FACTORY_ADDRESS`) and
+proxy address into `packages/cron/.env.local` (`MARKET_FACTORY_ADDRESS`),
+`packages/indexer/.env.local` (`MARKET_FACTORY_ADDRESS`), and
 `packages/web/.env.local` (`NEXT_PUBLIC_MARKET_FACTORY_ADDRESS`).
 
-**2. Run the cron script once to open the first windows, then start the frontend:**
+**2. Run the cron script once to open the first windows, then start the indexer and frontend:**
 
 ```bash
-pnpm cron:run      # one pass: opens any missing windows, settles any closed ones
-pnpm web:dev        # Next.js dev server at :3000
+pnpm cron:run       # one pass: opens any missing windows, settles any closed ones
+pnpm indexer:dev     # Ponder dev server at :42069 — powers admin history + redeemable positions
+pnpm web:dev         # Next.js dev server at :3000
 ```
 
 Re-run `pnpm cron:run` periodically (or set up a real crontab entry — see
@@ -98,6 +102,13 @@ docker run --rm --env-file packages/cron/.env.local polycat-cron
 This runs one pass and exits — schedule it with a real cron entry or
 equivalent (a Kubernetes CronJob, etc.). See `packages/cron/README.md`.
 
+## Deploying the indexer
+
+Unlike the cron script, `packages/indexer` is a long-lived process (`pnpm
+indexer:start`, not `dev`) — it needs to stay running to keep serving fresh
+data and a real `DATABASE_URL` (Postgres) so indexed history survives a
+restart. See `packages/indexer/README.md`.
+
 ## Deploying the frontend
 
 The web app deploys to Vercel like any Next.js app — set the env vars from
@@ -112,9 +123,11 @@ change:
 1. Deploy `MarketFactory` to Robinhood Chain (`pnpm contracts:deploy` with
    `--rpc-url` pointed at it) and note the proxy address.
 2. Fill in the `NEXT_PUBLIC_MAINNET_*` vars in `packages/web` and point
-   `packages/cron`'s `RPC_URL`/`CHAIN_ID` at Robinhood Chain, then set
-   `NEXT_PUBLIC_NETWORK=mainnet` for the frontend.
-3. Redeploy both. Missing a required mainnet var fails loudly at startup
+   `packages/cron`'s and `packages/indexer`'s `RPC_URL`/`CHAIN_ID` at
+   Robinhood Chain, then set `NEXT_PUBLIC_NETWORK=mainnet` for the frontend.
+   Set `packages/indexer`'s `START_BLOCK` to the deploy block from step 1 —
+   indexing from 0 against a live chain scans every block back to genesis.
+3. Redeploy all three. Missing a required mainnet var fails loudly at startup
    instead of silently pointing at the wrong chain — see `lib/contracts.ts`.
 
 Full details in [`DOCS.md`](./DOCS.md#moving-to-robinhood-chain-mainnet).

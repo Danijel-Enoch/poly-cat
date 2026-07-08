@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #150f01;
+  --background: #090303;
   --foreground: #edebe3;
 }
 
@@ -68,19 +68,8 @@
   --font-display: var(--font-chakra-petch, var(--font-sans));
 }
 
-/* Layered radial glows over the dark gold base — a warm amber glow top-left,
-   a cooler deep-gold counterpoint top-right, and a faint rise from the
-   bottom, all in the same ~92deg hue family as --color-accent so it reads
-   as one cohesive gold gradient rather than competing light sources.
-   `background-attachment: fixed` keeps it steady while the page scrolls,
-   like a backdrop rather than content. */
 body {
-  background:
-    radial-gradient(ellipse 1400px 900px at 15% -10%, oklch(33% 0.13 92 / 0.85), transparent 60%),
-    radial-gradient(ellipse 1000px 800px at 100% 5%, oklch(26% 0.1 85 / 0.55), transparent 55%),
-    radial-gradient(ellipse 1200px 900px at 50% 115%, oklch(22% 0.09 97 / 0.5), transparent 60%),
-    var(--background);
-  background-attachment: fixed;
+  background: var(--background);
   color: var(--foreground);
 }
 

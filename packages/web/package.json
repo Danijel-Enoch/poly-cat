@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@ponder/client": "^0.16.7",
+    "@ponder/react": "^0.16.7",
     "@rainbow-me/rainbowkit": "^2.2.11",
     "@tanstack/react-query": "^5.101.2",
     "canvas-confetti": "^1.9.4",
