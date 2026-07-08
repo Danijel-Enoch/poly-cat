@@ -124,36 +124,38 @@ export default function DocsPage() {
           <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2 block">Documentation</span>
           <h1 className="text-3xl font-extrabold text-gray-100 tracking-tight">Polycat Docs</h1>
           <p className="text-sm text-gray-400 mt-2 leading-relaxed">
-            A complete, plain-language guide to how Polycat works — from connecting a wallet to redeeming a
-            settled market.
+            Everything you need to know to start trading, in plain English — from connecting a wallet for the
+            first time to claiming your winnings.
           </p>
         </div>
 
         <section id="what-is-polycat" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">What is Polycat?</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Polycat is a fixed 5-minute Up/Down market over a growing list of assets — not just BTC, ETH, and
-            SOL. &quot;Blue chip&quot; tokens are priced via Gate.com; on-chain pairs (starting with CashCat, the
-            first memecoin on Robinhood Chain) are priced via DexScreener. Every market is scoped to one asset and
-            one 5-minute window. The asset&apos;s price at the moment the window opens is the strike; Down wins if
-            the price is below the strike when the window closes, Up wins if it&apos;s above. New windows open
-            automatically the moment the previous one settles, so there&apos;s always a live market for every
-            registered asset. It&apos;s built on Robinhood Chain — the public Arbitrum-based Layer 2 Robinhood
-            launched in July 2026 — and trades entirely in that chain&apos;s native ETH.
+            Polycat is a simple bet: will an asset&apos;s price be up or down five minutes from now? Pick a side,
+            and if you&apos;re right, you get paid. It&apos;s not just BTC, ETH, and SOL either — the list of
+            tradable assets keeps growing. &quot;Blue chip&quot; tokens are priced using Gate.com, while on-chain
+            pairs (starting with CashCat, the first memecoin on Robinhood Chain) are priced using DexScreener.
+            Every market covers one asset and one 5-minute window: whatever the price is when the window opens
+            becomes the strike, and when the window closes, Down wins if the price fell below it and Up wins if it
+            rose above it. As soon as one window settles, the next one opens automatically, so there&apos;s always
+            a fresh market waiting for every asset we support. Polycat runs on Robinhood Chain — the public
+            Arbitrum-based Layer 2 that Robinhood launched in July 2026 — and every trade uses that chain&apos;s
+            native ETH.
           </p>
         </section>
 
         <section id="getting-started" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Getting started</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            You need a crypto wallet (like MetaMask) and a little ETH to trade. Here&apos;s the full loop, start to
-            finish.
+            All you need is a crypto wallet (like MetaMask) and a little ETH. No signup, no forms — you&apos;ll be
+            trading in under a minute. Here&apos;s the whole loop, start to finish.
           </p>
           <div className="flex flex-col gap-6">
             <Step
               n={1}
               title="Connect your wallet"
-              body='Click "Connect Wallet" in the sidebar. Pick a wallet from the list and approve the connection — no signup, no email, no account.'
+              body='Click "Connect Wallet" in the sidebar, pick your wallet from the list, and approve the connection. That&apos;s it — no account to create.'
             />
             <div className="pl-11">
               <MockConnectButton />
@@ -161,7 +163,7 @@ export default function DocsPage() {
             <Step
               n={2}
               title="Pick an asset"
-              body="Head to the Markets tab. Each card is a live 5-minute window for one registered asset, showing the strike price and the current implied chance of Up."
+              body="Head over to the Markets tab. Each card is a live 5-minute window for one asset, showing the strike price it needs to beat and the current odds of Up."
             />
             <div className="pl-11 grid gap-3 sm:grid-cols-2">
               <MockMarketCard asset="BTC" pct={64} color="#f7931a" />
@@ -170,7 +172,7 @@ export default function DocsPage() {
             <Step
               n={3}
               title="Open a market and trade"
-              body="Tap a card to see the live price chart against the strike, plus trade history. Use the trade panel to buy Up or Down shares — either by entering how much ETH to spend, or the exact number of shares you want. Buying is a single transaction — no separate approval step, since ETH is native."
+              body="Tap a card to see the live price chart against the strike, plus recent trades. Then use the trade panel to buy Up or Down shares — either enter how much ETH you want to spend, or the exact number of shares you're after. It's a single transaction to confirm, since ETH is native, so there's no separate approval step to worry about."
             />
             <div className="pl-11 max-w-xs">
               <MockTradePanel mode="buy" />
@@ -178,7 +180,7 @@ export default function DocsPage() {
             <Step
               n={4}
               title="Hold, sell, or redeem"
-              body="Sell shares back into the market any time before the window closes. Once it settles, head back to the market page (or your Portfolio) and redeem — each winning share pays out 1 ETH. If the window closed at exactly the strike price, it's a push instead: claim a pro-rata refund rather than a win/loss."
+              body="Change your mind? Sell your shares back into the market any time before the window closes. Once it settles, head back to the market page (or your Portfolio) and redeem — each winning share pays out 1 ETH straight to your wallet. And if the price landed exactly on the strike, don't worry — that's a push, and you'll get a pro-rata refund instead of a win or loss."
             />
           </div>
         </section>
@@ -186,50 +188,49 @@ export default function DocsPage() {
         <section id="buying-and-selling" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Buying & selling</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            Every open market has two sides — Up and Down. You can move in and out of a position at any point
-            before the window closes.
+            Every open market has two sides — Up and Down — and you&apos;re free to move in and out of a position
+            any time before the window closes.
           </p>
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <p className="font-semibold text-sm text-gray-100 mb-1">Buying shares</p>
               <p className="text-sm text-gray-400 leading-relaxed mb-3">
-                Pick a side (Up or Down), then choose either mode: <strong className="text-gray-300">Send ETH</strong>{" "}
-                — spend an exact ETH amount and receive however many shares it buys — or{" "}
-                <strong className="text-gray-300">Exact shares</strong> — target a specific number of shares and the
-                app solves for the ETH cost. Confirm once in your wallet; there&apos;s no separate approval
-                transaction since trading uses native ETH directly.
+                Pick a side (Up or Down), then choose however you&apos;d rather think about it:{" "}
+                <strong className="text-gray-300">Send ETH</strong> — spend an exact amount and get however many
+                shares it buys — or <strong className="text-gray-300">Exact shares</strong> — tell it how many
+                shares you want and it works out the ETH cost for you. One confirmation in your wallet and
+                you&apos;re in — no separate approval step, since it&apos;s all native ETH.
               </p>
               <MockTradePanel mode="buy" />
             </div>
             <div>
               <p className="font-semibold text-sm text-gray-100 mb-1">Selling shares</p>
               <p className="text-sm text-gray-400 leading-relaxed mb-3">
-                Selling always works in shares: enter how many of your Up or Down shares to sell back into the
-                market, and confirm. You can sell any time before the window closes — there&apos;s no lockup and no
-                need to wait for a counterparty, since every market is its own automated bonding-curve market
-                maker.
+                Selling is just as simple: enter how many of your Up or Down shares you want to sell back to the
+                market, then confirm. You can do this any time before the window closes — there&apos;s no lockup
+                and no waiting around for a buyer, since every market is its own automated market maker.
               </p>
               <MockTradePanel mode="sell" />
             </div>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed mt-6">
-            Every winning share redeems for exactly 1 ETH once a market settles, so the number of shares you hold
-            is exactly your potential payout if that side wins — the price you pay per share today is simply the
-            market&apos;s current implied probability.
+            Here&apos;s the simple part: every winning share pays out exactly 1 ETH once a market settles. So the
+            number of shares you&apos;re holding is exactly your payout if that side wins — and the price you pay
+            per share today just reflects the market&apos;s current odds.
           </p>
         </section>
 
         <section id="redeeming" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Redeeming a win</h2>
           <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            Once a window closes, the cron script settles it automatically within moments — no action needed on
-            your part to trigger settlement. From there:
+            Once a window closes, it settles automatically within moments — you don&apos;t need to do anything to
+            trigger it. From there:
           </p>
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <p className="font-semibold text-sm text-gray-100 mb-1">If your side won</p>
               <p className="text-sm text-gray-400 leading-relaxed mb-3">
-                Open the market page (or your <strong className="text-gray-300">Portfolio</strong>, which lists
+                Head to the market page (or your <strong className="text-gray-300">Portfolio</strong>, which lists
                 every position you&apos;ve ever held) and hit{" "}
                 <strong className="text-gray-300">Claim bag</strong>. Each winning share pays out exactly 1 ETH,
                 sent straight to your wallet in a single transaction.
@@ -239,64 +240,64 @@ export default function DocsPage() {
             <div>
               <p className="font-semibold text-sm text-gray-100 mb-1">If it was a push</p>
               <p className="text-sm text-gray-400 leading-relaxed">
-                If the close price matched the strike exactly, neither side wins — that&apos;s a push. Instead of
-                redeeming, you&apos;ll see a <strong className="text-gray-300">Claim refund</strong> prompt on the
-                market page: it returns your pro-rata share of the pool, no losses either way.
+                Every so often the close price lands exactly on the strike, so neither side wins — that&apos;s
+                called a push. No harm done: you&apos;ll see a{" "}
+                <strong className="text-gray-300">Claim refund</strong> prompt on the market page that returns
+                your pro-rata share of the pool. No losses either way.
               </p>
             </div>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed mt-6">
-            There&apos;s no expiry on a claim — a winning or refundable position sits there until you redeem it,
-            whenever that is.
+            No rush, either — there&apos;s no expiry on a claim. A winning or refundable position just sits there
+            waiting for you to redeem it, whenever you get around to it.
           </p>
         </section>
 
         <section id="assets-and-settlement" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Assets & settlement</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            New assets are added from the admin dashboard, not by writing code: search DexScreener (scoped to
-            Robinhood Chain pairs) or Gate.com&apos;s tradable tokens, and registering one is the entire &quot;add a
-            market&quot; action. From there it&apos;s fully automatic — a small script (see{" "}
-            <code className="text-gray-300">packages/cron</code> in the repo) keeps every registered asset&apos;s
-            5-minute window running on a schedule, aligned to the clock (a window always starts on a multiple of 5
-            minutes since epoch). The same script settles a window the moment it closes: it reads the asset&apos;s
-            live price — from Gate.com or DexScreener, whichever it was registered with — and submits it in a single
-            transaction. The contract compares that price to the strike recorded when the window opened — below is
-            a Down win, above is an Up win, an exact match is a push — and finalizes the outcome immediately.
-            There&apos;s no admin judgment call and no dispute window; the rule is mechanical and the same every
-            time.
+            Adding a new asset is as simple as searching for it — no code involved. From the admin dashboard, you
+            search DexScreener (for Robinhood Chain pairs) or Gate.com&apos;s tradable tokens, and registering one
+            is the entire &quot;add a market&quot; step. Everything after that runs itself: a small background
+            script keeps every asset&apos;s 5-minute windows ticking on schedule, always starting on a clean
+            5-minute mark. The same script settles a window the moment it closes — it reads the asset&apos;s live
+            price and submits it on-chain. From there, the outcome is decided mechanically: below the strike is a
+            Down win, above is an Up win, and an exact match is a push. No admin judgment calls, no dispute
+            windows — just the same rule, applied the same way, every time.
           </p>
         </section>
 
         <section id="bonding-curve" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">How prices work: the bonding curve</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            Instead of matching buyers with sellers order-book style, every market is its own automated market maker
-            using a Pythagorean bonding curve: reserve = c × √(upSupply² + downSupply²). Buying Up shares increases
-            upSupply and pulls the price of Up up (and Down down) continuously — there&apos;s always someone to
-            trade with, even for the very first trade in a brand-new window. The displayed &quot;chance&quot;
-            percentage is exactly upSupply² / (upSupply² + downSupply²), independent of trading fees — and separate
-            from the strike price itself, which only the recorded start/close price (not the curve) determines.
+            There&apos;s no order book here, and no waiting for someone to take the other side of your trade.
+            Instead, every market prices itself using a simple formula (a &quot;bonding curve&quot;) that
+            reacts instantly to buying and selling. The more Up shares people buy, the more expensive Up gets and
+            the cheaper Down gets — and vice versa — so there&apos;s always a price to trade at, even for the very
+            first trade in a brand-new window. The &quot;chance&quot; percentage you see on each market is just
+            that curve&apos;s live readout of the odds, and it&apos;s completely separate from the strike price,
+            which is locked in the moment the window opens and never moves.
           </p>
         </section>
 
         <section id="fees" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Fees</h2>
           <p className="text-sm text-gray-400 leading-relaxed">
-            A flat protocol trading fee (1% by default) applies to every buy and sell, set globally by the protocol
-            owner. It is not configurable per market. Every window is seeded with protocol-owned liquidity rather
-            than a user-provided one, so all collected fees go to the protocol treasury.
+            Keeping it simple: there&apos;s one flat fee, 1% by default, on every buy and sell — same rate for
+            every market, no surprises. You never have to fund or manage liquidity yourself, since each window
+            starts out seeded by the protocol, so those fees just go toward keeping the whole thing running.
           </p>
         </section>
 
         <section id="developer-docs" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Developer docs</h2>
           <HoloCard radius={20} glow={false} innerClassName="p-5">
-            <p className="text-sm font-semibold text-gray-100">See the repo</p>
+            <p className="text-sm font-semibold text-gray-100">Want to dig into the code?</p>
             <p className="text-sm text-gray-400 leading-relaxed mt-1">
-              Contract source and tests live in <code className="text-gray-300">packages/contracts</code>, the
-              settlement/creation script in <code className="text-gray-300">packages/cron</code>, and the full
-              architecture writeup in the repo&apos;s <code className="text-gray-300">DOCS.md</code>.
+              Everything&apos;s open in the repo: contract source and tests live in{" "}
+              <code className="text-gray-300">packages/contracts</code>, the settlement/creation script in{" "}
+              <code className="text-gray-300">packages/cron</code>, and a full architecture writeup is in{" "}
+              <code className="text-gray-300">DOCS.md</code>.
             </p>
           </HoloCard>
         </section>
