@@ -33,6 +33,36 @@ export const MarketFactoryAbi = [
     outputs: [],
   },
   {
+    // Settle many closed windows + open many new ones in a single tx, instead
+    // of one settleMarket/createMarket tx per asset — pays the ~21k base gas
+    // (plus one signature/round-trip) once per pass rather than 2N times.
+    // msg.value must equal creations.length * defaultInitialLiquidity.
+    type: "function",
+    name: "batchProcess",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "settlements",
+        type: "tuple[]",
+        components: [
+          { name: "marketId", type: "uint256" },
+          { name: "closePriceWad", type: "uint256" },
+        ],
+      },
+      {
+        name: "creations",
+        type: "tuple[]",
+        components: [
+          { name: "assetId", type: "uint256" },
+          { name: "startTime", type: "uint64" },
+          { name: "closeTime", type: "uint64" },
+          { name: "startPriceWad", type: "uint256" },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+  {
     type: "function",
     name: "getMarket",
     stateMutability: "view",

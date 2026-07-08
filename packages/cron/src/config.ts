@@ -18,6 +18,23 @@ export enum PriceSource {
 
 export const DEXSCREENER_CHAIN_ID = "robinhood";
 
+// Cap on how many assets (each up to one settle + one create) go into a
+// single `batchProcess` transaction, so one tx can't blow past the chain's
+// block gas limit and revert the whole pass. Sized from measured worst-case
+// gas via the proxy — ~125k per settlement + ~320k per creation, so ~450k
+// per asset — against a conservative ~30M-gas block: 25 assets ≈ 11M gas,
+// comfortably under 40% of the block with headroom for gas variance and the
+// base fee. Anything above the cap is split across consecutive batches (each
+// its own tx — still far cheaper than one tx per settle and per create).
+// Override per chain via env (raise it on a higher-block-limit chain).
+export const MAX_ASSETS_PER_BATCH = (() => {
+  const raw = process.env.MAX_ASSETS_PER_BATCH;
+  if (!raw) return 25;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) throw new Error(`MAX_ASSETS_PER_BATCH must be a positive integer, got "${raw}"`);
+  return n;
+})();
+
 // Optional operational allowlist — a comma-separated list of asset symbols
 // (e.g. "CASHCAT" or "BTC,CASHCAT"). When set, only these symbols are
 // eligible for a *new* market window; everything else is treated the same

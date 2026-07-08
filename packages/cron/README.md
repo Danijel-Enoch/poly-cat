@@ -11,10 +11,18 @@ the first memecoin on Robinhood Chain. Each run:
 
 1. For every registered asset, if its current market's trading window has
    closed, fetches that asset's live price (from Gate.com or DexScreener,
-   per its registered source) and calls `settleMarket` with it.
+   per its registered source) and plans a settlement with it.
 2. If an asset has no open market (either it's never had one, or the one
-   above just got settled), opens the next wall-clock-aligned 5-minute
-   window by calling `createMarket` with the current price as the strike.
+   above is being settled), plans the next wall-clock-aligned 5-minute
+   window with the current price as the strike.
+3. Submits every asset's planned settlements and creations via
+   **`batchProcess`** — one base fee + one signature for up to
+   `MAX_ASSETS_PER_BATCH` assets (default 25), instead of one transaction per
+   settle and per create. More assets than that are split across consecutive
+   batches so no single tx exceeds the block gas limit. If a batch reverts
+   (e.g. a timing race on one asset), it falls back to per-asset
+   `settleMarket`/`createMarket` calls so a single bad asset can't sink the
+   rest.
 
 It's meant to be invoked by a real cron entry, not run as a long-lived
 process — one pass, then exit. It's also stateless and idempotent: it derives
