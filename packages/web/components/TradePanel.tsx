@@ -12,6 +12,7 @@ import { formatCollateral, parseCollateral, isPartialDecimalInput, upProbability
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
 import { HoloCard } from "@/components/HoloCard";
+import { ConnectButton } from "@/components/ConnectButton";
 
 const MARKET_STATE_TRADING = 0;
 
@@ -271,7 +272,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       {!isTrading ? (
         <p className="text-sm text-gray-400">Window&apos;s closed, ser — too late to ape this one.</p>
       ) : !isConnected ? (
-        <p className="text-sm text-gray-400">Connect ur wallet to ape, fren.</p>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-gray-400">Connect ur wallet to ape, fren.</p>
+          <ConnectButton />
+        </div>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-2">
