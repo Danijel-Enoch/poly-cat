@@ -23,8 +23,8 @@
   --color-gray-900: oklch(24% 0.045 92);
   --color-gray-950: oklch(17.3% 0.0319 92); /* = #150f01, "general background" */
 
-  /* Degen Up/Down accents — re-hue Tailwind's `emerald` and `rose` scales so
-     every existing emerald-*/rose-* utility (Up = green, Down = pink across
+  /* Degen Up/Down accents — re-hue Tailwind's emerald and rose scales so
+     every existing emerald- and rose- utility (Up = green, Down = pink across
      MarketCard, TradePanel, charts, portfolio, docs) flips to neon in one
      place, the same trick used for the gold grays above. Hue ~158 = neon
      green (#00FF9D), hue ~358 = hot pink (#FF2E88); lightness steps follow
