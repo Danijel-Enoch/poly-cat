@@ -1,80 +1,53 @@
 "use client";
 
-import { useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { ConnectButton as RainbowConnectButton } from "@rainbow-me/rainbowkit";
 
-function shortenAddress(address: string) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
-
-// Labels for wagmi's built-in connector ids — `injected` only works where a
-// wallet extension injects `window.ethereum` (desktop browsers, mostly),
-// `walletConnect` covers everything else via QR code or a mobile deep link.
-const CONNECTOR_LABELS: Record<string, string> = {
-  injected: "Browser wallet",
-  walletConnect: "WalletConnect",
-};
-
+// Degen-styled trigger wrapping RainbowKit's actual wallet picker/account
+// modal (ConnectButton.Custom render prop) — the picker itself is RainbowKit's
+// own centered overlay, themed gold in app/providers.tsx. Keeping the same
+// exported name/no-props API as before so Sidebar.tsx needs no changes.
 export function ConnectButton() {
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  if (isConnected && address) {
-    return (
-      <button
-        onClick={() => disconnect()}
-        className="w-full text-sm font-bold px-3 py-2 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
-      >
-        {shortenAddress(address)}
-      </button>
-    );
-  }
-
-  // Only one connector configured (typically local dev, with no WalletConnect
-  // project ID set) — skip the picker and connect directly, same as before.
-  if (connectors.length <= 1) {
-    const connector = connectors[0];
-    return (
-      <button
-        onClick={() => connector && connect({ connector })}
-        disabled={!connector || isPending}
-        className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent disabled:opacity-50 transition-colors"
-      >
-        {isPending ? "Connecting..." : "Connect 🐒"}
-      </button>
-    );
-  }
-
   return (
-    <div className="relative w-full">
-      <button
-        onClick={() => setMenuOpen((open) => !open)}
-        disabled={isPending}
-        className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent disabled:opacity-50 transition-colors"
-      >
-        {isPending ? "Connecting..." : "Connect 🐒"}
-      </button>
-      {menuOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-          <div className="absolute bottom-full mb-2 left-0 w-full rounded-xl border border-gray-700 bg-gray-800 shadow-lg z-20 overflow-hidden">
-            {connectors.map((connector) => (
+    <RainbowConnectButton.Custom>
+      {({ account, chain, openAccountModal, openChainModal, openConnectModal, mounted }) => {
+        const ready = mounted;
+        const connected = ready && !!account && !!chain;
+
+        return (
+          <div
+            {...(!ready && {
+              "aria-hidden": true,
+              style: { opacity: 0, pointerEvents: "none", userSelect: "none" },
+            })}
+          >
+            {!connected ? (
               <button
-                key={connector.uid}
-                onClick={() => {
-                  setMenuOpen(false);
-                  connect({ connector });
-                }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-100 hover:bg-gray-700"
+                onClick={openConnectModal}
+                type="button"
+                className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent transition-colors"
               >
-                {CONNECTOR_LABELS[connector.id] ?? connector.name}
+                Connect 🐒
               </button>
-            ))}
+            ) : chain.unsupported ? (
+              <button
+                onClick={openChainModal}
+                type="button"
+                className="w-full text-sm font-bold px-4 py-2 rounded-full bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900 transition-colors"
+              >
+                Wrong network, ser
+              </button>
+            ) : (
+              <button
+                onClick={openAccountModal}
+                type="button"
+                className="w-full text-sm font-bold px-3 py-2 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
+              >
+                {account.displayName}
+              </button>
+            )}
           </div>
-        </>
-      )}
-    </div>
+        );
+      }}
+    </RainbowConnectButton.Custom>
   );
 }

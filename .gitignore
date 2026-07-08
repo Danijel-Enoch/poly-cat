@@ -15,3 +15,7 @@ out/
 packages/contracts/cache/
 packages/contracts/out/
 packages/contracts/broadcast/
+
+# Runtime state — admin-toggled per-asset pause list shared between
+# packages/web and packages/cron (see lib/assetStatusStore.ts), not source.
+/data/

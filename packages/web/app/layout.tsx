@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Chakra_Petch, Space_Grotesk, Space_Mono } from "next/font/google";
+import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";

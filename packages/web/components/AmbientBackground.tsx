@@ -100,6 +100,24 @@ export function AmbientBackground() {
       {BUBBLES.map((config, i) => (
         <Bubble key={i} config={config} mouseX={mouseX} mouseY={mouseY} />
       ))}
+      {/* Film-grain/scanline layer on top of the bubbles — a zine/CRT texture
+          rather than a clean gradient wash, part of pushing the look away from
+          a sterile fintech dashboard. SVG feTurbulence noise (classic inline
+          data-URI trick, no image asset) blended at low opacity, plus faint
+          horizontal scanlines. */}
+      <div
+        className="absolute inset-0 opacity-[0.05] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        }}
+      />
+      <div
+        className="absolute inset-0 opacity-[0.06]"
+        style={{
+          backgroundImage: "repeating-linear-gradient(0deg, #000 0px, transparent 1px, transparent 3px)",
+        }}
+      />
     </div>
   );
 }

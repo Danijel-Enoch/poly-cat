@@ -59,7 +59,7 @@ export function PortfolioClaimButton({ position, onClaimed }: { position: Positi
         disabled={submitting}
         className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-bold px-3 py-1.5 disabled:opacity-50"
       >
-        {submitting ? "Claiming..." : mode === "redeem" ? "Claim" : "Claim refund"}
+        {submitting ? "Claiming ur bag..." : mode === "redeem" ? "Claim bag 🐒" : "Claim refund"}
       </button>
     </div>
   );

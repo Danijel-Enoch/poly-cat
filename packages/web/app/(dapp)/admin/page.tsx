@@ -29,6 +29,20 @@ export default function AdminPage() {
     enabled: isAdmin,
   });
 
+  // Off-chain per-asset pause list — see lib/assetStatusStore.ts. No contract
+  // flag for this; a paused asset just stops packages/cron from opening its
+  // *next* 5-minute window (an already-open market keeps trading normally).
+  const { data: assetStatus, refetch: refetchAssetStatus } = useQuery({
+    queryKey: ["assetStatus"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/asset-status");
+      return (await res.json()) as { inactiveAssetIds: string[] };
+    },
+    refetchInterval: 10_000,
+    enabled: isAdmin,
+  });
+  const inactiveAssetIds = new Set(assetStatus?.inactiveAssetIds ?? []);
+
   const openCount = (slots ?? []).filter((s) => s.market?.state === "Trading").length;
   const totalUnclaimedFees = (slots ?? []).reduce((sum, s) => sum + (s.market?.collectedFees ?? 0n), 0n);
 
@@ -93,6 +107,25 @@ export default function AdminPage() {
     }
   }
 
+  async function handleTogglePause(assetId: bigint, active: boolean) {
+    const key = `asset-${assetId.toString()}`;
+    setPendingId(key);
+    setStatus(active ? `Resuming cycles for asset #${assetId}...` : `Pausing cycles for asset #${assetId}...`);
+    try {
+      await fetch("/api/admin/asset-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetId: assetId.toString(), active }),
+      });
+      setStatus(active ? `Asset #${assetId} resumed.` : `Asset #${assetId} paused — no new windows will open for it.`);
+      await refetchAssetStatus();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Toggle failed");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!isConnected) {
     return (
       <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
@@ -112,11 +145,11 @@ export default function AdminPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-100">Admin</h1>
+        <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Mission Control</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Markets are opened and settled automatically by the cron script (see packages/cron). Extend/cancel below
-          are a safety valve for when it can&apos;t run — the only thing you actually need to do here day-to-day is
-          add new markets.
+          Markets are opened and settled automatically by the cron script (see packages/cron). Extend/cancel/pause
+          below are a safety valve for when it can&apos;t run — the only thing you actually need to do here
+          day-to-day is add new markets.
         </p>
       </div>
 
@@ -135,6 +168,7 @@ export default function AdminPage() {
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
                 <th className="pb-2 pr-4 font-medium">Asset</th>
+                <th className="pb-2 pr-4 font-medium">Cycle</th>
                 <th className="pb-2 pr-4 font-medium">Market</th>
                 <th className="pb-2 pr-4 font-medium">State</th>
                 <th className="pb-2 pr-4 font-medium">Strike</th>
@@ -150,14 +184,17 @@ export default function AdminPage() {
                   key={slot.asset.id.toString()}
                   slot={slot}
                   pending={!!slot.market && pendingId === slot.market.id.toString()}
+                  paused={inactiveAssetIds.has(slot.asset.id.toString())}
+                  togglePending={pendingId === `asset-${slot.asset.id.toString()}`}
                   onExtend={(date) => slot.market && handleExtend(slot.market.id, date)}
                   onCancel={() => slot.market && handleCancel(slot.market.id)}
                   onClaim={() => slot.market && handleClaim(slot.market.id)}
+                  onTogglePause={(active) => handleTogglePause(slot.asset.id, active)}
                 />
               ))}
               {(slots ?? []).length === 0 && (
                 <tr>
-                  <td className="py-4 text-gray-500" colSpan={8}>
+                  <td className="py-4 text-gray-500" colSpan={9}>
                     No markets registered yet — add one above.
                   </td>
                 </tr>
@@ -175,15 +212,21 @@ export default function AdminPage() {
 function SlotRow({
   slot,
   pending,
+  paused,
+  togglePending,
   onExtend,
   onCancel,
   onClaim,
+  onTogglePause,
 }: {
   slot: AssetSlot;
   pending: boolean;
+  paused: boolean;
+  togglePending: boolean;
   onExtend: (newCloseDate: string) => void;
   onCancel: () => void;
   onClaim: () => void;
+  onTogglePause: (active: boolean) => void;
 }) {
   const [newCloseDate, setNewCloseDate] = useState("");
   const { asset, market } = slot;
@@ -191,6 +234,24 @@ function SlotRow({
   return (
     <tr className="border-b border-gray-800/60 last:border-0 align-top">
       <td className="py-2 pr-4 text-gray-100 font-semibold whitespace-nowrap">{assetDisplayName(asset.symbol)}</td>
+      <td className="py-2 pr-4">
+        <button
+          disabled={togglePending}
+          onClick={() => onTogglePause(paused)}
+          title={
+            paused
+              ? "Paused — packages/cron will not open a new window for this asset. Click to resume."
+              : "Active — click to pause future windows (an already-open market keeps trading until it settles)."
+          }
+          className={`rounded-full text-xs font-bold px-2.5 py-1 whitespace-nowrap disabled:opacity-50 ${
+            paused
+              ? "bg-amber-950 text-amber-400 border border-amber-900 hover:bg-amber-900"
+              : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
+          }`}
+        >
+          {paused ? "Paused ⏸" : "Active"}
+        </button>
+      </td>
       {!market ? (
         <td className="py-2 text-gray-500" colSpan={7}>
           No market yet
