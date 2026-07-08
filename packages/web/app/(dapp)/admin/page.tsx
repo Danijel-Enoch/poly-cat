@@ -45,6 +45,29 @@ export default function AdminPage() {
   });
   const inactiveAssetIds = new Set(assetStatus?.inactiveAssetIds ?? []);
 
+  // Off-chain delist + display-order state — see lib/assetDisplayStore.ts.
+  // Purely a discoverability/ordering concern on the public markets page;
+  // never touches on-chain state or packages/cron's pause list above.
+  const { data: assetDisplay, refetch: refetchAssetDisplay } = useQuery({
+    queryKey: ["assetDisplay"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/asset-display");
+      return (await res.json()) as { delistedAssetIds: string[]; order: string[] };
+    },
+    refetchInterval: 10_000,
+    enabled: isAdmin,
+  });
+  const delistedAssetIds = new Set(assetDisplay?.delistedAssetIds ?? []);
+  const displayOrder = assetDisplay?.order ?? [];
+
+  // Rows follow the same order as the public page, so "move up/down" here
+  // matches what a visitor actually sees.
+  const orderedSlots = displayOrder.length
+    ? displayOrder
+        .map((id) => (slots ?? []).find((s) => s.asset.id.toString() === id))
+        .filter((s): s is NonNullable<typeof s> => !!s)
+    : (slots ?? []);
+
   const openCount = (slots ?? []).filter((s) => s.market?.state === "Trading").length;
   const totalUnclaimedFees = (slots ?? []).reduce((sum, s) => sum + (s.market?.collectedFees ?? 0n), 0n);
 
@@ -128,6 +151,46 @@ export default function AdminPage() {
     }
   }
 
+  async function handleToggleDelist(assetId: bigint, delisted: boolean) {
+    const key = `delist-${assetId.toString()}`;
+    setPendingId(key);
+    setStatus(delisted ? `Delisting asset #${assetId}...` : `Relisting asset #${assetId}...`);
+    try {
+      await fetch("/api/admin/asset-display", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delist", assetId: assetId.toString(), delisted }),
+      });
+      setStatus(
+        delisted
+          ? `Asset #${assetId} delisted — still tradeable via a direct link, just hidden from the public grid.`
+          : `Asset #${assetId} relisted.`,
+      );
+      await refetchAssetDisplay();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Toggle failed");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleMove(assetId: bigint, direction: "up" | "down") {
+    const key = `move-${assetId.toString()}`;
+    setPendingId(key);
+    try {
+      await fetch("/api/admin/asset-display", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "move", assetId: assetId.toString(), direction }),
+      });
+      await refetchAssetDisplay();
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Reorder failed");
+    } finally {
+      setPendingId(null);
+    }
+  }
+
   if (!isConnected) {
     return (
       <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
@@ -151,7 +214,8 @@ export default function AdminPage() {
         <p className="text-sm text-gray-400 mt-1">
           Markets are opened and settled automatically by the cron script (see packages/cron). Extend/cancel/pause
           below are a safety valve for when it can&apos;t run — the only thing you actually need to do here
-          day-to-day is add new markets.
+          day-to-day is add new markets. Delist/reorder control the public markets grid only — a delisted market
+          keeps trading and settling normally for anyone with a direct link.
         </p>
       </div>
 
@@ -169,8 +233,10 @@ export default function AdminPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
+                <th className="pb-2 pr-4 font-medium">Order</th>
                 <th className="pb-2 pr-4 font-medium">Asset</th>
                 <th className="pb-2 pr-4 font-medium">Cycle</th>
+                <th className="pb-2 pr-4 font-medium">Listing</th>
                 <th className="pb-2 pr-4 font-medium">Market</th>
                 <th className="pb-2 pr-4 font-medium">State</th>
                 <th className="pb-2 pr-4 font-medium">Strike</th>
@@ -181,22 +247,30 @@ export default function AdminPage() {
               </tr>
             </thead>
             <tbody>
-              {(slots ?? []).map((slot) => (
+              {orderedSlots.map((slot, index) => (
                 <SlotRow
                   key={slot.asset.id.toString()}
                   slot={slot}
                   pending={!!slot.market && pendingId === slot.market.id.toString()}
                   paused={inactiveAssetIds.has(slot.asset.id.toString())}
                   togglePending={pendingId === `asset-${slot.asset.id.toString()}`}
+                  delisted={delistedAssetIds.has(slot.asset.id.toString())}
+                  delistTogglePending={pendingId === `delist-${slot.asset.id.toString()}`}
+                  movePending={pendingId === `move-${slot.asset.id.toString()}`}
+                  isFirst={index === 0}
+                  isLast={index === orderedSlots.length - 1}
                   onExtend={(date) => slot.market && handleExtend(slot.market.id, date)}
                   onCancel={() => slot.market && handleCancel(slot.market.id)}
                   onClaim={() => slot.market && handleClaim(slot.market.id)}
                   onTogglePause={(active) => handleTogglePause(slot.asset.id, active)}
+                  onToggleDelist={(delisted) => handleToggleDelist(slot.asset.id, delisted)}
+                  onMoveUp={() => handleMove(slot.asset.id, "up")}
+                  onMoveDown={() => handleMove(slot.asset.id, "down")}
                 />
               ))}
-              {(slots ?? []).length === 0 && (
+              {orderedSlots.length === 0 && (
                 <tr>
-                  <td className="py-4 text-gray-500" colSpan={9}>
+                  <td className="py-4 text-gray-500" colSpan={11}>
                     No markets registered yet — add one above.
                   </td>
                 </tr>
@@ -218,25 +292,61 @@ function SlotRow({
   pending,
   paused,
   togglePending,
+  delisted,
+  delistTogglePending,
+  movePending,
+  isFirst,
+  isLast,
   onExtend,
   onCancel,
   onClaim,
   onTogglePause,
+  onToggleDelist,
+  onMoveUp,
+  onMoveDown,
 }: {
   slot: AssetSlot;
   pending: boolean;
   paused: boolean;
   togglePending: boolean;
+  delisted: boolean;
+  delistTogglePending: boolean;
+  movePending: boolean;
+  isFirst: boolean;
+  isLast: boolean;
   onExtend: (newCloseDate: string) => void;
   onCancel: () => void;
   onClaim: () => void;
   onTogglePause: (active: boolean) => void;
+  onToggleDelist: (delisted: boolean) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
 }) {
   const [newCloseDate, setNewCloseDate] = useState("");
   const { asset, market } = slot;
 
   return (
-    <tr className="border-b border-gray-800/60 last:border-0 align-top">
+    <tr className={`border-b border-gray-800/60 last:border-0 align-top ${delisted ? "opacity-50" : ""}`}>
+      <td className="py-2 pr-4">
+        <div className="flex items-center gap-1">
+          <button
+            disabled={movePending || isFirst}
+            onClick={onMoveUp}
+            title="Move up (shows earlier on the public grid)"
+            className="rounded border border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-30 w-5 h-5 flex items-center justify-center text-xs"
+          >
+            ↑
+          </button>
+          <button
+            disabled={movePending || isLast}
+            onClick={onMoveDown}
+            title="Move down (shows later on the public grid)"
+            className="rounded border border-gray-700 text-gray-300 hover:bg-gray-800 disabled:opacity-30 w-5 h-5 flex items-center justify-center text-xs"
+          >
+            ↓
+          </button>
+        </div>
+      </td>
       <td className="py-2 pr-4 text-gray-100 font-semibold whitespace-nowrap">{assetDisplayName(asset.symbol)}</td>
       <td className="py-2 pr-4">
         <button
@@ -254,6 +364,24 @@ function SlotRow({
           }`}
         >
           {paused ? "Paused ⏸" : "Active"}
+        </button>
+      </td>
+      <td className="py-2 pr-4">
+        <button
+          disabled={delistTogglePending}
+          onClick={() => onToggleDelist(!delisted)}
+          title={
+            delisted
+              ? "Delisted — hidden from the public markets grid, but still tradeable via a direct link. Click to relist."
+              : "Listed — click to hide from the public markets grid (still tradeable via a direct link)."
+          }
+          className={`rounded-full text-xs font-bold px-2.5 py-1 whitespace-nowrap disabled:opacity-50 ${
+            delisted
+              ? "bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700"
+              : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
+          }`}
+        >
+          {delisted ? "Delisted 🚫" : "Listed"}
         </button>
       </td>
       {!market ? (

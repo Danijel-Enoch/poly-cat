@@ -149,6 +149,18 @@ window's deadline or cancel it manually — a safety valve for when the cron
 script isn't running, not something used in normal operation — plus
 per-market protocol fee claims.
 
+Two more admin controls are purely about the public markets page's display,
+not the contract: **delist/relist** hides an asset from the public grid
+entirely (a delisted asset's market keeps trading and settling normally
+on-chain for anyone with a direct link — this only affects discoverability),
+and **reorder** (↑/↓ per row) sets which assets show first. Both are
+off-chain, admin-curated state in `lib/assetDisplayStore.ts` — a separate
+JSON file from the pause list above (`lib/assetStatusStore.ts`), since
+pausing is an operational concern packages/cron also needs to read, while
+delist/reorder is a `packages/web`-only display concern. Same "local dev
+only" caveat as the pause list: a distributed deployment would need a real
+datastore instead of a JSON file on disk.
+
 ## Upgradeability
 
 `MarketFactory` is deployed behind an `ERC1967Proxy` using OpenZeppelin's UUPS

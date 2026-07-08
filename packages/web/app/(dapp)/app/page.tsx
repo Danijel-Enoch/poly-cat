@@ -1,4 +1,5 @@
-import { getMarketsList } from "@/lib/chainReads";
+import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
+import { getDelistedAssetIds, getAssetOrder } from "@/lib/assetDisplayStore";
 import { MarketCard } from "@/components/MarketCard";
 
 // Reads live chain state on every request — must never be statically
@@ -12,6 +13,19 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const slots = await getMarketsList();
 
+  // Admin-curated display state (see lib/assetDisplayStore.ts) — delisting
+  // and reordering only affect what shows here, never on-chain state; a
+  // delisted market keeps trading/settling normally for anyone with a
+  // direct link.
+  const allIds = slots.map((slot) => slot.asset.id.toString());
+  const [delistedAssetIds, order] = await Promise.all([getDelistedAssetIds(), getAssetOrder(allIds)]);
+  const delisted = new Set(delistedAssetIds);
+  const slotsById = new Map(slots.map((slot) => [slot.asset.id.toString(), slot]));
+  const visibleSlots = order
+    .filter((id) => !delisted.has(id))
+    .map((id) => slotsById.get(id))
+    .filter((slot): slot is AssetSlot => !!slot);
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -23,7 +37,7 @@ export default async function Home() {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {slots.map((slot, index) => (
+        {visibleSlots.map((slot, index) => (
           <MarketCard key={slot.asset.id.toString()} slot={slot} index={index} />
         ))}
       </div>
