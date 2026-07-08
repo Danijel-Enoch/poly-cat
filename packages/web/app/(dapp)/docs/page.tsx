@@ -8,7 +8,7 @@ const NAV = [
   { id: "assets-and-settlement", title: "Assets & settlement" },
   { id: "bonding-curve", title: "How prices work" },
   { id: "fees", title: "Fees" },
-  { id: "developer-docs", title: "Developer docs" },
+  { id: "token", title: "Token" },
 ];
 
 /** Stand-in for the connect-wallet button in the real header, so the walkthrough below can
@@ -289,17 +289,43 @@ export default function DocsPage() {
           </p>
         </section>
 
-        <section id="developer-docs" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Developer docs</h2>
-          <HoloCard radius={20} glow={false} innerClassName="p-5">
-            <p className="text-sm font-semibold text-gray-100">Want to dig into the code?</p>
-            <p className="text-sm text-gray-400 leading-relaxed mt-1">
-              Everything&apos;s open in the repo: contract source and tests live in{" "}
-              <code className="text-gray-300">packages/contracts</code>, the settlement/creation script in{" "}
-              <code className="text-gray-300">packages/cron</code>, and a full architecture writeup is in{" "}
-              <code className="text-gray-300">DOCS.md</code>.
-            </p>
-          </HoloCard>
+        <section id="token" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">Token</h2>
+          <p className="text-sm text-gray-400 leading-relaxed mb-4">
+            A Polycat utility token is in the works — nothing to buy, connect, or claim yet, and trading today is
+            100% ETH, no token required. Once it&apos;s live, the plan is for it to power a few things:
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <HoloCard radius={20} glow={false} innerClassName="p-4">
+              <p className="text-sm font-semibold text-gray-100">Governance</p>
+              <p className="text-sm text-gray-400 leading-relaxed mt-1">
+                Voting on protocol parameters — things like the trading fee rate or which new assets get listed.
+              </p>
+            </HoloCard>
+            <HoloCard radius={20} glow={false} innerClassName="p-4">
+              <p className="text-sm font-semibold text-gray-100">Fee deductions</p>
+              <p className="text-sm text-gray-400 leading-relaxed mt-1">
+                Holding or using it toward a trade is planned to knock down the flat trading fee below the default
+                rate.
+              </p>
+            </HoloCard>
+            <HoloCard radius={20} glow={false} innerClassName="p-4">
+              <p className="text-sm font-semibold text-gray-100">Trader incentives</p>
+              <p className="text-sm text-gray-400 leading-relaxed mt-1">
+                A rewards pool for active traders, separate from — not funded by — the protocol fees themselves.
+              </p>
+            </HoloCard>
+            <HoloCard radius={20} glow={false} innerClassName="p-4">
+              <p className="text-sm font-semibold text-gray-100">Season 1 leaderboard</p>
+              <p className="text-sm text-gray-400 leading-relaxed mt-1">
+                A first competitive season ranking traders, with token rewards planned for top finishers.
+              </p>
+            </HoloCard>
+          </div>
+          <p className="text-xs text-gray-500 leading-relaxed mt-4">
+            None of this is live yet — this section gets real specifics (ticker, contract, distribution) once
+            there&apos;s something actually shipped to document.
+          </p>
         </section>
       </div>
     </div>

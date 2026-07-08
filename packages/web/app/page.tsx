@@ -47,11 +47,13 @@ function IconCheck() {
   );
 }
 
-function IconNoToken() {
+function IconRocket() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M6.5 6.5l11 11" />
+      <path d="M12 3c2.5 1.5 4 4.5 4 8.5L12 15l-4-3.5C8 7.5 9.5 4.5 12 3Z" />
+      <path d="M9.5 13.5 7 16v3l3-2.5" />
+      <path d="M14.5 13.5 17 16v3l-3-2.5" />
+      <circle cx="12" cy="9" r="1.25" />
     </svg>
   );
 }
@@ -143,9 +145,9 @@ export default function LandingPage() {
               body="The observed close price decides it automatically, straight off a live feed — no admin judgment call, no bond, no dispute window, ever. rekt-proof finality."
             />
             <FeatureCard
-              icon={<IconNoToken />}
-              title="No token. Seriously."
-              body="There's no Polycat token, and none is being sold or airdropped. Trading uses ETH, full stop — anyone claiming otherwise is NGMI. Stay safe, fren."
+              icon={<IconRocket />}
+              title="Token coming soon"
+              body="A Polycat utility token is in the works — governance, fee discounts, trader incentives, and a Season 1 leaderboard. Nothing to buy or connect yet: trading today is 100% ETH. See the docs for details."
             />
           </div>
         </section>

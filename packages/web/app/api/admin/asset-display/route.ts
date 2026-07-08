@@ -1,15 +1,16 @@
 import { NextRequest } from "next/server";
-import { getAssets } from "@/lib/chainReads";
+import { fetchIndexedAssets } from "@/lib/indexerApi";
 import { getDelistedAssetIds, setAssetDelisted, getAssetOrder, moveAsset } from "@/lib/assetDisplayStore";
 
 // Backs the admin dashboard's delist/relist toggle and reorder controls (see
-// app/(dapp)/admin/page.tsx and lib/assetDisplayStore.ts). Same auth posture
-// as /api/admin/asset-status: no server-side signature check, gated
+// app/(dapp)/admin/page.tsx and lib/assetDisplayStore.ts, which is Redis-backed
+// so this route works fine in a distributed deployment). Same auth posture as
+// /api/admin/asset-status though: no server-side signature check, gated
 // client-side by comparing the connected address against the contract's
-// owner() — a real gap for a public deployment, acceptable for now since
-// this whole feature is local-dev-scoped (see assetDisplayStore.ts).
+// owner() — a real gap for a public deployment (anyone who finds this route
+// can toggle it), acceptable for now.
 async function allAssetIds(): Promise<string[]> {
-  const assets = await getAssets();
+  const assets = await fetchIndexedAssets();
   return assets.map((a) => a.id.toString());
 }
 

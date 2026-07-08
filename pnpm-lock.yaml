@@ -49,12 +49,6 @@ importers:
 
   packages/web:
     dependencies:
-      '@ponder/client':
-        specifier: ^0.16.7
-        version: 0.16.7(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)(typescript@5.9.3)
-      '@ponder/react':
-        specifier: ^0.16.7
-        version: 0.16.7(@ponder/client@0.16.7(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)(typescript@5.9.3))(@tanstack/react-query@5.101.2(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
       '@rainbow-me/rainbowkit':
         specifier: ^2.2.11
         version: 2.2.11(@tanstack/react-query@5.101.2(react@19.2.4))(@types/react@19.2.17)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)(viem@2.54.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))(wagmi@2.19.5(@tanstack/query-core@5.101.2)(@tanstack/react-query@5.101.2(react@19.2.4))(@types/react@19.2.17)(@upstash/redis@1.38.0)(bufferutil@4.1.0)(ioredis@5.11.1)(react@19.2.4)(typescript@5.9.3)(utf-8-validate@5.0.10)(viem@2.54.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))(zod@4.4.3))
@@ -67,6 +61,9 @@ importers:
       framer-motion:
         specifier: ^12.42.2
         version: 12.42.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      ioredis:
+        specifier: ^5.11.1
+        version: 5.11.1
       next:
         specifier: 16.2.10
         version: 16.2.10(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -1175,25 +1172,6 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
-
-  '@ponder/client@0.16.7':
-    resolution: {integrity: sha512-5g0gypZSPPKmvEaeaREguibclVyt18mbGF0mOv3LX0X34VIPO5SsGbJIaXcOdgRlW+TARNb0K8OWD4RsWPtAfQ==}
-    peerDependencies:
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-
-  '@ponder/react@0.16.7':
-    resolution: {integrity: sha512-wHXMruV5dPwasOlOh0JZPurctTMhw4HkI/Sgr/8OY+CSYPkQ7zNW1d7CxOs/72iKn19AxYBEbobVLm2W0uCQNA==}
-    peerDependencies:
-      '@ponder/client': '>=0.16.7'
-      '@tanstack/react-query': '>=5.0.0'
-      react: '>=18'
-      typescript: '>=5.0.4'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   '@ponder/utils@0.2.18':
     resolution: {integrity: sha512-pWacQuohfKlKO440zC39C1l6AH+Vx18mca0cPkxM0YnrB70px5hEwLKrc3fU4DMu72j4pljy/Mvfm95FBouYjw==}
@@ -3247,14 +3225,6 @@ packages:
   events@3.3.0:
     resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
     engines: {node: '>=0.8.x'}
-
-  eventsource-parser@3.1.0:
-    resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
-    engines: {node: '>=18.0.0'}
-
-  eventsource@3.0.7:
-    resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
-    engines: {node: '>=18.0.0'}
 
   execa@5.1.1:
     resolution: {integrity: sha512-8uSpZZocAZRBAPIEINJj3Lo9HyGitllczc27Eh5YYojjMFMn8yHMDMaUHE2Jqfq05D/wucwI4JGURyXt1vchyg==}
@@ -6249,8 +6219,7 @@ snapshots:
   '@img/sharp-win32-x64@0.34.5':
     optional: true
 
-  '@ioredis/commands@1.10.0':
-    optional: true
+  '@ioredis/commands@1.10.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -6560,52 +6529,6 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
-
-  '@ponder/client@0.16.7(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)(typescript@5.9.3)':
-    dependencies:
-      drizzle-orm: 0.41.0(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)
-      eventsource: 3.0.7
-      superjson: 2.2.6
-    optionalDependencies:
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - '@aws-sdk/client-rds-data'
-      - '@cloudflare/workers-types'
-      - '@electric-sql/pglite'
-      - '@libsql/client'
-      - '@libsql/client-wasm'
-      - '@neondatabase/serverless'
-      - '@op-engineering/op-sqlite'
-      - '@opentelemetry/api'
-      - '@planetscale/database'
-      - '@prisma/client'
-      - '@tidbcloud/serverless'
-      - '@types/better-sqlite3'
-      - '@types/pg'
-      - '@types/sql.js'
-      - '@vercel/postgres'
-      - '@xata.io/client'
-      - better-sqlite3
-      - bun-types
-      - expo-sqlite
-      - gel
-      - knex
-      - kysely
-      - mysql2
-      - pg
-      - postgres
-      - prisma
-      - sql.js
-      - sqlite3
-
-  '@ponder/react@0.16.7(@ponder/client@0.16.7(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)(typescript@5.9.3))(@tanstack/react-query@5.101.2(react@19.2.4))(react@19.2.4)(typescript@5.9.3)':
-    dependencies:
-      '@ponder/client': 0.16.7(@electric-sql/pglite@0.2.13)(@opentelemetry/api@1.9.1)(kysely@0.26.3)(pg@8.22.0)(typescript@5.9.3)
-      '@tanstack/react-query': 5.101.2(react@19.2.4)
-      react: 19.2.4
-      superjson: 2.2.6
-    optionalDependencies:
-      typescript: 5.9.3
 
   '@ponder/utils@0.2.18(typescript@5.9.3)(viem@2.54.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76))':
     dependencies:
@@ -8842,8 +8765,7 @@ snapshots:
 
   clsx@2.1.1: {}
 
-  cluster-key-slot@1.1.1:
-    optional: true
+  cluster-key-slot@1.1.1: {}
 
   color-convert@2.0.1:
     dependencies:
@@ -9017,8 +8939,7 @@ snapshots:
 
   delayed-stream@1.0.0: {}
 
-  denque@2.1.0:
-    optional: true
+  denque@2.1.0: {}
 
   dequal@2.0.3: {}
 
@@ -9547,12 +9468,6 @@ snapshots:
 
   events@3.3.0: {}
 
-  eventsource-parser@3.1.0: {}
-
-  eventsource@3.0.7:
-    dependencies:
-      eventsource-parser: 3.1.0
-
   execa@5.1.1:
     dependencies:
       cross-spawn: 7.0.6
@@ -9863,7 +9778,6 @@ snapshots:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   iron-webcrypto@1.2.1: {}
 
@@ -10944,13 +10858,11 @@ snapshots:
       indent-string: 4.0.0
       strip-indent: 3.0.0
 
-  redis-errors@1.2.0:
-    optional: true
+  redis-errors@1.2.0: {}
 
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
-    optional: true
 
   reflect.getprototypeof@1.0.10:
     dependencies:
@@ -11215,8 +11127,7 @@ snapshots:
     dependencies:
       type-fest: 0.7.1
 
-  standard-as-callback@2.1.0:
-    optional: true
+  standard-as-callback@2.1.0: {}
 
   std-env@3.10.0: {}
 

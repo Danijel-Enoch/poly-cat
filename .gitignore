@@ -16,8 +16,7 @@ packages/contracts/cache/
 packages/contracts/out/
 packages/contracts/broadcast/
 
-# Runtime state — admin-toggled JSON stores, not source. asset-status.json
-# (packages/web/lib/assetStatusStore.ts) is shared with packages/cron's pause
-# list; asset-display.json (packages/web/lib/assetDisplayStore.ts) is a
-# web-only delist/reorder list for the public markets page.
+# Runtime state — admin-toggled pause list (packages/web/lib/assetStatusStore.ts),
+# shared with packages/cron, not source. The delist/reorder store
+# (packages/web/lib/assetDisplayStore.ts) lives in Redis instead, not here.
 /data/

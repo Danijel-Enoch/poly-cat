@@ -1,7 +1,5 @@
 import "server-only";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import { redis } from "./redis";
 
 /** A small off-chain, admin-curated store for how the public markets page
  * *displays* assets — separate from lib/assetStatusStore.ts's pause list,
@@ -10,16 +8,20 @@ import path from "node:path";
  * asset's market keeps trading and settling normally on-chain for anyone
  * with a direct link, this only affects discoverability and display order
  * on the public grid (mirrors the pre-pivot version of this app, which had
- * the same delisted-but-still-tradeable semantics). Same "local dev only"
- * caveat as assetStatusStore.ts — a distributed deployment would need a
- * real datastore instead of a JSON file on disk. */
-const STATE_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../data/asset-display.json");
+ * the same delisted-but-still-tradeable semantics). Backed by Redis (see
+ * lib/redis.ts) rather than a local file — unlike assetStatusStore.ts,
+ * nothing else needs filesystem-level access to this, so there's no reason
+ * to tie it to a single host. Degrades to "nothing delisted, natural order"
+ * if REDIS_URL isn't configured, so the rest of the app still works. */
+const KEY = "polycat:asset-display";
 
 type AssetDisplayFile = { delistedAssetIds: string[]; order: string[] };
 
 async function readState(): Promise<AssetDisplayFile> {
+  if (!redis) return { delistedAssetIds: [], order: [] };
+  const raw = await redis.get(KEY);
+  if (!raw) return { delistedAssetIds: [], order: [] };
   try {
-    const raw = await readFile(STATE_FILE, "utf8");
     const parsed = JSON.parse(raw) as Partial<AssetDisplayFile>;
     return { delistedAssetIds: parsed.delistedAssetIds ?? [], order: parsed.order ?? [] };
   } catch {
@@ -28,8 +30,8 @@ async function readState(): Promise<AssetDisplayFile> {
 }
 
 async function writeState(state: AssetDisplayFile): Promise<void> {
-  await mkdir(path.dirname(STATE_FILE), { recursive: true });
-  await writeFile(STATE_FILE, JSON.stringify(state, null, 2));
+  if (!redis) throw new Error("Delist/reorder is not configured (missing REDIS_URL).");
+  await redis.set(KEY, JSON.stringify(state));
 }
 
 export async function getDelistedAssetIds(): Promise<string[]> {
