@@ -1,19 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Chakra_Petch, Space_Grotesk, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";
 import { AmbientBackground } from "@/components/AmbientBackground";
 import { Sidebar } from "@/components/Sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Degen font stack: Chakra Petch (angular cyberpunk display — headlines,
+// buttons, labels), Space Grotesk (techy but readable body), Space Mono
+// (terminal/ape mono). All via next/font/google — no new deps, self-hosted.
+const chakraPetch = Chakra_Petch({
+  variable: "--font-chakra-petch",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${chakraPetch.variable} ${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-gray-950 text-gray-100">
         <AmbientBackground />
         <Providers>

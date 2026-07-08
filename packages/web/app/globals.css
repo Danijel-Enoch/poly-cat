@@ -63,8 +63,9 @@
   /* Raw neon values for non-Tailwind contexts (inline styles, canvas). */
   --color-up: #00ff9d;
   --color-down: #ff2e88;
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-space-grotesk, ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--font-space-mono, ui-monospace, monospace);
+  --font-display: var(--font-chakra-petch, var(--font-sans));
 }
 
 /* Layered radial glows over the dark gold base — a warm amber glow top-left,
@@ -81,6 +82,13 @@ body {
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
+}
+
+/* Degen type: Chakra Petch (angular cyberpunk) on every heading + button so
+   the display font lands everywhere it counts without per-component edits.
+   Body text stays on Space Grotesk for readability. */
+h1, h2, h3, h4, button {
+  font-family: var(--font-display);
 }
 
 /* Neon glow helpers for the degen Up/Down accents — used on buttons, badges,
