@@ -17,3 +17,20 @@ export enum PriceSource {
 }
 
 export const DEXSCREENER_CHAIN_ID = "robinhood";
+
+// Optional operational allowlist — a comma-separated list of asset symbols
+// (e.g. "CASHCAT" or "BTC,CASHCAT"). When set, only these symbols are
+// eligible for a *new* market window; everything else is treated the same
+// as an admin-paused asset (see assetStatus.ts) — an already-open market
+// for an excluded symbol still settles normally. Unset (the default) means
+// no restriction, every registered asset is eligible. This is a host-level
+// env var specifically because packages/cron can run somewhere the web
+// app's admin-toggle JSON file (lib/assetStatusStore.ts) isn't reachable —
+// see assetStatus.ts for how the two combine.
+export const CRON_ACTIVE_SYMBOLS: Set<string> | null = process.env.CRON_ACTIVE_SYMBOLS
+  ? new Set(
+      process.env.CRON_ACTIVE_SYMBOLS.split(",")
+        .map((s) => s.trim().toUpperCase())
+        .filter(Boolean),
+    )
+  : null;

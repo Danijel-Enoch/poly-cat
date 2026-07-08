@@ -11,6 +11,7 @@ import { marketFactoryContract, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL } from "@
 import { formatCollateral, parseCollateral, isPartialDecimalInput, upProbabilityFromSupplies } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
+import { HoloCard } from "@/components/HoloCard";
 
 const MARKET_STATE_TRADING = 0;
 
@@ -233,7 +234,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <HoloCard radius={20} glow={false} innerClassName="p-5">
       <div className="relative flex items-center justify-between gap-1 mb-4">
         <div className="relative flex items-center gap-1">
           <button
@@ -410,6 +411,6 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           </span>
         </div>
       )}
-    </div>
+    </HoloCard>
   );
 }

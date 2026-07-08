@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { HoloCard } from "@/components/HoloCard";
 
 function IconCurve() {
   return (
@@ -57,13 +58,13 @@ function IconNoToken() {
 
 function FeatureCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left hover:border-gray-700 transition-colors">
+    <HoloCard radius={20} innerClassName="p-5 text-left">
       <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 border border-gray-700 text-accent glow-accent">
         {icon}
       </span>
       <p className="font-bold text-gray-100 mt-3 uppercase tracking-wide">{title}</p>
       <p className="text-sm text-gray-400 leading-relaxed mt-1.5">{body}</p>
-    </div>
+    </HoloCard>
   );
 }
 

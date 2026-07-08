@@ -54,8 +54,8 @@ async function processAsset(assetId: bigint, asset: AssetInfo, nowSeconds: bigin
   // the chain. Unless an admin has paused this asset (see assetStatus.ts) —
   // paused only blocks *new* windows from opening, it never touches a
   // market that's already Trading (that still settles above as normal).
-  if (!(await isAssetActive(assetId))) {
-    console.log(`[${label}] paused via admin — skipping new window`);
+  if (!(await isAssetActive(assetId, asset.symbol))) {
+    console.log(`[${label}] paused — skipping new window`);
     return;
   }
 

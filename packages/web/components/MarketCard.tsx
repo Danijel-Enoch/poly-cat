@@ -8,6 +8,7 @@ import { upProbabilityFromSupplies, formatPriceWad, formatEth } from "@/lib/form
 import { assetDisplayName, assetColor } from "@/lib/assets";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { useNow } from "@/lib/useNow";
+import { HoloCard } from "@/components/HoloCard";
 
 function formatCountdown(seconds: number): string {
   if (seconds <= 0) return "0:00";
@@ -62,16 +63,7 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
       style={{ rotateX: tilt.rotateX, rotateY: tilt.rotateY, transformPerspective: 800 }}
       className="min-w-0"
     >
-      {/* Holo gradient border — a gold→pink gradient behind a 1.5px inset,
-          NFT-card-style, instead of a flat single-color border. */}
-      <div
-        className={`relative rounded-[28px] p-[1.5px] transition-shadow ${
-          market
-            ? "bg-gradient-to-br from-accent via-[#ff9ec3] to-[#ff2e88] hover:shadow-[0_0_30px_rgba(255,208,0,0.25)]"
-            : "bg-gray-800"
-        }`}
-      >
-        <div className={`flex h-full flex-col rounded-[27px] bg-gray-950 overflow-hidden ${market ? "" : "opacity-60"}`}>
+      <HoloCard active={!!market} radius={28} innerClassName={`flex flex-col overflow-hidden ${market ? "" : "opacity-60"}`}>
           {/* Art zone — big colored badge area like an NFT card's image slot. */}
           <div
             className="relative h-36 shrink-0 flex items-center justify-center overflow-hidden"
@@ -166,8 +158,7 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
               })()
             )}
           </div>
-        </div>
-      </div>
+      </HoloCard>
     </motion.div>
   );
 

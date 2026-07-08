@@ -48,6 +48,30 @@ function IconBook() {
   );
 }
 
+function IconX() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+      <path d="M13.6 10.6 20.8 2h-1.7l-6.2 7.5L7.9 2H2l7.5 10.9L2 22h1.7l6.6-8L15.9 22h5.9l-8.2-11.4Zm-2.3 2.8-.8-1.1L4.4 3.3h2.6l4.9 7 .8 1.1 6.4 9.2h-2.6l-5.2-7.2Z" />
+    </svg>
+  );
+}
+
+/** Social links row — currently just X/Twitter. A plain external link, not a
+ * nav item, so it's styled and placed separately from NavList. */
+function SocialLinks() {
+  return (
+    <a
+      href="https://x.com/PolyCatsRobin"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-colors"
+    >
+      <IconX />
+      Follow on X
+    </a>
+  );
+}
+
 /** One nav link with active-state highlighting. `onNavigate` closes the mobile
  * drawer after a tap. */
 function NavLinkItem({
@@ -106,6 +130,7 @@ export function Sidebar() {
         <div className="flex-1">
           <NavList pathname={pathname} />
         </div>
+        <SocialLinks />
         <div className="pt-4 border-t border-gray-800">
           <ConnectButton />
         </div>
@@ -163,6 +188,7 @@ export function Sidebar() {
               <div className="flex-1">
                 <NavList pathname={pathname} onNavigate={() => setOpen(false)} />
               </div>
+              <SocialLinks />
               <div className="pt-4 border-t border-gray-800">
                 <ConnectButton />
               </div>

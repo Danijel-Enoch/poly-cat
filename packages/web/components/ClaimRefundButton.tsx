@@ -9,6 +9,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatCollateral } from "@/lib/format";
 import { useClickRipple } from "@/components/ClickRipple";
+import { HoloCard } from "@/components/HoloCard";
 
 const MARKET_STATE_CANCELLED = 2;
 
@@ -64,28 +65,25 @@ export function ClaimRefundButton({ marketId }: { marketId: bigint }) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="rounded-2xl border border-gray-800 bg-gray-900 p-5"
-    >
-      <h2 className="font-bold text-gray-100 mb-2 uppercase tracking-wide">Market pushed</h2>
-      <p className="text-sm text-gray-300 mb-4">
-        This window closed at the exact same price it started — a push, not a win for either side. You held{" "}
-        {formatCollateral(heldShares, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL} worth of shares; claim ur pro-rata cut of the pool back.
-      </p>
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={handleClaim}
-        onPointerDown={onClaimRipple}
-        disabled={submitting || !hasSharesToClaim}
-        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-950 py-2.5 px-5 text-sm font-bold uppercase tracking-wide disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500 glow-accent"
-      >
-        {claimRippleLayer}
-        {hasSharesToClaim ? "Claim refund" : "Nothing to claim, ser"}
-      </motion.button>
-      {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+      <HoloCard radius={20} innerClassName="p-5">
+        <h2 className="font-bold text-gray-100 mb-2 uppercase tracking-wide">Market pushed</h2>
+        <p className="text-sm text-gray-300 mb-4">
+          This window closed at the exact same price it started — a push, not a win for either side. You held{" "}
+          {formatCollateral(heldShares, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL} worth of shares; claim ur pro-rata cut of the pool back.
+        </p>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={handleClaim}
+          onPointerDown={onClaimRipple}
+          disabled={submitting || !hasSharesToClaim}
+          className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-950 py-2.5 px-5 text-sm font-bold uppercase tracking-wide disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500 glow-accent"
+        >
+          {claimRippleLayer}
+          {hasSharesToClaim ? "Claim refund" : "Nothing to claim, ser"}
+        </motion.button>
+        {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
+      </HoloCard>
     </motion.div>
   );
 }

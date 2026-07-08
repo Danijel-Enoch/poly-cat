@@ -11,6 +11,7 @@ import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
 import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { AddMarketPanel } from "@/components/AddMarketPanel";
+import { HoloCard } from "@/components/HoloCard";
 
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
@@ -314,9 +315,9 @@ function SlotRow({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <HoloCard radius={18} glow={false} innerClassName="p-4">
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
       <p className="text-xl font-extrabold text-gray-100 mt-1">{value}</p>
-    </div>
+    </HoloCard>
   );
 }

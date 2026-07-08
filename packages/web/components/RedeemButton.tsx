@@ -10,6 +10,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatCollateral } from "@/lib/format";
 import { useClickRipple } from "@/components/ClickRipple";
+import { HoloCard } from "@/components/HoloCard";
 
 const MARKET_STATE_FINALIZED = 1;
 
@@ -60,28 +61,25 @@ export function RedeemButton({ marketId }: { marketId: bigint }) {
   const hasWinnings = winningBalance !== undefined && winningBalance > 0n;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25 }}
-      className="rounded-2xl border border-gray-800 bg-gray-900 p-5"
-    >
-      <h2 className="font-bold text-gray-100 mb-2 uppercase tracking-wide">Claim ur bag</h2>
-      <p className="text-sm text-gray-300 mb-4">
-        Outcome: <strong>{market.outcome ? "UP 🟢" : "DOWN 🔴"}</strong>. Winning shares:{" "}
-        {formatCollateral(winningBalance ?? 0n, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL}
-      </p>
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={handleRedeem}
-        onPointerDown={onRedeemRipple}
-        disabled={submitting || !hasWinnings}
-        className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-950 py-2.5 px-5 text-sm font-bold uppercase tracking-wide disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500 glow-accent"
-      >
-        {redeemRippleLayer}
-        {hasWinnings ? "Claim bag 🐒" : "Nothing to claim, ser"}
-      </motion.button>
-      {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+      <HoloCard radius={20} innerClassName="p-5">
+        <h2 className="font-bold text-gray-100 mb-2 uppercase tracking-wide">Claim ur bag</h2>
+        <p className="text-sm text-gray-300 mb-4">
+          Outcome: <strong>{market.outcome ? "UP 🟢" : "DOWN 🔴"}</strong>. Winning shares:{" "}
+          {formatCollateral(winningBalance ?? 0n, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL}
+        </p>
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={handleRedeem}
+          onPointerDown={onRedeemRipple}
+          disabled={submitting || !hasWinnings}
+          className="relative overflow-hidden rounded-xl bg-accent hover:bg-accent-dark text-gray-950 py-2.5 px-5 text-sm font-bold uppercase tracking-wide disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500 glow-accent"
+        >
+          {redeemRippleLayer}
+          {hasWinnings ? "Claim bag 🐒" : "Nothing to claim, ser"}
+        </motion.button>
+        {status && <p className="text-sm text-gray-400 mt-2">{status}</p>}
+      </HoloCard>
     </motion.div>
   );
 }

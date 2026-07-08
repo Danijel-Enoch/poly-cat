@@ -11,6 +11,7 @@ import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { quoteSell, CurveQuoteError } from "@/lib/curveMath";
 import { assetDisplayName } from "@/lib/assets";
 import { PortfolioClaimButton } from "@/components/PortfolioClaimButton";
+import { HoloCard } from "@/components/HoloCard";
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
@@ -68,7 +69,7 @@ export default function PortfolioPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Ur bag</h1>
 
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+      <HoloCard radius={20} innerClassName="p-5">
         <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total bag value</p>
         <p className="text-3xl font-extrabold text-gray-100 mt-1">
           {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
@@ -76,7 +77,7 @@ export default function PortfolioPage() {
         <p className="text-xs text-gray-500 mt-1">
           What you&apos;d pull exiting everything now, or redeeming resolved bags.
         </p>
-      </div>
+      </HoloCard>
 
       {isLoading ? (
         <p className="text-sm text-gray-400">Loading...</p>
@@ -87,10 +88,7 @@ export default function PortfolioPage() {
       ) : (
         <div className="grid gap-3">
           {positions.map((position) => (
-            <div
-              key={position.marketId.toString()}
-              className="rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-all"
-            >
+            <HoloCard key={position.marketId.toString()} radius={20} innerClassName="p-4">
               <Link href={`/markets/${position.marketId}`} className="flex items-center justify-between">
                 <span className="text-sm font-bold text-gray-100 uppercase tracking-wide">{assetDisplayName(position.asset.symbol)}</span>
                 <div className="flex gap-2 text-sm">
@@ -103,7 +101,7 @@ export default function PortfolioPage() {
                 </div>
               </Link>
               <PortfolioClaimButton position={position} onClaimed={() => refetchPositions()} />
-            </div>
+            </HoloCard>
           ))}
         </div>
       )}

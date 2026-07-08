@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { CRON_ACTIVE_SYMBOLS } from "./config.js";
 
 // A small off-chain, admin-toggled pause list — see packages/web's matching
 // lib/assetStatusStore.ts (same file, same shape, no shared package since
@@ -14,13 +15,21 @@ const STATE_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 
 type AssetStatusFile = { inactiveAssetIds?: string[] };
 
-export async function isAssetActive(assetId: bigint): Promise<boolean> {
+async function isAssetIdPaused(assetId: bigint): Promise<boolean> {
   let raw: string;
   try {
     raw = await readFile(STATE_FILE, "utf8");
   } catch {
-    return true; // no file yet ⇒ nothing has ever been paused
+    return false; // no file yet ⇒ nothing has ever been paused
   }
   const parsed = JSON.parse(raw) as AssetStatusFile;
-  return !(parsed.inactiveAssetIds ?? []).includes(assetId.toString());
+  return (parsed.inactiveAssetIds ?? []).includes(assetId.toString());
+}
+
+/** An asset is eligible for a new window only if it passes both gates: not
+ * admin-paused (the JSON file) and, if `CRON_ACTIVE_SYMBOLS` is set, in that
+ * allowlist. */
+export async function isAssetActive(assetId: bigint, symbol: string): Promise<boolean> {
+  if (CRON_ACTIVE_SYMBOLS && !CRON_ACTIVE_SYMBOLS.has(symbol.toUpperCase())) return false;
+  return !(await isAssetIdPaused(assetId));
 }

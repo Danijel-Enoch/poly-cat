@@ -1,11 +1,13 @@
+import { HoloCard } from "@/components/HoloCard";
+
 const NAV = [
   { id: "what-is-polycat", title: "What is Polycat?" },
   { id: "getting-started", title: "Getting started" },
-  { id: "buying-and-selling", title: "Buying and selling" },
+  { id: "buying-and-selling", title: "Buying & selling" },
+  { id: "redeeming", title: "Redeeming a win" },
   { id: "assets-and-settlement", title: "Assets & settlement" },
   { id: "bonding-curve", title: "How prices work" },
   { id: "fees", title: "Fees" },
-  { id: "roadmap", title: "Roadmap" },
   { id: "developer-docs", title: "Developer docs" },
 ];
 
@@ -19,11 +21,17 @@ function MockConnectButton() {
   );
 }
 
-function MockMarketCard({ asset, pct }: { asset: string; pct: number }) {
+/** A small, static stand-in for a real MarketCard (see components/MarketCard.tsx) —
+ * same holo-border/art-zone language, simplified and non-interactive, purely to
+ * illustrate what a card on the Markets page looks like. */
+function MockMarketCard({ asset, pct, color }: { asset: string; pct: number; color: string }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <HoloCard radius={20} glow={false} innerClassName="p-4">
       <div className="flex items-start gap-3">
-        <span className="h-9 w-9 shrink-0 rounded-full bg-gray-700 flex items-center justify-center text-white font-bold text-sm">
+        <span
+          className="h-9 w-9 shrink-0 rounded-full flex items-center justify-center text-gray-950 font-bold text-xs"
+          style={{ backgroundColor: color }}
+        >
           {asset.slice(0, 4)}
         </span>
         <div className="flex-1 min-w-0">
@@ -40,29 +48,44 @@ function MockMarketCard({ asset, pct }: { asset: string; pct: number }) {
       <div className="mt-3 h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
         <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
       </div>
-    </div>
+    </HoloCard>
   );
 }
 
-function MockTradePanel() {
+function MockTradePanel({ mode }: { mode: "buy" | "sell" | "redeem" }) {
+  if (mode === "redeem") {
+    return (
+      <HoloCard radius={20} glow={false} innerClassName="p-4">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Outcome: Up 🟢</p>
+        <p className="text-xs text-gray-400 mb-3">Winning shares: 0.24 ETH</p>
+        <span className="block text-center rounded-full bg-accent text-gray-950 text-sm font-semibold py-2">
+          Claim bag
+        </span>
+      </HoloCard>
+    );
+  }
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4">
+    <HoloCard radius={20} glow={false} innerClassName="p-4">
       <div className="flex rounded-full bg-gray-800 p-1 text-xs font-semibold">
-        <span className="flex-1 text-center rounded-full bg-gray-700 py-1.5 text-white">Buy</span>
-        <span className="flex-1 text-center py-1.5 text-gray-400">Sell</span>
+        <span className={`flex-1 text-center rounded-full py-1.5 ${mode === "buy" ? "bg-gray-700 text-white" : "text-gray-400"}`}>
+          Ape
+        </span>
+        <span className={`flex-1 text-center rounded-full py-1.5 ${mode === "sell" ? "bg-gray-700 text-white" : "text-gray-400"}`}>
+          Exit
+        </span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <span className="text-center rounded-lg bg-emerald-950 text-emerald-400 text-xs font-semibold py-2">Up · 63¢</span>
         <span className="text-center rounded-lg bg-gray-800 text-gray-400 text-xs font-semibold py-2">Down · 37¢</span>
       </div>
       <div className="mt-3 rounded-lg bg-gray-800 px-3 py-2 text-xs text-gray-400">
-        Amount (ETH)
-        <p className="text-gray-100 text-sm font-semibold mt-0.5">0.10</p>
+        {mode === "buy" ? "Amount (ETH)" : "Shares to sell"}
+        <p className="text-gray-100 text-sm font-semibold mt-0.5">{mode === "buy" ? "0.10" : "42"}</p>
       </div>
       <span className="mt-3 block text-center rounded-full bg-accent text-gray-950 text-sm font-semibold py-2">
-        Buy Up
+        {mode === "buy" ? "Ape Up" : "Exit Up"}
       </span>
-    </div>
+    </HoloCard>
   );
 }
 
@@ -76,35 +99,6 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
         <p className="font-semibold text-sm text-gray-100">{title}</p>
         <p className="text-sm text-gray-400 leading-relaxed mt-0.5">{body}</p>
       </div>
-    </div>
-  );
-}
-
-function RoadmapItem({
-  status,
-  title,
-  body,
-}: {
-  status: "live" | "next" | "later";
-  title: string;
-  body: string;
-}) {
-  const badge =
-    status === "live"
-      ? { label: "Live", className: "bg-emerald-950 text-emerald-400" }
-      : status === "next"
-        ? { label: "Coming soon", className: "bg-accent/20 text-accent" }
-        : { label: "Planned", className: "bg-gray-800 text-gray-400" };
-
-  return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-4 flex items-start justify-between gap-4">
-      <div>
-        <p className="font-semibold text-sm text-gray-100">{title}</p>
-        <p className="text-sm text-gray-400 leading-relaxed mt-1">{body}</p>
-      </div>
-      <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${badge.className}`}>
-        {badge.label}
-      </span>
     </div>
   );
 }
@@ -127,8 +121,12 @@ export default function DocsPage() {
 
       <div className="max-w-2xl flex flex-col gap-14">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-100">Docs</h1>
-          <p className="text-sm text-gray-400 mt-1">How Polycat works, and how to use it — in plain terms.</p>
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-2 block">Documentation</span>
+          <h1 className="text-3xl font-extrabold text-gray-100 tracking-tight">Polycat Docs</h1>
+          <p className="text-sm text-gray-400 mt-2 leading-relaxed">
+            A complete, plain-language guide to how Polycat works — from connecting a wallet to redeeming a
+            settled market.
+          </p>
         </div>
 
         <section id="what-is-polycat" className="scroll-mt-24">
@@ -155,7 +153,7 @@ export default function DocsPage() {
             <Step
               n={1}
               title="Connect your wallet"
-              body='Click "Connect Wallet" in the top right of the app. Approve the connection in your wallet — no signup, no email, no account.'
+              body='Click "Connect Wallet" in the sidebar. Pick a wallet from the list and approve the connection — no signup, no email, no account.'
             />
             <div className="pl-11">
               <MockConnectButton />
@@ -165,9 +163,9 @@ export default function DocsPage() {
               title="Pick an asset"
               body="Head to the Markets tab. Each card is a live 5-minute window for one registered asset, showing the strike price and the current implied chance of Up."
             />
-            <div className="pl-11 grid gap-3">
-              <MockMarketCard asset="BTC" pct={64} />
-              <MockMarketCard asset="CASHCAT" pct={41} />
+            <div className="pl-11 grid gap-3 sm:grid-cols-2">
+              <MockMarketCard asset="BTC" pct={64} color="#f7931a" />
+              <MockMarketCard asset="CASHCAT" pct={41} color="#ff6b9d" />
             </div>
             <Step
               n={3}
@@ -175,7 +173,7 @@ export default function DocsPage() {
               body="Tap a card to see the live price chart against the strike, plus trade history. Use the trade panel to buy Up or Down shares — either by entering how much ETH to spend, or the exact number of shares you want. Buying is a single transaction — no separate approval step, since ETH is native."
             />
             <div className="pl-11 max-w-xs">
-              <MockTradePanel />
+              <MockTradePanel mode="buy" />
             </div>
             <Step
               n={4}
@@ -186,12 +184,70 @@ export default function DocsPage() {
         </section>
 
         <section id="buying-and-selling" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Buying and selling</h2>
-          <p className="text-sm text-gray-400 leading-relaxed">
-            You can buy by specifying either the ETH amount you want to spend, or the exact number of Up/Down
-            shares you want to end up with — the app solves for the required cost either way. Selling always works
-            in shares. Every winning share redeems for exactly 1 ETH once a market is settled, so the number of
-            shares you hold is exactly your potential payout if that side wins.
+          <h2 className="text-lg font-bold text-gray-100 mb-2">Buying & selling</h2>
+          <p className="text-sm text-gray-400 leading-relaxed mb-6">
+            Every open market has two sides — Up and Down. You can move in and out of a position at any point
+            before the window closes.
+          </p>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <p className="font-semibold text-sm text-gray-100 mb-1">Buying shares</p>
+              <p className="text-sm text-gray-400 leading-relaxed mb-3">
+                Pick a side (Up or Down), then choose either mode: <strong className="text-gray-300">Send ETH</strong>{" "}
+                — spend an exact ETH amount and receive however many shares it buys — or{" "}
+                <strong className="text-gray-300">Exact shares</strong> — target a specific number of shares and the
+                app solves for the ETH cost. Confirm once in your wallet; there&apos;s no separate approval
+                transaction since trading uses native ETH directly.
+              </p>
+              <MockTradePanel mode="buy" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-100 mb-1">Selling shares</p>
+              <p className="text-sm text-gray-400 leading-relaxed mb-3">
+                Selling always works in shares: enter how many of your Up or Down shares to sell back into the
+                market, and confirm. You can sell any time before the window closes — there&apos;s no lockup and no
+                need to wait for a counterparty, since every market is its own automated bonding-curve market
+                maker.
+              </p>
+              <MockTradePanel mode="sell" />
+            </div>
+          </div>
+          <p className="text-sm text-gray-400 leading-relaxed mt-6">
+            Every winning share redeems for exactly 1 ETH once a market settles, so the number of shares you hold
+            is exactly your potential payout if that side wins — the price you pay per share today is simply the
+            market&apos;s current implied probability.
+          </p>
+        </section>
+
+        <section id="redeeming" className="scroll-mt-24">
+          <h2 className="text-lg font-bold text-gray-100 mb-2">Redeeming a win</h2>
+          <p className="text-sm text-gray-400 leading-relaxed mb-6">
+            Once a window closes, the cron script settles it automatically within moments — no action needed on
+            your part to trigger settlement. From there:
+          </p>
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <p className="font-semibold text-sm text-gray-100 mb-1">If your side won</p>
+              <p className="text-sm text-gray-400 leading-relaxed mb-3">
+                Open the market page (or your <strong className="text-gray-300">Portfolio</strong>, which lists
+                every position you&apos;ve ever held) and hit{" "}
+                <strong className="text-gray-300">Claim bag</strong>. Each winning share pays out exactly 1 ETH,
+                sent straight to your wallet in a single transaction.
+              </p>
+              <MockTradePanel mode="redeem" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-gray-100 mb-1">If it was a push</p>
+              <p className="text-sm text-gray-400 leading-relaxed">
+                If the close price matched the strike exactly, neither side wins — that&apos;s a push. Instead of
+                redeeming, you&apos;ll see a <strong className="text-gray-300">Claim refund</strong> prompt on the
+                market page: it returns your pro-rata share of the pool, no losses either way.
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-400 leading-relaxed mt-6">
+            There&apos;s no expiry on a claim — a winning or refundable position sits there until you redeem it,
+            whenever that is.
           </p>
         </section>
 
@@ -233,50 +289,16 @@ export default function DocsPage() {
           </p>
         </section>
 
-        <section id="roadmap" className="scroll-mt-24">
-          <h2 className="text-lg font-bold text-gray-100 mb-2">Roadmap</h2>
-          <p className="text-sm text-gray-400 leading-relaxed mb-6">
-            Polycat is early. Here&apos;s where things stand today, and what&apos;s coming next.
-          </p>
-          <div className="flex flex-col gap-3">
-            <RoadmapItem
-              status="live"
-              title="Up/Down trading on Robinhood Chain"
-              body="Fixed 5-minute windows over a growing asset list — BTC/ETH/SOL via Gate.com, CashCat (and any future Robinhood Chain memecoin) via DexScreener — opened and settled automatically."
-            />
-            <RoadmapItem
-              status="live"
-              title="Admin-added markets"
-              body="New assets are added by searching DexScreener or Gate.com from the admin dashboard — no code change or redeploy needed."
-            />
-            <RoadmapItem
-              status="live"
-              title="No token"
-              body="There is no Polycat token, and none is being sold or airdropped right now. Trading uses native ETH. Be wary of anyone claiming otherwise."
-            />
-            <RoadmapItem
-              status="next"
-              title="Native mobile app"
-              body="A dedicated iOS/Android app for trading windows on the go."
-            />
-            <RoadmapItem
-              status="next"
-              title="More chains"
-              body="Sourcing on-chain pairs from beyond Robinhood Chain as more memecoin activity moves there."
-            />
-          </div>
-        </section>
-
         <section id="developer-docs" className="scroll-mt-24">
           <h2 className="text-lg font-bold text-gray-100 mb-2">Developer docs</h2>
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <HoloCard radius={20} glow={false} innerClassName="p-5">
             <p className="text-sm font-semibold text-gray-100">See the repo</p>
             <p className="text-sm text-gray-400 leading-relaxed mt-1">
               Contract source and tests live in <code className="text-gray-300">packages/contracts</code>, the
               settlement/creation script in <code className="text-gray-300">packages/cron</code>, and the full
               architecture writeup in the repo&apos;s <code className="text-gray-300">DOCS.md</code>.
             </p>
-          </div>
+          </HoloCard>
         </section>
       </div>
     </div>
