@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";
 import { AmbientBackground } from "@/components/AmbientBackground";
+import { Sidebar } from "@/components/Sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,14 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-gray-950 text-gray-100">
         <AmbientBackground />
         <Providers>
-          <PageTransition>{children}</PageTransition>
+          {/* Sidebar is global (whole app, incl. the landing page) so chrome is
+              consistent everywhere. Desktop: fixed left; the content area is
+              offset by the sidebar's width. Mobile: a top bar + slide-in drawer
+              rendered inside <Sidebar />, no fixed offset needed. */}
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-h-screen lg:pl-64">
+            <PageTransition>{children}</PageTransition>
+          </div>
         </Providers>
       </body>
     </html>

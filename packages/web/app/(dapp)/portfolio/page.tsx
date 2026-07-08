@@ -10,11 +10,16 @@ import { formatEth } from "@/lib/format";
 import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { quoteSell, CurveQuoteError } from "@/lib/curveMath";
 import { assetDisplayName } from "@/lib/assets";
+import { PortfolioClaimButton } from "@/components/PortfolioClaimButton";
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
 
-  const { data: positions, isLoading } = useQuery({
+  const {
+    data: positions,
+    isLoading,
+    refetch: refetchPositions,
+  } = useQuery({
     queryKey: ["positions", address],
     queryFn: () => getUserPositions(address!),
     enabled: !!address,
@@ -82,21 +87,23 @@ export default function PortfolioPage() {
       ) : (
         <div className="grid gap-3">
           {positions.map((position) => (
-            <Link
+            <div
               key={position.marketId.toString()}
-              href={`/markets/${position.marketId}`}
-              className="rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-all flex items-center justify-between"
+              className="rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-all"
             >
-              <span className="text-sm font-semibold text-gray-100">{assetDisplayName(position.asset.symbol)}</span>
-              <div className="flex gap-2 text-sm">
-                <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-semibold">
-                  Up: {formatEth(position.upBalance)}
-                </span>
-                <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-semibold">
-                  Down: {formatEth(position.downBalance)}
-                </span>
-              </div>
-            </Link>
+              <Link href={`/markets/${position.marketId}`} className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-100">{assetDisplayName(position.asset.symbol)}</span>
+                <div className="flex gap-2 text-sm">
+                  <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-semibold">
+                    Up: {formatEth(position.upBalance)}
+                  </span>
+                  <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-semibold">
+                    Down: {formatEth(position.downBalance)}
+                  </span>
+                </div>
+              </Link>
+              <PortfolioClaimButton position={position} onClaimed={() => refetchPositions()} />
+            </div>
           ))}
         </div>
       )}

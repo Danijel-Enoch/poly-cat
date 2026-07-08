@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { AssetSlot } from "@/lib/chainReads";
-import { upProbabilityFromSupplies, formatPriceWad } from "@/lib/format";
+import { upProbabilityFromSupplies, formatPriceWad, formatEth } from "@/lib/format";
 import { assetDisplayName, assetColor } from "@/lib/assets";
+import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { useNow } from "@/lib/useNow";
 
 function formatCountdown(seconds: number): string {
@@ -15,7 +16,7 @@ function formatCountdown(seconds: number): string {
 }
 
 export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: number }) {
-  const { asset, market } = slot;
+  const { asset, market, volume } = slot;
   const now = useNow(1000);
 
   const card = (
@@ -97,6 +98,11 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
                       </span>
                     )}
                   </div>
+                  {volume != null && (
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Vol {formatEth(volume)} {COLLATERAL_SYMBOL}
+                    </p>
+                  )}
                 </>
               );
             })()}

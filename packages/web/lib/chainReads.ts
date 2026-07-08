@@ -156,7 +156,7 @@ export async function getMarket(id: bigint): Promise<MarketRow | null> {
   return toMarketRow(id, raw);
 }
 
-export type AssetSlot = { asset: Asset; market: MarketRow | null };
+export type AssetSlot = { asset: Asset; market: MarketRow | null; volume: bigint | null };
 
 /** The current (or most recently created) market for every registered
  * asset — what the home page's asset list renders. A slot's `market` is
@@ -177,10 +177,14 @@ export async function getMarketsList(): Promise<AssetSlot[]> {
   );
 
   const markets = await Promise.all(currentIds.map((id) => (id > 0n ? readMarket(id) : null)));
+  const volumes = await Promise.all(
+    markets.map((raw, i) => (raw ? getMarketVolume(currentIds[i], raw.startTime) : null)),
+  );
 
   return assets.map((asset, i) => ({
     asset,
     market: markets[i] ? toMarketRow(currentIds[i], markets[i]!) : null,
+    volume: volumes[i],
   }));
 }
 
@@ -296,6 +300,16 @@ export async function getTradeHistory(marketId: bigint, startTime: bigint): Prom
 
   rows.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)));
   return rows;
+}
+
+/** Total ETH collateral that has changed hands in one market so far — the
+ * sum of every buy's `collateralIn` and every sell's `collateralOut`.
+ * There's no on-chain running total (the contract only tracks `reserve`,
+ * which nets buys against sells), so this reuses `getTradeHistory`'s
+ * already-bounded event scan rather than adding new contract state. */
+export async function getMarketVolume(marketId: bigint, startTime: bigint): Promise<bigint> {
+  const trades = await getTradeHistory(marketId, startTime);
+  return trades.reduce((sum, trade) => sum + trade.collateralAmount, 0n);
 }
 
 export type PositionRow = {

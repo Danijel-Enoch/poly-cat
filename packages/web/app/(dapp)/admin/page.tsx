@@ -138,6 +138,7 @@ export default function AdminPage() {
                 <th className="pb-2 pr-4 font-medium">Market</th>
                 <th className="pb-2 pr-4 font-medium">State</th>
                 <th className="pb-2 pr-4 font-medium">Strike</th>
+                <th className="pb-2 pr-4 font-medium">Volume</th>
                 <th className="pb-2 pr-4 font-medium">Closes</th>
                 <th className="pb-2 pr-4 font-medium">Fees</th>
                 <th className="pb-2 font-medium" />
@@ -156,7 +157,7 @@ export default function AdminPage() {
               ))}
               {(slots ?? []).length === 0 && (
                 <tr>
-                  <td className="py-4 text-gray-500" colSpan={7}>
+                  <td className="py-4 text-gray-500" colSpan={8}>
                     No markets registered yet — add one above.
                   </td>
                 </tr>
@@ -191,7 +192,7 @@ function SlotRow({
     <tr className="border-b border-gray-800/60 last:border-0 align-top">
       <td className="py-2 pr-4 text-gray-100 font-semibold whitespace-nowrap">{assetDisplayName(asset.symbol)}</td>
       {!market ? (
-        <td className="py-2 text-gray-500" colSpan={6}>
+        <td className="py-2 text-gray-500" colSpan={7}>
           No market yet
         </td>
       ) : (
@@ -202,6 +203,9 @@ function SlotRow({
             {market.state === "Finalized" ? ` · ${market.outcome ? "Up" : "Down"}` : ""}
           </td>
           <td className="py-2 pr-4 text-gray-300">${formatPriceWad(market.startPriceWad)}</td>
+          <td className="py-2 pr-4 text-gray-300">
+            {slot.volume == null ? "—" : `${formatEth(slot.volume)} ${COLLATERAL_SYMBOL}`}
+          </td>
           <td className="py-2 pr-4 text-gray-300 whitespace-nowrap">{formatDate(market.closeTime)}</td>
           <td className="py-2 pr-4 text-gray-300">
             {formatEth(market.collectedFees)} {COLLATERAL_SYMBOL}

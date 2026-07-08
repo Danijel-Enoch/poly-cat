@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useClickRipple } from "@/components/ClickRipple";
 import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
@@ -40,6 +40,15 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
     ...marketFactoryContract,
     functionName: "feeBps",
   });
+
+  // The minimum ETH a trader must buy in with — the same value the cron seeds
+  // every new market's curve with (createMarket sends exactly `defaultInitialLiquidity`).
+  // Enforced here as a UI floor; the contract itself only requires amountIn > 0.
+  const { data: defaultInitialLiquidity } = useReadContract({
+    ...marketFactoryContract,
+    functionName: "defaultInitialLiquidity",
+  });
+  const minBuyIn = defaultInitialLiquidity;
 
   const { data: ethBalanceData, refetch: refetchEthBalance } = useBalance({
     address,
@@ -93,6 +102,44 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       throw err;
     }
   }, [market, feeBps, sSame, sOther, side, buyMode, amount]);
+
+  // Default the buy-in to the contract's `defaultInitialLiquidity` the first time
+  // it resolves, so the panel opens with a valid (at-the-floor) amount rather than
+  // the stale hardcoded "0.1". Seeded once per mount — never clobbers user typing.
+  const seededAmount = useRef(false);
+  useEffect(() => {
+    if (seededAmount.current || minBuyIn === undefined || minBuyIn <= 0n) return;
+    setAmount(formatCollateral(minBuyIn, COLLATERAL_DECIMALS).replace(/,/g, ""));
+    seededAmount.current = true;
+  }, [minBuyIn]);
+
+  // The ETH actually being spent on a buy, resolved for both modes (in "receive"
+  // mode the user types a share target, so the amountIn is solved for here).
+  // Used to enforce the `defaultInitialLiquidity` floor on the resolved ETH, not
+  // just the typed figure.
+  const buyAmountIn = useMemo(() => {
+    if (side !== "buy" || !market || feeBps === undefined || sSame === undefined || sOther === undefined) return undefined;
+    const parsed = (() => {
+      try {
+        return parseCollateral(amount || "0", COLLATERAL_DECIMALS);
+      } catch {
+        return 0n;
+      }
+    })();
+    if (parsed <= 0n) return 0n;
+    try {
+      return buyMode === "receive"
+        ? quoteAmountInForShares(market.reserve, sSame, sOther, parsed, BigInt(feeBps))
+        : parsed;
+    } catch (err) {
+      if (err instanceof CurveQuoteError) return undefined;
+      throw err;
+    }
+  }, [side, buyMode, market, feeBps, sSame, sOther, amount]);
+
+  const minBuyInEth = minBuyIn !== undefined ? formatCollateral(minBuyIn, COLLATERAL_DECIMALS) : null;
+  const belowMin =
+    side === "buy" && minBuyIn !== undefined && (buyAmountIn === undefined || buyAmountIn < minBuyIn);
 
   if (!market) {
     return (
@@ -150,6 +197,12 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         const parsed = parseCollateral(amount, COLLATERAL_DECIMALS);
         const amountIn =
           buyMode === "receive" ? quoteAmountInForShares(reserve, sSame, sOther, parsed, BigInt(feeBps)) : parsed;
+        // Floor the buy-in at `defaultInitialLiquidity` — the contract itself only
+        // requires amountIn > 0, so this UI-level guard is what actually enforces it.
+        if (minBuyIn !== undefined && amountIn < minBuyIn) {
+          setStatus(`Minimum buy-in is ${formatCollateral(minBuyIn, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}.`);
+          return;
+        }
         const minSharesOut = buyMode === "receive" ? parsed : 0n;
 
         setStatus("Buying shares...");
@@ -286,13 +339,15 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              {preview
-                ? preview.label === "shares"
-                  ? `If ${isUp ? "Up" : "Down"} wins → you get ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
-                  : `≈ ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${preview.label}`
-                : side === "sell"
-                  ? `Balance: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
-                  : `Balance: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`}
+              {side === "buy" && belowMin && minBuyInEth
+                ? <span className="text-amber-400">Minimum buy-in is {minBuyInEth} {COLLATERAL_SYMBOL}</span>
+                : preview
+                  ? preview.label === "shares"
+                    ? `If ${isUp ? "Up" : "Down"} wins → you get ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
+                    : `≈ ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${preview.label}`
+                  : side === "sell"
+                    ? `Balance: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
+                    : `Balance: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`}
             </p>
           </div>
 
@@ -327,7 +382,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
           <motion.button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || belowMin}
             whileTap={{ scale: 0.98 }}
             onPointerDown={onSubmitRipple}
             className={`relative overflow-hidden rounded-xl py-3 font-bold text-white text-sm disabled:opacity-50 ${
