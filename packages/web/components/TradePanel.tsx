@@ -200,12 +200,12 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         // Floor the buy-in at `defaultInitialLiquidity` — the contract itself only
         // requires amountIn > 0, so this UI-level guard is what actually enforces it.
         if (minBuyIn !== undefined && amountIn < minBuyIn) {
-          setStatus(`Minimum buy-in is ${formatCollateral(minBuyIn, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}.`);
+          setStatus(`Min ape-in is ${formatCollateral(minBuyIn, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}, ser.`);
           return;
         }
         const minSharesOut = buyMode === "receive" ? parsed : 0n;
 
-        setStatus("Buying shares...");
+        setStatus("Aping in...");
         const hash = await writeContractAsync({
           ...marketFactoryContract,
           functionName: "buyShares",
@@ -215,7 +215,7 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         await waitForTransactionReceipt(wagmiConfig, { hash });
       } else {
         const sharesIn = parseCollateral(amount, COLLATERAL_DECIMALS);
-        setStatus("Selling shares...");
+        setStatus("Exiting position...");
         const hash = await writeContractAsync({
           ...marketFactoryContract,
           functionName: "sellShares",
@@ -223,10 +223,10 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash });
       }
-      setStatus("Done!");
+      setStatus("WAGMI 🐒");
       await refetchAll();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Transaction failed");
+      setStatus(err instanceof Error ? err.message : "rekt — tx failed");
     } finally {
       setSubmitting(false);
     }
@@ -239,28 +239,28 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
           <button
             type="button"
             onClick={() => setSide("buy")}
-            className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
+            className={`relative px-3 py-1.5 rounded-full text-sm font-bold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
           >
             {side === "buy" && (
               <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
             )}
-            <span className="relative">Buy</span>
+            <span className="relative">Ape</span>
           </button>
           <button
             type="button"
             onClick={() => setSide("sell")}
-            className={`relative px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
+            className={`relative px-3 py-1.5 rounded-full text-sm font-bold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
           >
             {side === "sell" && (
               <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
             )}
-            <span className="relative">Sell</span>
+            <span className="relative">Exit</span>
           </button>
         </div>
         {isConnected && (
           <span className="text-xs text-gray-500">
-            Balance:{" "}
-            <span className="text-gray-300 font-semibold">
+            Bag:{" "}
+            <span className="text-gray-300 font-bold">
               {formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL}
             </span>
           </span>
@@ -268,9 +268,9 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
       </div>
 
       {!isTrading ? (
-        <p className="text-sm text-gray-400">Trading is closed for this market.</p>
+        <p className="text-sm text-gray-400">Window&apos;s closed, ser — too late to ape this one.</p>
       ) : !isConnected ? (
-        <p className="text-sm text-gray-400">Connect your wallet to trade.</p>
+        <p className="text-sm text-gray-400">Connect ur wallet to ape, fren.</p>
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-2">
@@ -278,25 +278,25 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
               type="button"
               onClick={() => setIsUp(true)}
               whileTap={{ scale: 0.96 }}
-              className={`rounded-xl py-3 font-bold text-sm transition-colors ${
+              className={`rounded-xl py-3 font-bold text-sm uppercase tracking-wide transition-[box-shadow,background-color] ${
                 isUp
-                  ? "bg-emerald-600 text-white"
+                  ? "bg-emerald-500 text-gray-950 glow-up"
                   : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
               }`}
             >
-              Up · {upPct}¢
+              Ape Up · {upPct}¢
             </motion.button>
             <motion.button
               type="button"
               onClick={() => setIsUp(false)}
               whileTap={{ scale: 0.96 }}
-              className={`rounded-xl py-3 font-bold text-sm transition-colors ${
+              className={`rounded-xl py-3 font-bold text-sm uppercase tracking-wide transition-[box-shadow,background-color] ${
                 !isUp
-                  ? "bg-rose-600 text-white"
+                  ? "bg-rose-500 text-gray-950 glow-down"
                   : "bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900"
               }`}
             >
-              Down · {100 - upPct}¢
+              Ape Dn · {100 - upPct}¢
             </motion.button>
           </div>
 
@@ -305,20 +305,20 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
               <button
                 type="button"
                 onClick={() => setBuyMode("spend")}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
                   buyMode === "spend" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                Spend {COLLATERAL_SYMBOL}
+                Send {COLLATERAL_SYMBOL}
               </button>
               <button
                 type="button"
                 onClick={() => setBuyMode("receive")}
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${
+                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
                   buyMode === "receive" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
                 }`}
               >
-                Buy exact shares
+                Exact shares
               </button>
             </div>
           )}
@@ -340,14 +340,14 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
             </div>
             <p className="text-xs text-gray-500 mt-1">
               {side === "buy" && belowMin && minBuyInEth
-                ? <span className="text-amber-400">Minimum buy-in is {minBuyInEth} {COLLATERAL_SYMBOL}</span>
+                ? <span className="text-amber-400">Min ape-in is {minBuyInEth} {COLLATERAL_SYMBOL}</span>
                 : preview
                   ? preview.label === "shares"
-                    ? `If ${isUp ? "Up" : "Down"} wins → you get ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
+                    ? `If ${isUp ? "Up" : "Down"} wins → bag ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
                     : `≈ ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${preview.label}`
                   : side === "sell"
-                    ? `Balance: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
-                    : `Balance: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`}
+                    ? `Bag: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
+                    : `Bag: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`}
             </p>
           </div>
 
@@ -385,12 +385,16 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
             disabled={submitting || belowMin}
             whileTap={{ scale: 0.98 }}
             onPointerDown={onSubmitRipple}
-            className={`relative overflow-hidden rounded-xl py-3 font-bold text-white text-sm disabled:opacity-50 ${
-              sideColor === "emerald" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-rose-600 hover:bg-rose-700"
+            className={`relative overflow-hidden rounded-xl py-3 font-bold text-gray-950 text-sm uppercase tracking-wide disabled:opacity-50 ${
+              sideColor === "emerald" ? "bg-emerald-500 hover:bg-emerald-400 glow-up" : "bg-rose-500 hover:bg-rose-400 glow-down"
             }`}
           >
             {submitRippleLayer}
-            {submitting ? "Submitting..." : `${side === "buy" ? "Buy" : "Sell"} ${isUp ? "Up" : "Down"}`}
+            {submitting
+              ? "Sending it..."
+              : side === "buy"
+                ? `Ape ${isUp ? "Up 🟢" : "Down 🔴"}`
+                : `Exit ${isUp ? "Up" : "Down"}`}
           </motion.button>
           {status && <p className="text-sm text-gray-400">{status}</p>}
         </form>
@@ -398,11 +402,11 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
       {isConnected && (
         <div className="mt-5 pt-4 border-t border-gray-800 flex gap-3 text-xs">
-          <span className="flex-1 rounded-lg bg-emerald-950 text-emerald-400 px-3 py-2 font-semibold">
-            Up: {formatCollateral(upBalance ?? 0n, COLLATERAL_DECIMALS)}
+          <span className="flex-1 rounded-lg bg-emerald-950 text-emerald-400 px-3 py-2 font-bold uppercase tracking-wide">
+            Up bag: {formatCollateral(upBalance ?? 0n, COLLATERAL_DECIMALS)}
           </span>
-          <span className="flex-1 rounded-lg bg-rose-950 text-rose-400 px-3 py-2 font-semibold">
-            Down: {formatCollateral(downBalance ?? 0n, COLLATERAL_DECIMALS)}
+          <span className="flex-1 rounded-lg bg-rose-950 text-rose-400 px-3 py-2 font-bold uppercase tracking-wide">
+            Dn bag: {formatCollateral(downBalance ?? 0n, COLLATERAL_DECIMALS)}
           </span>
         </div>
       )}

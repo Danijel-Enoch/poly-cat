@@ -10,8 +10,8 @@ import type { PriceSourceName } from "@/lib/chainReads";
 import { DexScreenerEmbed } from "@/components/DexScreenerEmbed";
 
 const colors = {
-  up: "#34d399", // emerald-400
-  down: "#fb7185", // rose-400
+  up: "#00ff9d", // neon green (degen Up)
+  down: "#ff2e88", // hot pink (degen Down)
   strike: "#9ca3af", // gray-400
   grid: "#374151", // gray-700
   axisText: "#6b7280", // gray-500

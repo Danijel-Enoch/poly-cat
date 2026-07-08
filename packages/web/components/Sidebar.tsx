@@ -14,7 +14,7 @@ import { AdminNavLink } from "@/components/AdminNavLink";
 // mobile drawer render the exact same set of links.
 const NAV_LINKS = [
   { href: "/app", label: "Markets", icon: <IconGrid /> },
-  { href: "/portfolio", label: "Portfolio", icon: <IconWallet /> },
+  { href: "/portfolio", label: "Bag", icon: <IconWallet /> },
   { href: "/docs", label: "Docs", icon: <IconBook /> },
 ] as const;
 

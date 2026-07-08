@@ -17,12 +17,12 @@ type BubbleConfig = {
 
 const BUBBLES: BubbleConfig[] = [
   { top: "-8%", left: "4%", size: 260, colors: ["#ffe066", "#e2b600"], drift: { x: [0, 40, -15, 0], y: [0, -25, 15, 0], duration: 26 }, repelStrength: 70 },
-  { top: "8%", left: "78%", size: 180, colors: ["#fff3b0", "#ffd000"], drift: { x: [0, -30, 20, 0], y: [0, 20, -20, 0], duration: 22 }, repelStrength: 60 },
-  { top: "58%", left: "88%", size: 220, colors: ["#ffe066", "#c99700"], drift: { x: [0, -25, 15, 0], y: [0, 25, -15, 0], duration: 30 }, repelStrength: 65 },
+  { top: "8%", left: "78%", size: 180, colors: ["#5cffc4", "#00b377"], drift: { x: [0, -30, 20, 0], y: [0, 20, -20, 0], duration: 22 }, repelStrength: 60 },
+  { top: "58%", left: "88%", size: 220, colors: ["#ff7ab0", "#b3005e"], drift: { x: [0, -25, 15, 0], y: [0, 25, -15, 0], duration: 30 }, repelStrength: 65 },
   { top: "72%", left: "10%", size: 320, colors: ["#fff3b0", "#e2b600"], drift: { x: [0, 30, -25, 0], y: [0, -20, 10, 0], duration: 34 }, repelStrength: 80 },
   { top: "35%", left: "50%", size: 140, colors: ["#ffe066", "#ffd000"], drift: { x: [0, 20, -30, 0], y: [0, -30, 20, 0], duration: 20 }, repelStrength: 55 },
-  { top: "18%", left: "30%", size: 100, colors: ["#fff8dc", "#e2b600"], drift: { x: [0, -18, 24, 0], y: [0, 18, -12, 0], duration: 18 }, repelStrength: 50 },
-  { top: "85%", left: "55%", size: 150, colors: ["#ffe066", "#c99700"], drift: { x: [0, 22, -18, 0], y: [0, -15, 10, 0], duration: 24 }, repelStrength: 55 },
+  { top: "18%", left: "30%", size: 100, colors: ["#5cffc4", "#00ff9d"], drift: { x: [0, -18, 24, 0], y: [0, 18, -12, 0], duration: 18 }, repelStrength: 50 },
+  { top: "85%", left: "55%", size: 150, colors: ["#ff7ab0", "#ff2e88"], drift: { x: [0, 22, -18, 0], y: [0, -15, 10, 0], duration: 24 }, repelStrength: 55 },
 ];
 
 /** Radius (px) around the cursor within which a bubble feels the repulsion. */

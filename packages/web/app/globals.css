@@ -22,6 +22,37 @@
   --color-gray-800: oklch(30% 0.052 92);
   --color-gray-900: oklch(24% 0.045 92);
   --color-gray-950: oklch(17.3% 0.0319 92); /* = #150f01, "general background" */
+
+  /* Degen Up/Down accents — re-hue Tailwind's `emerald` and `rose` scales so
+     every existing emerald-*/rose-* utility (Up = green, Down = pink across
+     MarketCard, TradePanel, charts, portfolio, docs) flips to neon in one
+     place, the same trick used for the gold grays above. Hue ~158 = neon
+     green (#00FF9D), hue ~358 = hot pink (#FF2E88); lightness steps follow
+     Tailwind's originals so -400 stays the vivid text shade and -950 the
+     dark chip background. */
+  --color-emerald-50: oklch(97% 0.04 158);
+  --color-emerald-100: oklch(94% 0.09 158);
+  --color-emerald-200: oklch(91% 0.14 158);
+  --color-emerald-300: oklch(87% 0.19 158);
+  --color-emerald-400: oklch(85% 0.23 158);
+  --color-emerald-500: oklch(78% 0.25 158);
+  --color-emerald-600: oklch(66% 0.22 158);
+  --color-emerald-700: oklch(56% 0.19 158);
+  --color-emerald-800: oklch(44% 0.15 158);
+  --color-emerald-900: oklch(34% 0.11 158);
+  --color-emerald-950: oklch(25% 0.07 158);
+
+  --color-rose-50: oklch(97% 0.03 358);
+  --color-rose-100: oklch(93% 0.07 358);
+  --color-rose-200: oklch(89% 0.12 358);
+  --color-rose-300: oklch(85% 0.18 358);
+  --color-rose-400: oklch(78% 0.24 358);
+  --color-rose-500: oklch(70% 0.26 358);
+  --color-rose-600: oklch(62% 0.24 358);
+  --color-rose-700: oklch(54% 0.21 358);
+  --color-rose-800: oklch(43% 0.17 358);
+  --color-rose-900: oklch(33% 0.13 358);
+  --color-rose-950: oklch(25% 0.08 358);
 }
 
 @theme inline {
@@ -29,6 +60,9 @@
   --color-foreground: var(--foreground);
   --color-accent: #ffd000;
   --color-accent-dark: #e2b600;
+  /* Raw neon values for non-Tailwind contexts (inline styles, canvas). */
+  --color-up: #00ff9d;
+  --color-down: #ff2e88;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -47,6 +81,33 @@ body {
     var(--background);
   background-attachment: fixed;
   color: var(--foreground);
+}
+
+/* Neon glow helpers for the degen Up/Down accents — used on buttons, badges,
+   and active states where a flat color isn't loud enough. */
+.glow-up {
+  box-shadow: 0 0 14px rgba(0, 255, 157, 0.45);
+}
+.glow-down {
+  box-shadow: 0 0 14px rgba(255, 46, 136, 0.45);
+}
+.glow-accent {
+  box-shadow: 0 0 14px rgba(255, 208, 0, 0.4);
+}
+.text-glow-up {
+  text-shadow: 0 0 10px rgba(0, 255, 157, 0.6);
+}
+.text-glow-down {
+  text-shadow: 0 0 10px rgba(255, 46, 136, 0.6);
+}
+.text-glow-accent {
+  text-shadow: 0 0 12px rgba(255, 208, 0, 0.55);
+}
+
+/* Gold→pink gradient text for degen headlines. Apply via `text-transparent`
+   + `bg-clip-text` on the element. */
+.degen-gradient-text {
+  background-image: linear-gradient(95deg, #ffd000 0%, #ff2e88 100%);
 }
 
 .line-clamp-2 {

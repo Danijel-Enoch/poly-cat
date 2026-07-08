@@ -38,19 +38,19 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
               <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#1b1300] text-gray-200 mb-1">
                 5m window
               </span>
-              <h1 className="text-xl font-extrabold text-gray-100">{assetDisplayName(asset.symbol)} Up or Down?</h1>
+              <h1 className="text-xl font-extrabold text-gray-100 uppercase tracking-tight">{assetDisplayName(asset.symbol)} — Up or Down?</h1>
               <p className="text-sm text-gray-400 mt-1">
                 Strike ${formatPriceWad(market.startPriceWad)} at {formatDate(market.startTime)} · Closes{" "}
                 {formatDate(market.closeTime)}
               </p>
               {market.state === "Finalized" && (
-                <p className="text-sm font-semibold mt-1 text-gray-200">
-                  Settled at ${formatPriceWad(market.closePriceWad)} — {market.outcome ? "Up" : "Down"} won
+                <p className="text-sm font-bold mt-1 text-gray-200">
+                  Settled at ${formatPriceWad(market.closePriceWad)} — {market.outcome ? "Up won 🟢" : "Down won 🔴"}
                 </p>
               )}
               {market.state === "Cancelled" && (
-                <p className="text-sm font-semibold mt-1 text-gray-200">
-                  Pushed — close price matched the strike exactly
+                <p className="text-sm font-bold mt-1 text-gray-200">
+                  Pushed — close matched the strike exactly. rekt-free refund.
                 </p>
               )}
             </div>

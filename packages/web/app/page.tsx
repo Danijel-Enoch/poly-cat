@@ -57,11 +57,11 @@ function IconNoToken() {
 
 function FeatureCard({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left">
-      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 border border-gray-700 text-accent">
+    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left hover:border-gray-700 transition-colors">
+      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-800 border border-gray-700 text-accent glow-accent">
         {icon}
       </span>
-      <p className="font-semibold text-gray-100 mt-3">{title}</p>
+      <p className="font-bold text-gray-100 mt-3 uppercase tracking-wide">{title}</p>
       <p className="text-sm text-gray-400 leading-relaxed mt-1.5">{body}</p>
     </div>
   );
@@ -74,7 +74,7 @@ function Step({ n, title, body }: { n: number; title: string; body: string }) {
         {n}
       </span>
       <div>
-        <p className="font-semibold text-sm text-gray-100">{title}</p>
+        <p className="font-bold text-sm text-gray-100 uppercase tracking-wide">{title}</p>
         <p className="text-sm text-gray-400 leading-relaxed mt-0.5">{body}</p>
       </div>
     </div>
@@ -85,89 +85,96 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 flex flex-col items-center px-6">
-        <div className="flex flex-col items-center text-center pt-20 pb-16">
-          <span className="text-xs font-semibold uppercase tracking-wide text-accent mb-4">Built on Robinhood Chain</span>
+        <div className="flex flex-col items-center text-center pt-16 pb-14">
+          <span className="text-xs font-bold uppercase tracking-[0.2em] text-accent mb-4 text-glow-accent">
+            gm degens · built on Robinhood Chain
+          </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight max-w-2xl">
-            Pounce on Up or Down. Every 5 minutes.
+            <span className="degen-gradient-text bg-clip-text text-transparent">Ape Up or Down.</span>
+            <br />
+            Every 5 minutes.
           </h1>
           <p className="text-gray-400 max-w-xl mt-5 text-base sm:text-lg">
-            Pick an asset — blue chips like BTC, ETH, and SOL, or Robinhood Chain memecoins — and buy Up or Down
-            before its fixed 5-minute window closes. Down wins if the price drops below where it started, Up wins if
-            it&apos;s higher. Trade with ETH, settled automatically off a live price feed — no admin, no dispute.
+            Pick a token — blue chips like BTC, ETH, SOL, or Robinhood Chain memecoins — and ape Up or Down
+            before its 5-minute window closes. Down wins if the price dips below the strike, Up wins if it
+            rips higher. Pure ETH, settled off a live feed. No admin, no dispute, no KYC. Probably nothing.
+            WAGMI.
           </p>
           <Link
             href="/app"
-            className="mt-10 rounded-full bg-accent hover:bg-accent-dark text-gray-950 font-semibold px-8 py-3 text-base transition-colors"
+            className="mt-10 rounded-full bg-accent hover:bg-accent-dark text-gray-950 font-bold px-8 py-3 text-base transition-shadow glow-accent uppercase tracking-wide"
           >
-            Launch App
+            Ape in 🐒
           </Link>
         </div>
 
-        <section className="w-full max-w-5xl py-16 border-t border-gray-800">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-center">What makes Polycat different</h2>
+        <section className="w-full max-w-5xl py-14 border-t border-gray-800">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-center uppercase">
+            Why this isn&apos;t another NGMI launch
+          </h2>
           <p className="text-gray-400 text-center max-w-lg mx-auto mt-3">
-            Not another order book, and not another token launch — just a fast, mechanical way to trade a direction.
+            Not an order book, not a token presale — just a fast, mechanical way to ape a direction every 5 minutes.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-10">
             <FeatureCard
               icon={<IconCurve />}
-              title="Always someone to trade with"
-              body="Every window is its own automated market maker on a Pythagorean bonding curve — there's a counterparty for every trade, even the very first one in a brand-new window. No order book, no waiting for a match."
+              title="Always someone to ape with"
+              body="Every window is its own AMM on a Pythagorean bonding curve — there's a counterparty for every trade, even the very first one in a fresh window. No order book, no waiting for a match."
             />
             <FeatureCard
               icon={<IconClock />}
               title="Fixed 5-minute windows"
-              body="Every market runs exactly 5 minutes, aligned to the clock. The moment one settles, the next opens automatically — there's always a live window for every registered asset."
+              body="Every market runs exactly 5 minutes, aligned to the clock. The second one settles, the next opens — there's always a live window for every registered asset. Wen? Now."
             />
             <FeatureCard
               icon={<IconGrid />}
-              title="Curated, growing asset list"
-              body="Blue chips like BTC, ETH, and SOL priced via Gate.com, plus Robinhood Chain memecoins like CashCat priced via DexScreener — added by the admin dashboard, not a code change."
+              title="Curated, growing bag"
+              body="Blue chips like BTC, ETH, SOL priced via Gate.com, plus Robinhood Chain memecoins like CashCat via DexScreener — added by the admin dashboard, not a code change."
             />
             <FeatureCard
               icon={<IconBolt />}
-              title="Native ETH, one transaction"
-              body="Buying is a single signed transaction — no separate approval step, no wrapped collateral token to hold first. Trade with the same ETH you already pay gas with."
+              title="Native ETH, one tx"
+              body="Buying is a single signed transaction — no approval step, no wrapped collateral token to hold first. Trade with the same ETH you pay gas in, ser."
             />
             <FeatureCard
               icon={<IconCheck />}
-              title="Fully mechanical settlement"
-              body="The observed close price decides the outcome automatically, straight off a live price feed — no admin judgment call, no bond, no dispute window, ever."
+              title="Mechanical settlement"
+              body="The observed close price decides it automatically, straight off a live feed — no admin judgment call, no bond, no dispute window, ever. rekt-proof finality."
             />
             <FeatureCard
               icon={<IconNoToken />}
-              title="No token"
-              body="There's no Polycat token, and none is being sold or airdropped. Trading uses ETH, full stop — be wary of anyone claiming otherwise."
+              title="No token. Seriously."
+              body="There's no Polycat token, and none is being sold or airdropped. Trading uses ETH, full stop — anyone claiming otherwise is NGMI. Stay safe, fren."
             />
           </div>
         </section>
 
-        <section className="w-full max-w-3xl py-16 border-t border-gray-800">
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-center">How it works</h2>
+        <section className="w-full max-w-3xl py-14 border-t border-gray-800">
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-center uppercase">How to ape</h2>
           <div className="flex flex-col gap-6 mt-10 max-w-md mx-auto">
-            <Step n={1} title="Connect a wallet" body="No signup, no email — just connect and you're ready to trade." />
+            <Step n={1} title="Connect a wallet" body="No signup, no email — connect and you're ready to send it." />
             <Step
               n={2}
-              title="Pick an asset and a side"
-              body="Every card shows the strike price and the current implied chance of Up for its live 5-minute window."
+              title="Pick a token + a side"
+              body="Every card shows the strike and the live implied chance of Up for its 5-minute window."
             />
             <Step
               n={3}
-              title="Buy Up or Down with ETH"
-              body="One transaction, spend an exact ETH amount or an exact number of shares — your call."
+              title="Ape Up or Down with ETH"
+              body="One tx — spend an exact ETH amount or target an exact share count. Your call, degens."
             />
             <Step
               n={4}
-              title="Sell, redeem, or let it settle"
-              body="Exit anytime before close, or hold and redeem automatically once the window settles."
+              title="Exit, redeem, or let it cook"
+              body="Peg out before close, or hold and auto-redeem once the window settles. WAGMI."
             />
           </div>
           <div className="flex justify-center mt-10">
             <Link
               href="/app"
-              className="rounded-full bg-accent hover:bg-accent-dark text-gray-950 font-semibold px-8 py-3 text-base transition-colors"
+              className="rounded-full bg-accent hover:bg-accent-dark text-gray-950 font-bold px-8 py-3 text-base transition-shadow glow-accent uppercase tracking-wide"
             >
-              Launch App
+              Ape in 🐒
             </Link>
           </div>
         </section>
@@ -182,7 +189,7 @@ export default function LandingPage() {
           Docs
         </Link>
         <Link href="/app" className="hover:text-gray-300">
-          Launch App
+          Ape in
         </Link>
       </footer>
     </div>

@@ -15,10 +15,10 @@ export default async function Home() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-100">Markets</h1>
+        <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Live windows</h1>
         <p className="text-sm text-gray-400 mt-1">
-          Every market is a 5-minute Up/Down window. Buy before it closes — Down wins if the price is below where it
-          started, Up wins if it&apos;s above.
+          Every market is a 5-minute Up/Down sprint. Ape before it closes — Down wins if the price dips below the
+          strike, Up wins if it rips. gm degens.
         </p>
       </div>
 

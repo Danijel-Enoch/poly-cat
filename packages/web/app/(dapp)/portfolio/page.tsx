@@ -59,22 +59,22 @@ export default function PortfolioPage() {
   if (!isConnected) {
     return (
       <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
-        <p className="text-gray-400 text-sm">Connect your wallet to see your positions.</p>
+        <p className="text-gray-400 text-sm">Connect ur wallet to see ur bag, fren.</p>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-extrabold text-gray-100">Your positions</h1>
+      <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Ur bag</h1>
 
       <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Total portfolio value</p>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total bag value</p>
         <p className="text-3xl font-extrabold text-gray-100 mt-1">
           {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
         </p>
         <p className="text-xs text-gray-500 mt-1">
-          What you&apos;d receive selling everything right now, or redeeming resolved positions.
+          What you&apos;d pull exiting everything now, or redeeming resolved bags.
         </p>
       </div>
 
@@ -82,7 +82,7 @@ export default function PortfolioPage() {
         <p className="text-sm text-gray-400">Loading...</p>
       ) : !positions || positions.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900 py-16 text-center">
-          <p className="text-gray-400 text-sm">No open positions yet.</p>
+          <p className="text-gray-400 text-sm">No bags yet — go ape something 🐒</p>
         </div>
       ) : (
         <div className="grid gap-3">
@@ -92,13 +92,13 @@ export default function PortfolioPage() {
               className="rounded-2xl border border-gray-800 bg-gray-900 p-4 hover:shadow-md hover:border-gray-600 transition-all"
             >
               <Link href={`/markets/${position.marketId}`} className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-100">{assetDisplayName(position.asset.symbol)}</span>
+                <span className="text-sm font-bold text-gray-100 uppercase tracking-wide">{assetDisplayName(position.asset.symbol)}</span>
                 <div className="flex gap-2 text-sm">
-                  <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-semibold">
+                  <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-bold uppercase tracking-wide">
                     Up: {formatEth(position.upBalance)}
                   </span>
-                  <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-semibold">
-                    Down: {formatEth(position.downBalance)}
+                  <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-bold uppercase tracking-wide">
+                    Dn: {formatEth(position.downBalance)}
                   </span>
                 </div>
               </Link>

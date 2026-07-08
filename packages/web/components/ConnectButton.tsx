@@ -25,7 +25,7 @@ export function ConnectButton() {
     return (
       <button
         onClick={() => disconnect()}
-        className="text-sm font-medium px-3 py-2 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-800"
+        className="w-full text-sm font-bold px-3 py-2 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
       >
         {shortenAddress(address)}
       </button>
@@ -40,26 +40,26 @@ export function ConnectButton() {
       <button
         onClick={() => connector && connect({ connector })}
         disabled={!connector || isPending}
-        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark disabled:opacity-50"
+        className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent disabled:opacity-50 transition-colors"
       >
-        {isPending ? "Connecting..." : "Connect Wallet"}
+        {isPending ? "Connecting..." : "Connect 🐒"}
       </button>
     );
   }
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <button
         onClick={() => setMenuOpen((open) => !open)}
         disabled={isPending}
-        className="text-sm font-semibold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark disabled:opacity-50"
+        className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent disabled:opacity-50 transition-colors"
       >
-        {isPending ? "Connecting..." : "Connect Wallet"}
+        {isPending ? "Connecting..." : "Connect 🐒"}
       </button>
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 mt-2 w-48 rounded-xl border border-gray-700 bg-gray-800 shadow-lg z-20 overflow-hidden">
+          <div className="absolute bottom-full mb-2 left-0 w-full rounded-xl border border-gray-700 bg-gray-800 shadow-lg z-20 overflow-hidden">
             {connectors.map((connector) => (
               <button
                 key={connector.uid}

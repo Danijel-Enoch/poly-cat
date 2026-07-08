@@ -35,7 +35,7 @@ describe("MarketCard", () => {
   it("renders the asset and 50/50 probability at genesis", () => {
     render(<MarketCard slot={makeSlot()} />);
     expect(screen.getByText("Bitcoin")).toBeInTheDocument();
-    expect(screen.getByText("5m window")).toBeInTheDocument();
+    expect(screen.getByText(/5m window/)).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
@@ -46,23 +46,23 @@ describe("MarketCard", () => {
 
   it("shows an opening-soon state when the asset has no market yet", () => {
     render(<MarketCard slot={makeSlot({ asset: makeAsset({ symbol: "ETH" }), market: null })} />);
-    expect(screen.getByText("Opening soon...")).toBeInTheDocument();
+    expect(screen.getByText(/Opening soon/)).toBeInTheDocument();
   });
 
   it("shows the outcome for a finalized market", () => {
     render(
       <MarketCard slot={makeSlot({ asset: makeAsset({ symbol: "SOL" }), market: makeMarket({ state: "Finalized", outcome: true }) })} />,
     );
-    expect(screen.getByText("UP won")).toBeInTheDocument();
+    expect(screen.getByText(/won/)).toBeInTheDocument();
   });
 
   it("shows a push badge for a cancelled (tied) market", () => {
     render(<MarketCard slot={makeSlot({ market: makeMarket({ state: "Cancelled" }) })} />);
-    expect(screen.getByText("Push")).toBeInTheDocument();
+    expect(screen.getByText(/Push/)).toBeInTheDocument();
   });
 
   it("shows total volume when known", () => {
     render(<MarketCard slot={makeSlot({ volume: 1_500_000_000_000_000_000n })} />);
-    expect(screen.getByText("Vol 1.5 ETH")).toBeInTheDocument();
+    expect(screen.getByText(/Vol 1\.5 ETH/)).toBeInTheDocument();
   });
 });

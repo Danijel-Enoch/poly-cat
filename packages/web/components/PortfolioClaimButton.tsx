@@ -50,16 +50,16 @@ export function PortfolioClaimButton({ position, onClaimed }: { position: Positi
       <p className="text-xs text-gray-500">
         {error ??
           (mode === "redeem"
-            ? `Won ${formatEth(winningBalance)} ${COLLATERAL_SYMBOL} — ready to redeem.`
-            : `Pushed — ${formatEth(refundableBalance)} ${COLLATERAL_SYMBOL} refundable.`)}
+            ? `Won ${formatEth(winningBalance)} ${COLLATERAL_SYMBOL} — claim ur bag.`
+            : `Pushed — ${formatEth(refundableBalance)} ${COLLATERAL_SYMBOL} refundable, ser.`)}
       </p>
       <button
         type="button"
         onClick={handleClaim}
         disabled={submitting}
-        className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-semibold px-3 py-1.5 disabled:opacity-50"
+        className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-bold px-3 py-1.5 disabled:opacity-50"
       >
-        {submitting ? "Claiming..." : mode === "redeem" ? "Redeem" : "Claim refund"}
+        {submitting ? "Claiming..." : mode === "redeem" ? "Claim" : "Claim refund"}
       </button>
     </div>
   );

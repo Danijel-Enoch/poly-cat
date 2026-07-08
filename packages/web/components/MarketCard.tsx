@@ -28,25 +28,25 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
       className="min-w-0"
     >
       <div
-        className={`rounded-2xl border border-gray-800 bg-[#160404] p-4 transition-[box-shadow,border-color] ${
-          market ? "hover:shadow-md hover:border-gray-600" : "opacity-60"
+        className={`rounded-2xl border border-gray-800 bg-gray-950 p-4 transition-[box-shadow,border-color] ${
+          market ? "hover:shadow-md hover:border-gray-700" : "opacity-60"
         }`}
       >
         <div className="flex items-center gap-2">
           <span
-            className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xs"
+            className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-gray-950 font-bold text-xs"
             style={{ backgroundColor: assetColor(asset.symbol) }}
           >
             {asset.symbol.slice(0, 4)}
           </span>
           <div className="min-w-0">
-            <p className="font-semibold text-sm text-gray-100">{assetDisplayName(asset.symbol)}</p>
-            <p className="text-[11px] text-gray-500">5m window</p>
+            <p className="font-bold text-sm text-gray-100 uppercase tracking-wide">{assetDisplayName(asset.symbol)}</p>
+            <p className="text-[11px] text-gray-500">5m window · ape or gd</p>
           </div>
         </div>
 
         {!market ? (
-          <p className="mt-4 text-sm text-gray-500 py-6 text-center">Opening soon...</p>
+          <p className="mt-4 text-sm text-gray-500 py-6 text-center">Opening soon, ser...</p>
         ) : (
           <>
             {(() => {
@@ -62,45 +62,47 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
               return (
                 <>
                   <div className="mt-3 flex items-end justify-between">
-                    <span className={`text-2xl font-extrabold ${upPct >= 50 ? "text-emerald-400" : "text-rose-400"}`}>
+                    <span
+                      className={`text-2xl font-extrabold ${upPct >= 50 ? "text-emerald-400 text-glow-up" : "text-rose-400 text-glow-down"}`}
+                    >
                       {upPct}%
                     </span>
-                    <span className="text-[11px] text-gray-500">Up</span>
+                    <span className="text-[11px] text-gray-500 uppercase">Up</span>
                   </div>
                   <div className="mt-1.5 h-1.5 w-full rounded-full bg-gray-800 overflow-hidden">
                     <div className="h-full rounded-full bg-emerald-500" style={{ width: `${upPct}%` }} />
                   </div>
 
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <span className="text-center text-sm font-semibold rounded-lg py-2 bg-emerald-950 text-emerald-400 border border-emerald-900">
-                      Up · {upPct}¢
+                    <span className="text-center text-sm font-bold rounded-lg py-2 bg-emerald-950 text-emerald-400 border border-emerald-900 uppercase tracking-wide">
+                      Ape Up · {upPct}¢
                     </span>
-                    <span className="text-center text-sm font-semibold rounded-lg py-2 bg-rose-950 text-rose-400 border border-rose-900">
-                      Down · {100 - upPct}¢
+                    <span className="text-center text-sm font-bold rounded-lg py-2 bg-rose-950 text-rose-400 border border-rose-900 uppercase tracking-wide">
+                      Ape Dn · {100 - upPct}¢
                     </span>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
                     <span>Strike ${formatPriceWad(market.startPriceWad)}</span>
                     {market.state === "Finalized" ? (
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-900 whitespace-nowrap">
-                        {market.outcome ? "UP won" : "DOWN won"}
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-900 whitespace-nowrap uppercase">
+                        {market.outcome ? "Up won 🟢" : "Down won 🔴"}
                       </span>
                     ) : market.state === "Cancelled" ? (
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 whitespace-nowrap">
-                        Push
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 whitespace-nowrap">
+                        Push · rekt
                       </span>
                     ) : closesIn === null ? null : isTrading ? (
                       <span>Closes in {formatCountdown(closesIn)}</span>
                     ) : (
-                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 whitespace-nowrap">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 whitespace-nowrap">
                         Settling...
                       </span>
                     )}
                   </div>
                   {volume != null && (
                     <p className="mt-1 text-[11px] text-gray-500">
-                      Vol {formatEth(volume)} {COLLATERAL_SYMBOL}
+                      Vol {formatEth(volume)} {COLLATERAL_SYMBOL} · {volume > 0n ? "live action" : "gbow"}
                     </p>
                   )}
                 </>
