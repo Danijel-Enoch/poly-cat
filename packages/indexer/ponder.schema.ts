@@ -20,6 +20,25 @@ export const asset = onchainTable("asset", (t) => ({
   sourceId: t.text().notNull(),
   registeredBlock: t.bigint().notNull(),
   registeredAt: t.bigint().notNull(), // block timestamp
+  // Running totals across every market this asset has ever had, same
+  // incremental-counter idiom as protocolStat below (and for the same
+  // reason: Ponder's GraphQL API has no SUM/COUNT aggregation, so summing
+  // per-market volume on read isn't an option). Updated in SharesBought/
+  // SharesSold using the assetId read off the market row's own update
+  // return value — see src/index.ts.
+  totalVolume: t.bigint().notNull().default(0n),
+  totalFees: t.bigint().notNull().default(0n),
+  totalTrades: t.integer().notNull().default(0),
+  // Incremented on MarketCreated. Deliberately not an appended array of
+  // every marketId: at one market per asset per 5 minutes that column would
+  // grow to 100k+ entries within a couple of years, and Postgres rewrites a
+  // JSONB column's whole value on every append. Every market for an asset
+  // is already indexed via market.assetIdx below — see
+  // packages/web/lib/indexerApi.ts's fetchMarketIdsByAsset for the
+  // paginated-retrieval helper that makes that index easy to consume.
+  marketCount: t.integer().notNull().default(0),
+  lastTradeAt: t.bigint(),
+  lastTradeBlock: t.bigint(),
 }));
 
 export const assetRelations = relations(asset, ({ many }) => ({
@@ -158,3 +177,43 @@ export const protocolStat = onchainTable("protocol_stat", (t) => ({
   lastTradeAt: t.bigint(), // block timestamp of the most recent trade, null until the first
   lastTradeBlock: t.bigint(),
 }));
+
+// One row per trader address — all-time, all-market running totals, same
+// incremental-counter idiom as protocolStat/asset above. This is the data
+// source for both the portfolio page's PnL share card
+// (packages/web/components/PnlShareCard.tsx) and the PnL leaderboard
+// (packages/web/components/PnlLeaderboard.tsx).
+//
+// `totalClaimed` folds together both Redeemed (won a market) and
+// RefundClaimed (market cancelled/pushed) payouts — both are "money that
+// came back to this address," which is what PnL cares about; `claimCount`
+// alone doesn't distinguish a win from a refund, but nothing here currently
+// needs that distinction (the per-market `position.claimedSide` still has
+// it if a future feature wants a win/loss breakdown instead of net PnL).
+export const trader = onchainTable(
+  "trader",
+  (t) => ({
+    id: t.hex().primaryKey(), // lowercase address
+    totalBought: t.bigint().notNull().default(0n), // sum of collateral spent buying, every market
+    totalSold: t.bigint().notNull().default(0n), // sum of collateral received selling
+    totalClaimed: t.bigint().notNull().default(0n), // sum of Redeemed + RefundClaimed payouts
+    totalFeesPaid: t.bigint().notNull().default(0n),
+    // Same value as pnlFromTraderStats(totalSold + totalClaimed - totalBought)
+    // in packages/web/lib/indexerApi.ts, but stored (not computed on read)
+    // specifically so the leaderboard can `orderBy: "pnl"` server-side —
+    // Ponder's GraphQL API can only sort by an actual column, and fetching
+    // every trader row to sort client-side stops scaling once there are more
+    // traders than fit in one page. Updated alongside the fields above in
+    // every handler that touches them, so it's always in sync — never
+    // recompute it from the other columns instead of updating it directly.
+    pnl: t.bigint().notNull().default(0n),
+    buyCount: t.integer().notNull().default(0),
+    sellCount: t.integer().notNull().default(0),
+    claimCount: t.integer().notNull().default(0),
+    firstTradeAt: t.bigint(),
+    lastTradeAt: t.bigint(),
+  }),
+  (table) => ({
+    pnlIdx: index().on(table.pnl),
+  }),
+);

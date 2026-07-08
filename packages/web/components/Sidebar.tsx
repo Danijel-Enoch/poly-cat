@@ -15,6 +15,7 @@ import { AdminNavLink } from "@/components/AdminNavLink";
 const NAV_LINKS = [
   { href: "/app", label: "Markets", icon: <IconGrid /> },
   { href: "/portfolio", label: "Bag", icon: <IconWallet /> },
+  { href: "/leaderboard", label: "Leaderboard", icon: <IconTrophy /> },
   { href: "/docs", label: "Docs", icon: <IconBook /> },
 ] as const;
 
@@ -35,6 +36,19 @@ function IconWallet() {
       <path d="M3 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1" />
       <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H5a2 2 0 0 1-2-2Z" />
       <circle cx="16.5" cy="13" r="1.25" />
+    </svg>
+  );
+}
+
+function IconTrophy() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 4h10v5a5 5 0 0 1-10 0Z" />
+      <path d="M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10" />
+      <path d="M17 5h3v1.5A3.5 3.5 0 0 1 16.5 10" />
+      <path d="M12 14v3" />
+      <path d="M8.5 20h7" />
+      <path d="M10 17h4v3h-4Z" />
     </svg>
   );
 }

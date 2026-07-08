@@ -264,6 +264,7 @@ export default function AdminPage() {
                 <th className="pb-2 pr-4 font-medium">Asset</th>
                 <th className="pb-2 pr-4 font-medium">Cycle</th>
                 <th className="pb-2 pr-4 font-medium">Listing</th>
+                <th className="pb-2 pr-4 font-medium">Lifetime Vol</th>
                 <th className="pb-2 pr-4 font-medium">Market</th>
                 <th className="pb-2 pr-4 font-medium">State</th>
                 <th className="pb-2 pr-4 font-medium">Strike</th>
@@ -297,7 +298,7 @@ export default function AdminPage() {
               ))}
               {orderedSlots.length === 0 && (
                 <tr>
-                  <td className="py-4 text-gray-500" colSpan={11}>
+                  <td className="py-4 text-gray-500" colSpan={12}>
                     No markets registered yet — add one above.
                   </td>
                 </tr>
@@ -410,6 +411,9 @@ function SlotRow({
         >
           {delisted ? "Delisted 🚫" : "Listed"}
         </button>
+      </td>
+      <td className="py-2 pr-4 text-gray-300 whitespace-nowrap">
+        {formatEth(asset.totalVolume)} {COLLATERAL_SYMBOL}
       </td>
       {!market ? (
         <td className="py-2 text-gray-500" colSpan={7}>

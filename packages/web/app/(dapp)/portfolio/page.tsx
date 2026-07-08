@@ -13,6 +13,7 @@ import { assetDisplayName } from "@/lib/assets";
 import { PortfolioClaimButton } from "@/components/PortfolioClaimButton";
 import { NeedsRedeemingList } from "@/components/NeedsRedeemingList";
 import { HoloCard } from "@/components/HoloCard";
+import { PnlShareCard } from "@/components/PnlShareCard";
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
@@ -70,15 +71,19 @@ export default function PortfolioPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Ur bag</h1>
 
-      <HoloCard radius={20} innerClassName="p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total bag value</p>
-        <p className="text-3xl font-extrabold text-gray-100 mt-1">
-          {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          What you&apos;d pull exiting everything now, or redeeming resolved bags.
-        </p>
-      </HoloCard>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <HoloCard radius={20} innerClassName="p-5">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total bag value</p>
+          <p className="text-3xl font-extrabold text-gray-100 mt-1">
+            {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            What you&apos;d pull exiting everything now, or redeeming resolved bags.
+          </p>
+        </HoloCard>
+
+        {address && <PnlShareCard address={address} />}
+      </div>
 
       <NeedsRedeemingList />
 

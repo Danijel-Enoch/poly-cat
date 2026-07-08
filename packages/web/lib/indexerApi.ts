@@ -172,9 +172,30 @@ export function isActuallyRedeemable(row: RedeemableRow): boolean {
 // (lib/indexerMarketsList.ts's fetchIndexerMarketsList — see there)
 // ---------------------------------------------------------------------------
 
-export type IndexerAsset = { id: bigint; symbol: string; source: PriceSourceName; sourceId: string };
+export type IndexerAsset = {
+  id: bigint;
+  symbol: string;
+  source: PriceSourceName;
+  sourceId: string;
+  // Lifetime totals across every market this asset has ever had — see
+  // ponder.schema.ts's asset table. Distinct from a market row's own
+  // `volume`/`collectedFees`, which only cover that one 5-minute window.
+  totalVolume: bigint;
+  totalFees: bigint;
+  totalTrades: number;
+  marketCount: number;
+};
 
-type RawAssetFields = { id: string; symbol: string; source: PriceSourceName; sourceId: string };
+type RawAssetFields = {
+  id: string;
+  symbol: string;
+  source: PriceSourceName;
+  sourceId: string;
+  totalVolume: string;
+  totalFees: string;
+  totalTrades: number;
+  marketCount: number;
+};
 
 /** Every registered asset, in registration order — the indexer-backed
  * equivalent of lib/chainReads.ts's getAssets, used wherever the full
@@ -183,10 +204,40 @@ type RawAssetFields = { id: string; symbol: string; source: PriceSourceName; sou
 export async function fetchIndexedAssets(): Promise<IndexerAsset[]> {
   const data = await graphqlRequest<{ assets: { items: RawAssetFields[] } }>(`{
     assets(orderBy: "id", orderDirection: "asc", limit: 1000) {
-      items { id symbol source sourceId }
+      items { id symbol source sourceId totalVolume totalFees totalTrades marketCount }
     }
   }`);
-  return data.assets.items.map((a) => ({ id: toBigInt(a.id), symbol: a.symbol, source: a.source, sourceId: a.sourceId }));
+  return data.assets.items.map((a) => ({
+    id: toBigInt(a.id),
+    symbol: a.symbol,
+    source: a.source,
+    sourceId: a.sourceId,
+    totalVolume: toBigInt(a.totalVolume),
+    totalFees: toBigInt(a.totalFees),
+    totalTrades: a.totalTrades,
+    marketCount: a.marketCount,
+  }));
+}
+
+/** Every market id ever created for one asset, oldest first — the indexer
+ * already has this indexed (market.assetIdx in ponder.schema.ts), this just
+ * hides the limit/offset pagination a single asset's full history can
+ * require behind one `await`, reusing the same paginated query shape
+ * fetchAllMarkets uses for the admin history table. */
+export async function fetchMarketIdsByAsset(assetId: bigint): Promise<bigint[]> {
+  const pageSize = 1000;
+  const ids: bigint[] = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const data = await graphqlRequest<{ markets: { items: { id: string }[] } }>(`{
+      markets(where: { assetId: "${assetId}" }, orderBy: "id", orderDirection: "asc", limit: ${pageSize}, offset: ${offset}) {
+        items { id }
+      }
+    }`);
+    const page = data.markets.items;
+    ids.push(...page.map((m) => toBigInt(m.id)));
+    if (page.length < pageSize) break;
+  }
+  return ids;
 }
 
 export type IndexerMarketRow = {
@@ -360,4 +411,121 @@ export async function fetchIndexerMarketsList(): Promise<IndexerAssetSlot[]> {
   const assets = await fetchIndexedAssets();
   const marketsByAssetId = await fetchLatestMarketsByAsset(assets.map((a) => a.id));
   return assets.map((asset) => ({ asset, market: marketsByAssetId.get(asset.id.toString()) ?? null }));
+}
+
+// ---------------------------------------------------------------------------
+// PnL share card: one wallet's all-time, all-market trading totals
+// (components/PnlShareCard.tsx, app/api/pnl-card/route.tsx)
+// ---------------------------------------------------------------------------
+
+export type TraderStats = {
+  totalBought: bigint;
+  totalSold: bigint;
+  totalClaimed: bigint;
+  totalFeesPaid: bigint;
+  pnl: bigint;
+  buyCount: number;
+  sellCount: number;
+  claimCount: number;
+};
+
+type RawTraderStat = {
+  totalBought: string;
+  totalSold: string;
+  totalClaimed: string;
+  totalFeesPaid: string;
+  pnl: string;
+  buyCount: number;
+  sellCount: number;
+  claimCount: number;
+} | null;
+
+/** One trader's all-time running totals (see the `trader` table in
+ * packages/indexer/ponder.schema.ts) — every buy/sell/redeem/refund across
+ * every market they've ever touched. `null` fields (wallet has never traded)
+ * come back as zeros, same idiom as fetchProtocolStats, so callers always
+ * get a usable object. */
+export async function fetchTraderStats(address: Address): Promise<TraderStats> {
+  const data = await graphqlRequest<{ trader: RawTraderStat }>(`{
+    trader(id: "${address.toLowerCase()}") {
+      totalBought totalSold totalClaimed totalFeesPaid pnl buyCount sellCount claimCount
+    }
+  }`);
+  const row = data.trader;
+  return {
+    totalBought: row ? toBigInt(row.totalBought) : 0n,
+    totalSold: row ? toBigInt(row.totalSold) : 0n,
+    totalClaimed: row ? toBigInt(row.totalClaimed) : 0n,
+    totalFeesPaid: row ? toBigInt(row.totalFeesPaid) : 0n,
+    pnl: row ? toBigInt(row.pnl) : 0n,
+    buyCount: row?.buyCount ?? 0,
+    sellCount: row?.sellCount ?? 0,
+    claimCount: row?.claimCount ?? 0,
+  };
+}
+
+/** Realized PnL: what came back (sell proceeds + redeem/refund payouts)
+ * minus what went out (buy cost). The trader row's `pnl` column already
+ * carries this exact figure (updated alongside totalBought/totalSold/
+ * totalClaimed in every handler that touches them — see
+ * packages/indexer/src/index.ts), stored rather than computed here so the
+ * leaderboard can sort by it server-side. This helper just names the field
+ * for readability at call sites. */
+export function pnlFromTraderStats(stats: TraderStats): bigint {
+  return stats.pnl;
+}
+
+export type LeaderboardRow = {
+  address: Address;
+  pnl: bigint;
+  totalBought: bigint;
+  totalSold: bigint;
+  totalClaimed: bigint;
+  buyCount: number;
+  sellCount: number;
+};
+
+type RawLeaderboardRow = {
+  id: string;
+  pnl: string;
+  totalBought: string;
+  totalSold: string;
+  totalClaimed: string;
+  buyCount: number;
+  sellCount: number;
+};
+
+/** Top traders by all-time realized PnL, highest first — backs
+ * components/PnlLeaderboard.tsx. Sorted server-side on the stored `pnl`
+ * column (see ponder.schema.ts's note on why it's stored, not computed on
+ * read: Ponder's GraphQL API can only `orderBy` a real column). */
+export async function fetchPnlLeaderboard(limit = 100): Promise<LeaderboardRow[]> {
+  const data = await graphqlRequest<{ traders: { items: RawLeaderboardRow[] } }>(`{
+    traders(orderBy: "pnl", orderDirection: "desc", limit: ${limit}) {
+      items { id pnl totalBought totalSold totalClaimed buyCount sellCount }
+    }
+  }`);
+  return data.traders.items.map((row) => ({
+    address: row.id as Address,
+    pnl: toBigInt(row.pnl),
+    totalBought: toBigInt(row.totalBought),
+    totalSold: toBigInt(row.totalSold),
+    totalClaimed: toBigInt(row.totalClaimed),
+    buyCount: row.buyCount,
+    sellCount: row.sellCount,
+  }));
+}
+
+/** Every market `holder` has ever held a position in, claimed or not — a
+ * `position` row is created the first time a holder trades a given market
+ * (see packages/indexer/src/index.ts) and never deleted, so the row count is
+ * exactly "markets participated in." Same 1000-row cap as
+ * fetchRedeemablePositions; realistically no single wallet gets near it. */
+export async function fetchTraderMarketCount(address: Address): Promise<number> {
+  const data = await graphqlRequest<{ positions: { items: { marketId: string }[] } }>(`{
+    positions(where: { holder: "${address.toLowerCase()}" }, limit: 1000) {
+      items { marketId }
+    }
+  }`);
+  return data.positions.items.length;
 }

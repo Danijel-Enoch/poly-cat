@@ -48,7 +48,11 @@ function useCardTilt() {
 
 export function MarketCard({ slot, index = 0 }: { slot: IndexerAssetSlot; index?: number }) {
   const { asset, market } = slot;
-  const volume = market?.volume ?? null;
+  // Lifetime volume for the asset (across every market it's ever had), not
+  // just this current 5-minute window's own market.volume — a fresh window
+  // otherwise reads as near-zero every ~5 minutes regardless of how active
+  // the asset actually is.
+  const volume = market ? asset.totalVolume : null;
   const now = useNow(1000);
   const tilt = useCardTilt();
   const color = assetColor(asset.symbol);
