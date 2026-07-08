@@ -1,7 +1,7 @@
 import { DEXSCREENER_CHAIN_ID, PriceSource } from "./config.js";
 
-const GATE_TICKER_URL = "http://127.0.0.1:8899/api/v4/spot/tickers";
-const DEXSCREENER_PAIRS_URL = "http://127.0.0.1:8899/latest/dex/pairs";
+const GATE_TICKER_URL = "https://api.gateio.ws/api/v4/spot/tickers";
+const DEXSCREENER_PAIRS_URL = "https://api.dexscreener.com/latest/dex/pairs";
 
 /** Converts a decimal price string (e.g. "67432.15000000") to a WAD (1e18)
  * fixed-point bigint, matching `startPriceWad`/`closePriceWad` on-chain.
