@@ -5,6 +5,20 @@ import { fetchPriceWad } from "./priceFeed.js";
 import { isAssetActive } from "./assetStatus.js";
 
 type AssetInfo = { symbol: string; source: PriceSource; sourceId: string };
+type MarketInfo = {
+  assetId: bigint;
+  startTime: bigint;
+  closeTime: bigint;
+  startPriceWad: bigint;
+  closePriceWad: bigint;
+  reserve: bigint;
+  upSupply: bigint;
+  downSupply: bigint;
+  genesisSupply: bigint;
+  collectedFees: bigint;
+  state: number;
+  outcome: boolean;
+};
 
 /// Each registered asset has at most one *open* market at a time —
 /// `currentMarketId` always points at it. This function always settles that
@@ -13,23 +27,26 @@ type AssetInfo = { symbol: string; source: PriceSource; sourceId: string };
 /// settling — there's no other bookkeeping anywhere of "which markets still
 /// need settling," so that invariant is what keeps this script stateless and
 /// safe to just re-run on a timer.
-async function processAsset(assetId: bigint, asset: AssetInfo, nowSeconds: bigint): Promise<void> {
+///
+/// Takes its reads pre-fetched (see main()'s bulk-fetch phase) rather than
+/// reading them itself — every asset's `getAsset`/`currentMarketId`/
+/// `getMarket` state is independent of every other asset's, and independent
+/// of any write this function performs, so fetching all of it up front
+/// before any asset is processed is always safe, and lets those reads
+/// collapse into one Multicall3 batch (see chain.ts's MULTICALL3_ADDRESS)
+/// instead of firing individually per asset.
+async function processAsset(
+  assetId: bigint,
+  asset: AssetInfo,
+  existingId: bigint,
+  existingMarket: MarketInfo | undefined,
+  defaultInitialLiquidity: bigint,
+  nowSeconds: bigint,
+): Promise<void> {
   const label = asset.symbol;
 
-  const existingId = await publicClient.readContract({
-    address: marketFactoryAddress,
-    abi: MarketFactoryAbi,
-    functionName: "currentMarketId",
-    args: [assetId],
-  });
-
   if (existingId > 0n) {
-    const market = await publicClient.readContract({
-      address: marketFactoryAddress,
-      abi: MarketFactoryAbi,
-      functionName: "getMarket",
-      args: [existingId],
-    });
+    const market = existingMarket!; // fetched in main() whenever existingId > 0n
 
     if (market.state === MarketState.Trading && nowSeconds >= market.closeTime) {
       const closePrice = await fetchPriceWad(asset.source, asset.sourceId);
@@ -64,18 +81,13 @@ async function processAsset(assetId: bigint, asset: AssetInfo, nowSeconds: bigin
   const alignedClose = alignedStart + duration;
 
   const startPrice = await fetchPriceWad(asset.source, asset.sourceId);
-  const initialLiquidity = await publicClient.readContract({
-    address: marketFactoryAddress,
-    abi: MarketFactoryAbi,
-    functionName: "defaultInitialLiquidity",
-  });
   console.log(`[${label}] opening window [${alignedStart}, ${alignedClose}) at start price ${startPrice}`);
   const hash = await walletClient.writeContract({
     address: marketFactoryAddress,
     abi: MarketFactoryAbi,
     functionName: "createMarket",
     args: [assetId, alignedStart, alignedClose, startPrice],
-    value: initialLiquidity,
+    value: defaultInitialLiquidity,
   });
   await publicClient.waitForTransactionReceipt({ hash });
   console.log(`[${label}] opened new market (tx ${hash})`);
@@ -108,17 +120,72 @@ async function main(): Promise<void> {
     functionName: "nextAssetId",
   });
 
-  // Assets are independent — one asset's RPC hiccup, revert, or price-feed
-  // outage shouldn't stop the rest from being checked in this pass.
-  for (let assetId = 0n; assetId < nextAssetId; assetId++) {
-    try {
-      const asset = await publicClient.readContract({
+  const assetIds = Array.from({ length: Number(nextAssetId) }, (_, i) => BigInt(i));
+
+  // Bulk-fetch phase: every asset's registration + current-market-id, plus
+  // the one value every new-market call needs, all issued concurrently so
+  // they collapse into a single Multicall3 batch when MULTICALL3_ADDRESS is
+  // configured (see chain.ts) instead of 2N+1 individual RPC round trips.
+  const [assets, currentMarketIds, defaultInitialLiquidity] = await Promise.all([
+    Promise.all(
+      assetIds.map((assetId) =>
+        publicClient.readContract({
+          address: marketFactoryAddress,
+          abi: MarketFactoryAbi,
+          functionName: "getAsset",
+          args: [assetId],
+        }),
+      ),
+    ),
+    Promise.all(
+      assetIds.map((assetId) =>
+        publicClient.readContract({
+          address: marketFactoryAddress,
+          abi: MarketFactoryAbi,
+          functionName: "currentMarketId",
+          args: [assetId],
+        }),
+      ),
+    ),
+    publicClient.readContract({
+      address: marketFactoryAddress,
+      abi: MarketFactoryAbi,
+      functionName: "defaultInitialLiquidity",
+    }),
+  ]);
+
+  // Second bulk fetch: `getMarket` for whichever assets actually have one,
+  // now that currentMarketIds is known. Also independent per market, so
+  // this is a second (smaller) multicall batch rather than N more
+  // individual calls.
+  const idsWithMarkets = currentMarketIds.filter((id) => id > 0n);
+  const fetchedMarkets = await Promise.all(
+    idsWithMarkets.map((marketId) =>
+      publicClient.readContract({
         address: marketFactoryAddress,
         abi: MarketFactoryAbi,
-        functionName: "getAsset",
-        args: [assetId],
-      });
-      await processAsset(assetId, asset, nowSeconds);
+        functionName: "getMarket",
+        args: [marketId],
+      }),
+    ),
+  );
+  const marketsById = new Map(idsWithMarkets.map((id, i) => [id, fetchedMarkets[i]]));
+
+  // Assets are independent — one asset's RPC hiccup, revert, or price-feed
+  // outage shouldn't stop the rest from being checked in this pass. Writes
+  // stay sequential and per-asset (the bulk-fetch phase above only ever
+  // reads, before any asset's write can run, so nothing here is stale).
+  for (let i = 0; i < assetIds.length; i++) {
+    const assetId = assetIds[i];
+    try {
+      await processAsset(
+        assetId,
+        assets[i],
+        currentMarketIds[i],
+        marketsById.get(currentMarketIds[i]),
+        defaultInitialLiquidity,
+        nowSeconds,
+      );
     } catch (err) {
       console.error(`[assetId ${assetId}] failed:`, err);
     }
