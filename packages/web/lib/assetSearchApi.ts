@@ -29,3 +29,14 @@ export async function searchGatePairs(query: string): Promise<GateResult[]> {
   const data = (await res.json()) as { results: GateResult[] };
   return data.results;
 }
+
+/** Client for the app's own `/api/dexscreener/token-image/[pairAddress]`
+ * proxy — used by <AssetIcon> for any DexScreener-sourced asset. Returns
+ * `null` rather than throwing on a miss/failure so a missing icon just falls
+ * back to the plain color badge instead of surfacing an error. */
+export async function fetchDexScreenerTokenImage(pairAddress: string): Promise<string | null> {
+  const res = await fetch(`/api/dexscreener/token-image/${pairAddress}`);
+  if (!res.ok) return null;
+  const data = (await res.json()) as { imageUrl: string | null };
+  return data.imageUrl;
+}

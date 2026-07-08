@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MarketCard } from "./MarketCard";
 import type { Asset, AssetSlot, MarketRow } from "@/lib/chainReads";
+
+// MarketCard renders <AssetIcon>, which calls useQuery (to fetch a
+// DexScreener-sourced asset's logo) regardless of whether that query ends up
+// enabled — React Query requires a QueryClientProvider ancestor for that
+// alone, same as app/providers.tsx sets up for the real app.
+function renderMarketCard(slot: AssetSlot) {
+  const queryClient = new QueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MarketCard slot={slot} />
+    </QueryClientProvider>,
+  );
+}
 
 function makeAsset(overrides: Partial<Asset> = {}): Asset {
   return { id: 0n, symbol: "BTC", source: "gate", sourceId: "BTC_USDT", ...overrides };
@@ -33,36 +47,34 @@ function makeSlot(overrides: Partial<AssetSlot> = {}): AssetSlot {
 
 describe("MarketCard", () => {
   it("renders the asset and 50/50 probability at genesis", () => {
-    render(<MarketCard slot={makeSlot()} />);
+    renderMarketCard(makeSlot());
     expect(screen.getByText("Bitcoin")).toBeInTheDocument();
     expect(screen.getByText(/5m window/)).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
   it("falls back to the raw symbol for an asset with no known display name", () => {
-    render(<MarketCard slot={makeSlot({ asset: makeAsset({ symbol: "CASHCAT", source: "dexscreener" }) })} />);
+    renderMarketCard(makeSlot({ asset: makeAsset({ symbol: "CASHCAT", source: "dexscreener" }) }));
     expect(screen.getByText("CASHCAT")).toBeInTheDocument();
   });
 
   it("shows an opening-soon state when the asset has no market yet", () => {
-    render(<MarketCard slot={makeSlot({ asset: makeAsset({ symbol: "ETH" }), market: null })} />);
+    renderMarketCard(makeSlot({ asset: makeAsset({ symbol: "ETH" }), market: null }));
     expect(screen.getByText(/Opening soon/)).toBeInTheDocument();
   });
 
   it("shows the outcome for a finalized market", () => {
-    render(
-      <MarketCard slot={makeSlot({ asset: makeAsset({ symbol: "SOL" }), market: makeMarket({ state: "Finalized", outcome: true }) })} />,
-    );
+    renderMarketCard(makeSlot({ asset: makeAsset({ symbol: "SOL" }), market: makeMarket({ state: "Finalized", outcome: true }) }));
     expect(screen.getByText(/won/)).toBeInTheDocument();
   });
 
   it("shows a push badge for a cancelled (tied) market", () => {
-    render(<MarketCard slot={makeSlot({ market: makeMarket({ state: "Cancelled" }) })} />);
+    renderMarketCard(makeSlot({ market: makeMarket({ state: "Cancelled" }) }));
     expect(screen.getByText(/Push/)).toBeInTheDocument();
   });
 
   it("shows total volume when known", () => {
-    render(<MarketCard slot={makeSlot({ volume: 1_500_000_000_000_000_000n })} />);
+    renderMarketCard(makeSlot({ volume: 1_500_000_000_000_000_000n }));
     expect(screen.getByText(/Vol 1\.5 ETH/)).toBeInTheDocument();
   });
 });

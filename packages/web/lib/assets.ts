@@ -13,6 +13,23 @@ export function assetDisplayName(symbol: string): string {
   return KNOWN_ASSET_NAMES[symbol] ?? symbol;
 }
 
+// Real logos for the well-known Gate-sourced ("blue chip") assets, from
+// Trust Wallet's open, community-maintained token icon registry — no image
+// field exists on-chain (see MarketFactory.sol's AssetInfo) to fetch these
+// from instead. DexScreener-sourced assets (memecoins) get their image from
+// DexScreener itself at render time instead (see components/AssetIcon.tsx
+// and app/api/dexscreener/token-image/[pairAddress]/route.ts), since that's
+// already where their own token metadata lives.
+const KNOWN_ASSET_ICONS: Record<string, string> = {
+  BTC: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/bitcoin/info/logo.png",
+  ETH: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png",
+  SOL: "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/info/logo.png",
+};
+
+export function knownAssetIconUrl(symbol: string): string | null {
+  return KNOWN_ASSET_ICONS[symbol] ?? null;
+}
+
 // Deterministic color per symbol (a simple string hash into a fixed
 // palette), so the same token always gets the same badge color without
 // needing a hardcoded map for every asset that might ever be registered.

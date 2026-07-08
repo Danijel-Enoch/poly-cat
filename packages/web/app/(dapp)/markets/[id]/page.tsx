@@ -7,8 +7,9 @@ import { PriceHistoryChart } from "@/components/PriceHistoryChart";
 import { TradeHistoryTable } from "@/components/TradeHistoryTable";
 import { ProbabilityDisplay, ProbabilityBar } from "@/components/ProbabilityDisplay";
 import { formatDate, upProbabilityFromSupplies, formatPriceWad } from "@/lib/format";
-import { assetDisplayName, assetColor } from "@/lib/assets";
+import { assetDisplayName } from "@/lib/assets";
 import { HoloCard } from "@/components/HoloCard";
+import { AssetIcon } from "@/components/AssetIcon";
 
 // See app/(dapp)/app/page.tsx for why this must stay dynamic — same reason:
 // live chain reads, never build-time prerendered.
@@ -29,12 +30,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
       <div className="min-w-0 lg:col-span-2 flex flex-col gap-6">
         <HoloCard radius={20} innerClassName="p-5">
           <div className="flex items-start gap-3">
-            <span
-              className="h-12 w-12 shrink-0 rounded-full flex items-center justify-center text-white font-bold"
-              style={{ backgroundColor: assetColor(asset.symbol) }}
-            >
-              {asset.symbol.slice(0, 4)}
-            </span>
+            <AssetIcon asset={asset} className="h-12 w-12 shrink-0 rounded-full" textClassName="text-white text-sm" />
             <div className="flex-1 min-w-0">
               <span className="inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-[#1b1300] text-gray-200 mb-1">
                 5m window

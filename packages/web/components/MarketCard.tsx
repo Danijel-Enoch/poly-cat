@@ -9,6 +9,7 @@ import { assetDisplayName, assetColor } from "@/lib/assets";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { useNow } from "@/lib/useNow";
 import { HoloCard } from "@/components/HoloCard";
+import { AssetIcon } from "@/components/AssetIcon";
 
 function formatCountdown(seconds: number): string {
   if (seconds <= 0) return "0:00";
@@ -73,9 +74,11 @@ export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: numbe
               className="absolute inset-0 opacity-20"
               style={{ backgroundImage: "repeating-linear-gradient(45deg, #000 0 2px, transparent 2px 10px)" }}
             />
-            <span className="relative text-4xl font-extrabold tracking-tight text-gray-950 drop-shadow-[0_2px_0_rgba(255,255,255,0.25)]">
-              {asset.symbol.slice(0, 4)}
-            </span>
+            <AssetIcon
+              asset={asset}
+              className="relative h-20 w-20 rounded-full bg-gray-950/10 shadow-lg ring-2 ring-white/20"
+              textClassName="text-3xl drop-shadow-[0_2px_0_rgba(255,255,255,0.25)]"
+            />
             <span className="absolute top-2.5 -right-7 rotate-45 bg-gray-950/90 text-accent text-[10px] font-bold uppercase tracking-widest px-8 py-1">
               5m
             </span>
