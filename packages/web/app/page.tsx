@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { HoloCard } from "@/components/HoloCard";
+import { CopyableAddress } from "@/components/CopyableAddress";
+import { TOKEN_CONTRACT_ADDRESS } from "@/lib/token";
 
 function IconCurve() {
   return (
@@ -109,6 +111,13 @@ export default function LandingPage() {
           >
             Ape in 🐒
           </Link>
+
+          <div className="mt-6 flex flex-col items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+              Official token CA — beware imitations
+            </span>
+            <CopyableAddress address={TOKEN_CONTRACT_ADDRESS} />
+          </div>
         </div>
 
         <section className="w-full max-w-5xl py-14 border-t border-gray-800">

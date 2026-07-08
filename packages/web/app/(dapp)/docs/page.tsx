@@ -1,4 +1,6 @@
 import { HoloCard } from "@/components/HoloCard";
+import { CopyableAddress } from "@/components/CopyableAddress";
+import { TOKEN_CONTRACT_ADDRESS } from "@/lib/token";
 
 const NAV = [
   { id: "what-is-polycat", title: "What is Polycat?" },
@@ -295,6 +297,18 @@ export default function DocsPage() {
             A Polycat utility token is in the works — nothing to buy, connect, or claim yet, and trading today is
             100% ETH, no token required. Once it&apos;s live, the plan is for it to power a few things:
           </p>
+
+          <HoloCard radius={20} glow={false} innerClassName="p-4 mb-4">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Official contract address</p>
+            <CopyableAddress address={TOKEN_CONTRACT_ADDRESS} />
+            <p className="text-xs text-gray-500 leading-relaxed mt-2">
+              Published early so nothing else can convincingly claim to be &quot;the&quot; Polycat token. This is
+              the only official one — always double-check before you trust any other, and never trade against it
+              through anything but this contract directly, since it isn&apos;t wired into this app&apos;s trading
+              flow yet.
+            </p>
+          </HoloCard>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <HoloCard radius={20} glow={false} innerClassName="p-4">
               <p className="text-sm font-semibold text-gray-100">Governance</p>
@@ -323,8 +337,8 @@ export default function DocsPage() {
             </HoloCard>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed mt-4">
-            None of this is live yet — this section gets real specifics (ticker, contract, distribution) once
-            there&apos;s something actually shipped to document.
+            The contract above is deployed and real; governance, fee deductions, incentives, and the leaderboard
+            aren&apos;t live yet — this section gets updated as each one actually ships.
           </p>
         </section>
       </div>
