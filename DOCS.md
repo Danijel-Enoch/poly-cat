@@ -373,4 +373,6 @@ fail loudly, not silently-wrong.
 | `CHAIN_ID` | `4663` |
 | `MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
 | `START_BLOCK` | the block the deploy step above logged — indexing from 0 against a live chain scans every block back to genesis |
-| `DATABASE_URL` | a real Postgres connection string — the default on-disk SQLite is fine for local dev, not a long-lived deployment |
+| `DATABASE_SCHEMA` | required by `ponder start` (unlike `dev`, which defaults it to `"public"`) — fails loudly rather than risk two deployments colliding on one schema |
+| `DATABASE_URL` | a real Postgres connection string — the default embedded PGlite database is fine for local dev, not a long-lived deployment |
+| `PORT` | only if the platform assigns its own port or 42069 conflicts — Ponder reads this directly (see `Dockerfile.indexer`) |

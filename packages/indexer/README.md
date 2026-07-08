@@ -39,12 +39,30 @@ pnpm dev                     # live reindex on every restart; from the repo root
 `pnpm dev` runs Ponder's dev server (auto-reindexes on schema/handler changes,
 serves the API at `http://localhost:42069`). For a long-lived deployment, use
 `pnpm start` instead (from the repo root: `pnpm indexer:start`) — no
-hot-reload, and add a real `DATABASE_URL` (Postgres) so indexed history
-survives a restart instead of living in a local SQLite file.
+hot-reload, requires `DATABASE_SCHEMA` to be set explicitly (`dev` defaults it
+to `"public"`; `start` refuses to boot without it, so two deployments can
+never accidentally collide on the same schema), and add a real `DATABASE_URL`
+(Postgres) so indexed history survives a restart instead of living in a local
+PGlite (embedded Postgres) database under `.ponder/`.
 
 `packages/web` points at this server via `NEXT_PUBLIC_PONDER_URL` (see
 `packages/web/.env.example`) — defaults to `http://localhost:42069` for local
 dev.
+
+## Running with Docker
+
+```bash
+docker build -f Dockerfile.indexer -t polycat-indexer .   # from the repo root
+docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local polycat-indexer
+```
+
+This runs `pnpm start` — a long-lived server, unlike `packages/cron`'s
+one-shot container. To use a different port, set `PORT` in the env file (or
+`-e PORT=<port>`) and map the same port with `-p`:
+
+```bash
+docker run --rm -p 8080:8080 -e PORT=8080 --env-file packages/indexer/.env.local polycat-indexer
+```
 
 ## Deploying against Robinhood Chain mainnet
 

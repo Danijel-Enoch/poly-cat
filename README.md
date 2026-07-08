@@ -102,12 +102,19 @@ docker run --rm --env-file packages/cron/.env.local polycat-cron
 This runs one pass and exits — schedule it with a real cron entry or
 equivalent (a Kubernetes CronJob, etc.). See `packages/cron/README.md`.
 
-## Deploying the indexer
+## Deploying the indexer with Docker
 
-Unlike the cron script, `packages/indexer` is a long-lived process (`pnpm
-indexer:start`, not `dev`) — it needs to stay running to keep serving fresh
-data and a real `DATABASE_URL` (Postgres) so indexed history survives a
-restart. See `packages/indexer/README.md`.
+```bash
+docker build -f Dockerfile.indexer -t polycat-indexer .
+docker run --rm -p 42069:42069 --env-file packages/indexer/.env.local polycat-indexer
+```
+
+Unlike the cron script, this is a long-lived process (`pnpm start`, not
+`dev`) — it needs to stay running to keep serving fresh data, `DATABASE_SCHEMA`
+set explicitly (`start` refuses to boot without it), and a real `DATABASE_URL`
+(Postgres) so indexed history survives a restart. To use a different port,
+set `PORT` in the env file (or `-e PORT=<port>`) and map the same port with
+`-p` — see `packages/indexer/README.md`.
 
 ## Deploying the frontend
 

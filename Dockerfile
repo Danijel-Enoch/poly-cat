@@ -20,6 +20,11 @@
 # packages/cron/README.md for why.
 
 FROM node:20-alpine AS base
+# python3/make/g++: node-gyp needs these to build bufferutil/utf-8-validate,
+# optional native addons pulled in transitively via viem's WalletConnect
+# stack (ws's WebSocket transport) — alpine ships none of them, and pnpm
+# treats a failed optional-dependency build script as fatal, not skippable.
+RUN apk add --no-cache python3 make g++
 # Pin the exact pnpm version instead of relying on corepack to look up the
 # `packageManager` field at runtime — the runner stage below intentionally
 # doesn't carry the root package.json, so that lookup would otherwise fall
@@ -31,6 +36,7 @@ WORKDIR /app
 FROM base AS deps
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/cron/package.json packages/cron/package.json
+COPY packages/indexer/package.json packages/indexer/package.json
 COPY packages/web/package.json packages/web/package.json
 RUN pnpm install --filter cron --frozen-lockfile
 
