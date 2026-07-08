@@ -247,6 +247,103 @@ export async function fetchLatestMarketsByAsset(assetIds: bigint[]): Promise<Map
   return byAssetId;
 }
 
+// ---------------------------------------------------------------------------
+// Market tape: the latest trades on one market (components/TradeHistoryTable.tsx)
+// ---------------------------------------------------------------------------
+
+export type IndexedTradeRow = {
+  id: string; // the indexer's per-log id — a stable React key
+  trader: Address;
+  side: "buy" | "sell";
+  isUp: boolean;
+  collateralAmount: bigint;
+  sharesAmount: bigint;
+  feePaid: bigint;
+  timestamp: bigint;
+  txHash: `0x${string}`;
+};
+
+type RawTradeFields = {
+  id: string;
+  trader: string;
+  side: "buy" | "sell";
+  isUp: boolean;
+  collateralAmount: string;
+  sharesAmount: string;
+  feePaid: string;
+  timestamp: string;
+  txHash: string;
+};
+
+/** The most recent trades on one market, newest first — the indexer-backed
+ * replacement for lib/chainReads.ts's getTradeHistory, which scans
+ * SharesBought/SharesSold logs over the market's whole lifetime on every
+ * 10-second refetch. Every trade is already indexed (see the `trade` table in
+ * packages/indexer/ponder.schema.ts), so the tape is a single GraphQL read
+ * instead of a per-poll `getContractEvents` pair. `limit` bounds it to the
+ * latest N rather than returning an unbounded market's full history. */
+export async function fetchMarketTrades(marketId: bigint, limit = 50): Promise<IndexedTradeRow[]> {
+  const data = await graphqlRequest<{ trades: { items: RawTradeFields[] } }>(`{
+    trades(
+      where: { marketId: "${marketId}" }
+      orderBy: "timestamp"
+      orderDirection: "desc"
+      limit: ${limit}
+    ) {
+      items { id trader side isUp collateralAmount sharesAmount feePaid timestamp txHash }
+    }
+  }`);
+  return data.trades.items.map((raw) => ({
+    id: raw.id,
+    trader: raw.trader as Address,
+    side: raw.side,
+    isUp: raw.isUp,
+    collateralAmount: toBigInt(raw.collateralAmount),
+    sharesAmount: toBigInt(raw.sharesAmount),
+    feePaid: toBigInt(raw.feePaid),
+    timestamp: toBigInt(raw.timestamp),
+    txHash: raw.txHash as `0x${string}`,
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Admin dashboard: project-wide, all-time totals (app/(dapp)/admin/page.tsx)
+// ---------------------------------------------------------------------------
+
+export type ProtocolStats = {
+  totalVolume: bigint;
+  totalFees: bigint;
+  totalTrades: number;
+  lastTradeAt: bigint | null;
+};
+
+type RawProtocolStat = {
+  totalVolume: string;
+  totalFees: string;
+  totalTrades: number;
+  lastTradeAt: string | null;
+} | null;
+
+/** The single, project-wide running totals row (see the `protocolStat`
+ * singleton in packages/indexer/ponder.schema.ts) — all-time collateral
+ * volume, all-time fees earned, and trade count across every market. `null`
+ * fields are returned as zeros before the first trade has been indexed, so
+ * callers always get a usable object. Note `totalFees` is cumulative fees
+ * *earned* and is distinct from the admin table's per-market "unclaimed fees"
+ * (which withdrawals zero out). */
+export async function fetchProtocolStats(): Promise<ProtocolStats> {
+  const data = await graphqlRequest<{ protocolStat: RawProtocolStat }>(`{
+    protocolStat(id: "protocol") { totalVolume totalFees totalTrades lastTradeAt }
+  }`);
+  const row = data.protocolStat;
+  return {
+    totalVolume: row ? toBigInt(row.totalVolume) : 0n,
+    totalFees: row ? toBigInt(row.totalFees) : 0n,
+    totalTrades: row?.totalTrades ?? 0,
+    lastTradeAt: row ? toBigIntOrNull(row.lastTradeAt) : null,
+  };
+}
+
 export type IndexerAssetSlot = { asset: IndexerAsset; market: IndexerMarketRow | null };
 
 /** The indexer-backed replacement for lib/chainReads.ts's getMarketsList —

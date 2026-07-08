@@ -66,7 +66,7 @@ export default async function MarketDetailPage({ params }: { params: Promise<{ i
           isTrading={isTrading}
         />
 
-        <TradeHistoryTable marketId={market.id} startTime={market.startTime} />
+        <TradeHistoryTable marketId={market.id} />
 
         <RedeemButton marketId={market.id} />
         <ClaimRefundButton marketId={market.id} />

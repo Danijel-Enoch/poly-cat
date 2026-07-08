@@ -138,3 +138,23 @@ export const position = onchainTable(
 export const positionRelations = relations(position, ({ one }) => ({
   market: one(market, { fields: [position.marketId], references: [market.id] }),
 }));
+
+// Single-row, project-wide running totals across every market ever traded.
+// Ponder's GraphQL API has no SUM/aggregation (see the batched-subquery note
+// in packages/web/lib/indexerApi.ts's fetchLatestMarketsByAsset), so these
+// all-time figures are maintained incrementally on each trade rather than
+// summed on demand — one cheap `protocolStat(id: "protocol")` read backs the
+// admin dashboard's headline volume/fee totals.
+//
+// `totalFees` here is the *cumulative fee ever earned* and, unlike a market's
+// `collectedFees`, is never decremented on FeesWithdrawn — withdrawing sweeps
+// a market's escrowed balance but doesn't un-earn the revenue, so the two are
+// deliberately different numbers (unclaimed-right-now vs. earned-all-time).
+export const protocolStat = onchainTable("protocol_stat", (t) => ({
+  id: t.text().primaryKey(), // always the constant "protocol" — a singleton row
+  totalVolume: t.bigint().notNull().default(0n),
+  totalFees: t.bigint().notNull().default(0n),
+  totalTrades: t.integer().notNull().default(0),
+  lastTradeAt: t.bigint(), // block timestamp of the most recent trade, null until the first
+  lastTradeBlock: t.bigint(),
+}));

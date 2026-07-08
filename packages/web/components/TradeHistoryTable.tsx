@@ -2,14 +2,18 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { getTradeHistory } from "@/lib/chainReads";
+import { fetchMarketTrades } from "@/lib/indexerApi";
 import { formatEth, shortenAddress } from "@/lib/format";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 
-export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; startTime: bigint }) {
+export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
+  // Indexer-backed (see lib/indexerApi.ts's fetchMarketTrades) — every trade
+  // is already indexed, so the tape is one GraphQL read per poll instead of
+  // the lifetime-spanning SharesBought/SharesSold log scan the old direct
+  // chain read did. Newest-first straight from the query, so no reverse here.
   const { data: trades, isLoading } = useQuery({
-    queryKey: ["tradeHistory", marketId.toString()],
-    queryFn: () => getTradeHistory(marketId, startTime),
+    queryKey: ["marketTrades", marketId.toString()],
+    queryFn: () => fetchMarketTrades(marketId),
     refetchInterval: 10_000,
   });
 
@@ -34,26 +38,21 @@ export function TradeHistoryTable({ marketId, startTime }: { marketId: bigint; s
               </tr>
             </thead>
             <tbody>
-              {[...trades]
-                .reverse()
-                .map((trade) => (
-                  <tr
-                    key={`${trade.txHash}-${trade.logIndex}`}
-                    className="border-b border-gray-800/60 last:border-0"
-                  >
-                    <td className="py-2 pr-4 text-gray-300">{shortenAddress(trade.trader)}</td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={`font-bold ${trade.side === "buy" ? "text-emerald-400" : "text-rose-400"}`}
-                      >
-                        {trade.side === "buy" ? "Ape" : "Exit"}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4 text-gray-300">{trade.isUp ? "UP" : "DOWN"}</td>
-                    <td className="py-2 pr-4 text-gray-300">{formatEth(trade.collateralAmount)}</td>
-                    <td className="py-2 text-gray-300">{formatEth(trade.sharesAmount)}</td>
-                  </tr>
-                ))}
+              {trades.map((trade) => (
+                <tr key={trade.id} className="border-b border-gray-800/60 last:border-0">
+                  <td className="py-2 pr-4 text-gray-300">{shortenAddress(trade.trader)}</td>
+                  <td className="py-2 pr-4">
+                    <span
+                      className={`font-bold ${trade.side === "buy" ? "text-emerald-400" : "text-rose-400"}`}
+                    >
+                      {trade.side === "buy" ? "Ape" : "Exit"}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-4 text-gray-300">{trade.isUp ? "UP" : "DOWN"}</td>
+                  <td className="py-2 pr-4 text-gray-300">{formatEth(trade.collateralAmount)}</td>
+                  <td className="py-2 text-gray-300">{formatEth(trade.sharesAmount)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

@@ -1,11 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { formatEth, formatCollateral, isPartialDecimalInput, shortenAddress, upProbabilityFromSupplies } from "./format";
+import { formatEth, formatEthFull, formatCollateral, isPartialDecimalInput, shortenAddress, upProbabilityFromSupplies } from "./format";
 
 describe("formatEth", () => {
   it("formats a raw 18-decimal amount as ETH", () => {
     expect(formatEth(1_000_000_000_000_000_000n)).toBe("1");
     expect(formatEth("500000000000000000")).toBe("0.5");
     expect(formatEth(0n)).toBe("0");
+  });
+});
+
+describe("formatEthFull", () => {
+  it("keeps every significant fraction digit (no 4-digit cap, no lossy Number)", () => {
+    // A sub-milli fee that formatEth would round to "0"; here it stays visible.
+    expect(formatEthFull(1_234_567n)).toBe("0.000000000001234567");
+    expect(formatEth(1_234_567n)).toBe("0");
+  });
+
+  it("trims trailing zeros and groups the integer part", () => {
+    expect(formatEthFull(1_000_000_000_000_000_000n)).toBe("1");
+    expect(formatEthFull("500000000000000000")).toBe("0.5");
+    // 1,234.0567 CAT — large integer part grouped, fraction not rounded away.
+    expect(formatEthFull(1_234_056_700_000_000_000_000n)).toBe("1,234.0567");
+    expect(formatEthFull(0n)).toBe("0");
   });
 });
 

@@ -1,5 +1,8 @@
 import { ponder } from "ponder:registry";
-import { asset, market, position, trade } from "ponder:schema";
+import { asset, market, position, protocolStat, trade } from "ponder:schema";
+
+// The singleton row's fixed primary key — see ponder.schema.ts's protocolStat.
+const PROTOCOL_STAT_ID = "protocol";
 
 // Mirrors MarketFactory.sol's `enum PriceSource { Gate, DexScreener }` order —
 // ABI-decoded as a plain uint8, same convention packages/web/lib/chainReads.ts
@@ -46,6 +49,24 @@ ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
     collectedFees: row.collectedFees + feePaid,
   }));
 
+  await context.db
+    .insert(protocolStat)
+    .values({
+      id: PROTOCOL_STAT_ID,
+      totalVolume: collateralIn,
+      totalFees: feePaid,
+      totalTrades: 1,
+      lastTradeAt: event.block.timestamp,
+      lastTradeBlock: event.block.number,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalVolume: row.totalVolume + collateralIn,
+      totalFees: row.totalFees + feePaid,
+      totalTrades: row.totalTrades + 1,
+      lastTradeAt: event.block.timestamp,
+      lastTradeBlock: event.block.number,
+    }));
+
   await context.db.insert(trade).values({
     id: event.id,
     marketId,
@@ -87,6 +108,24 @@ ponder.on("MarketFactory:SharesSold", async ({ event, context }) => {
     downSupply: newDownSupply,
     collectedFees: row.collectedFees + feePaid,
   }));
+
+  await context.db
+    .insert(protocolStat)
+    .values({
+      id: PROTOCOL_STAT_ID,
+      totalVolume: collateralOut,
+      totalFees: feePaid,
+      totalTrades: 1,
+      lastTradeAt: event.block.timestamp,
+      lastTradeBlock: event.block.number,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalVolume: row.totalVolume + collateralOut,
+      totalFees: row.totalFees + feePaid,
+      totalTrades: row.totalTrades + 1,
+      lastTradeAt: event.block.timestamp,
+      lastTradeBlock: event.block.number,
+    }));
 
   await context.db.insert(trade).values({
     id: event.id,

@@ -7,8 +7,8 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { fetchIndexerMarketsList, type IndexerAssetSlot } from "@/lib/indexerApi";
-import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
+import { fetchIndexerMarketsList, fetchProtocolStats, type IndexerAssetSlot } from "@/lib/indexerApi";
+import { formatEth, formatEthFull, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { AddMarketPanel } from "@/components/AddMarketPanel";
 import { AdminMarketHistory } from "@/components/AdminMarketHistory";
@@ -31,6 +31,18 @@ export default function AdminPage() {
   const { data: slots, refetch } = useQuery({
     queryKey: ["adminMarkets"],
     queryFn: fetchIndexerMarketsList,
+    refetchInterval: 10_000,
+    enabled: isAdmin,
+  });
+
+  // Project-wide, all-time totals from the indexer's singleton stats row (see
+  // lib/indexerApi.ts's fetchProtocolStats) — volume and fees summed across
+  // every market ever, which the per-market rows below can't add up to (they
+  // only carry the current market per asset, and collectedFees is reset on
+  // withdrawal).
+  const { data: protocolStats } = useQuery({
+    queryKey: ["protocolStats"],
+    queryFn: fetchProtocolStats,
     refetchInterval: 10_000,
     enabled: isAdmin,
   });
@@ -224,6 +236,17 @@ export default function AdminPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {/* All-time, project-wide — full precision (formatEthFull) so even a
+            fraction-of-a-cent total shows a real figure instead of "0.00". */}
+        <StatCard
+          label="Total volume (all-time)"
+          value={protocolStats ? `${formatEthFull(protocolStats.totalVolume)} ${COLLATERAL_SYMBOL}` : "—"}
+        />
+        <StatCard
+          label="Total fees earned (all-time)"
+          value={protocolStats ? `${formatEthFull(protocolStats.totalFees)} ${COLLATERAL_SYMBOL}` : "—"}
+        />
+        <StatCard label="Total trades" value={protocolStats ? protocolStats.totalTrades.toLocaleString() : "—"} />
         <StatCard label="Markets" value={`${openCount} open / ${(slots ?? []).length} total`} />
         <StatCard label="Unclaimed fees" value={`${formatEth(totalUnclaimedFees)} ${COLLATERAL_SYMBOL}`} />
         <StatCard label="Protocol fee" value="1%" />

@@ -23,6 +23,23 @@ export function parseEth(input: string): bigint {
   return parseCollateral(input, COLLATERAL_DECIMALS);
 }
 
+/** Full-precision collateral formatting, for the admin dashboard's all-time
+ * volume/fee totals where a tiny amount rounding to "0.00" would be
+ * misleading. Unlike formatEth (which caps at 4 fraction digits and rounds
+ * through a lossy `Number`), this formats straight from viem's exact
+ * `formatUnits` decimal string: it keeps every significant fraction digit the
+ * value actually has (trailing zeros trimmed) so even sub-milli amounts show
+ * a real, nonzero figure, while still grouping the integer part with commas
+ * for readability. */
+export function formatEthFull(raw: string | bigint): string {
+  const value = typeof raw === "string" ? BigInt(raw) : raw;
+  const decimal = formatUnits(value, COLLATERAL_DECIMALS); // exact, e.g. "1234.056700000000000000"
+  const [intPart, fracPartRaw = ""] = decimal.split(".");
+  const groupedInt = BigInt(intPart).toLocaleString("en-US");
+  const fracPart = fracPartRaw.replace(/0+$/, "");
+  return fracPart ? `${groupedInt}.${fracPart}` : groupedInt;
+}
+
 /** Matches partial-typing states ("", "1.", ".5") as well as complete decimals,
  * so it's usable directly as an onChange filter on a decimal amount input
  * without fighting the user mid-keystroke. Rejects everything a native
