@@ -36,11 +36,15 @@ ponder.on("MarketFactory:MarketCreated", async ({ event, context }) => {
 });
 
 ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
-  const { marketId, buyer, isUp, collateralIn, sharesOut, feePaid } = event.args;
+  const { marketId, buyer, isUp, collateralIn, sharesOut, feePaid, newUpSupply, newDownSupply } = event.args;
 
-  await context.db
-    .update(market, { id: marketId })
-    .set((row) => ({ volume: row.volume + collateralIn, tradeCount: row.tradeCount + 1 }));
+  await context.db.update(market, { id: marketId }).set((row) => ({
+    volume: row.volume + collateralIn,
+    tradeCount: row.tradeCount + 1,
+    upSupply: newUpSupply,
+    downSupply: newDownSupply,
+    collectedFees: row.collectedFees + feePaid,
+  }));
 
   await context.db.insert(trade).values({
     id: event.id,
@@ -74,11 +78,15 @@ ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
 });
 
 ponder.on("MarketFactory:SharesSold", async ({ event, context }) => {
-  const { marketId, seller, isUp, sharesIn, collateralOut, feePaid } = event.args;
+  const { marketId, seller, isUp, sharesIn, collateralOut, feePaid, newUpSupply, newDownSupply } = event.args;
 
-  await context.db
-    .update(market, { id: marketId })
-    .set((row) => ({ volume: row.volume + collateralOut, tradeCount: row.tradeCount + 1 }));
+  await context.db.update(market, { id: marketId }).set((row) => ({
+    volume: row.volume + collateralOut,
+    tradeCount: row.tradeCount + 1,
+    upSupply: newUpSupply,
+    downSupply: newDownSupply,
+    collectedFees: row.collectedFees + feePaid,
+  }));
 
   await context.db.insert(trade).values({
     id: event.id,
@@ -159,4 +167,10 @@ ponder.on("MarketFactory:RefundClaimed", async ({ event, context }) => {
     claimedAt: event.block.timestamp,
     updatedAt: event.block.timestamp,
   });
+});
+
+ponder.on("MarketFactory:FeesWithdrawn", async ({ event, context }) => {
+  // withdrawFees always empties the full balance (see MarketFactory.sol),
+  // so this is always a reset to zero rather than a partial decrement.
+  await context.db.update(market, { id: event.args.marketId }).set({ collectedFees: 0n });
 });

@@ -14,19 +14,32 @@ specifically for the two queries a direct chain read can't answer cheaply:
   approximation; this indexer tracks every `(marketId, holder)` position
   incrementally off the event log instead, so it's exact regardless of how
   long the chain has been running.
+- **Browsing without hammering the RPC** — the home page grid and admin's
+  markets table used to each cost dozens of chain reads per poll (every
+  asset's current market, plus a `getContractEvents` scan per market just
+  for volume). Both now read `market.upSupply`/`downSupply`/`collectedFees`
+  from here in one query instead.
 
-Nothing else changes: live curve state (`reserve`/`upSupply`/`downSupply`),
-trading, and redeeming still go straight to the contract, same as before —
-see `DOCS.md` in the repo root.
+The one thing that still always goes straight to the contract is `reserve` —
+real, money-moving state (trade quoting in `TradePanel`, the portfolio page's
+sell-value estimate) that has to be exact and live, never indexed. See
+`DOCS.md` in the repo root for the full picture.
 
 ## Schema (`ponder.schema.ts`)
 
 | Table | What it tracks |
 |---|---|
 | `asset` | One row per `AssetRegistered` |
-| `market` | One row per `MarketCreated`, updated by `SharesBought`/`SharesSold` (running `volume`/`tradeCount`) and `MarketSettled`/`MarketPushed`/`MarketCancelled`/`CloseTimeExtended` |
+| `market` | One row per `MarketCreated`, kept live by `SharesBought`/`SharesSold` (`volume`, `tradeCount`, `upSupply`, `downSupply`, `collectedFees`), `FeesWithdrawn` (resets `collectedFees`), and `MarketSettled`/`MarketPushed`/`MarketCancelled`/`CloseTimeExtended` |
 | `trade` | One row per `SharesBought`/`SharesSold` |
 | `position` | One row per `(marketId, holder)`, a running Up/Down balance updated on every buy/sell and zeroed + flagged `claimed` on `Redeemed`/`RefundClaimed` — mirrors the contract's own `shareBalances` mapping |
+
+`market.upSupply`/`downSupply` are exact, not approximate, despite never
+replaying `PythagoreanMath.seedGenesis`'s integer-sqrt math: they start as
+equal placeholders (`1n`/`1n`) at creation, which is already the correct
+50/50 probability every consumer actually needs (the contract always seeds
+both sides equal), then get overwritten with the real bigint values straight
+from `newUpSupply`/`newDownSupply` on the very first trade.
 
 ## Running
 

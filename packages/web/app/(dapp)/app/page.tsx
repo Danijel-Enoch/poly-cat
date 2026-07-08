@@ -1,17 +1,14 @@
-import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
+import { fetchIndexerMarketsList, type IndexerAssetSlot } from "@/lib/indexerApi";
 import { getDelistedAssetIds, getAssetOrder } from "@/lib/assetDisplayStore";
 import { MarketCard } from "@/components/MarketCard";
 
-// Reads live chain state on every request — must never be statically
-// prerendered at build time. Without this, `next build` tries to prerender
-// this page once during the build and fails outright if the RPC isn't
-// reachable from the build environment (e.g. a local-only Anvil URL,
-// unreachable from Vercel), taking the whole deployment down with it rather
-// than just this route.
+// Not statically prerendered at build time — this always needs a fresh read
+// (via packages/indexer, see lib/indexerApi.ts) rather than whatever was
+// true when `next build` ran.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const slots = await getMarketsList();
+  const slots = await fetchIndexerMarketsList();
 
   // Admin-curated display state (see lib/assetDisplayStore.ts) — delisting
   // and reordering only affect what shows here, never on-chain state; a
@@ -24,7 +21,7 @@ export default async function Home() {
   const visibleSlots = order
     .filter((id) => !delisted.has(id))
     .map((id) => slotsById.get(id))
-    .filter((slot): slot is AssetSlot => !!slot);
+    .filter((slot): slot is IndexerAssetSlot => !!slot);
 
   return (
     <div className="flex flex-col gap-6">

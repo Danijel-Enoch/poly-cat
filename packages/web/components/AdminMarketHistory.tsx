@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { usePonderQuery } from "@ponder/react";
+import { useQuery } from "@tanstack/react-query";
 
-import { allMarketsQuery } from "@/lib/ponderQueries";
+import { fetchAllMarkets } from "@/lib/indexerApi";
 import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
@@ -11,16 +11,17 @@ import { COLLATERAL_SYMBOL } from "@/lib/contracts";
 const PAGE_SIZE = 25;
 
 /** Every market the factory has ever created, not just each asset's current
- * one — the admin dashboard's live `getMarketsList` (see lib/chainReads.ts)
- * only ever shows one row per asset (its `currentMarketId`), so a finalized
- * or cancelled market rolls off that view the moment the next window opens
- * for the same asset. This reads packages/indexer instead, which keeps every
- * market ever created. */
+ * one — the admin dashboard's live markets table only ever shows one row per
+ * asset (its current market), so a finalized or cancelled market rolls off
+ * that view the moment the next window opens for the same asset. This reads
+ * packages/indexer instead, which keeps every market ever created. */
 export function AdminMarketHistory() {
   const [page, setPage] = useState(0);
 
-  const { data: rows, status } = usePonderQuery({
-    queryFn: (db) => allMarketsQuery(db, PAGE_SIZE, page * PAGE_SIZE),
+  const { data: rows, status } = useQuery({
+    queryKey: ["indexerAllMarkets", page],
+    queryFn: () => fetchAllMarkets(PAGE_SIZE, page * PAGE_SIZE),
+    refetchInterval: 10_000,
   });
 
   return (

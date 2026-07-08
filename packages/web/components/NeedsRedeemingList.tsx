@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePonderQuery } from "@ponder/react";
+import { useQuery } from "@tanstack/react-query";
 import { useAccount, useWriteContract } from "wagmi";
 import { waitForTransactionReceipt } from "wagmi/actions";
 
-import { redeemablePositionsQuery, isActuallyRedeemable, type RedeemableRow } from "@/lib/ponderQueries";
+import { fetchRedeemablePositions, isActuallyRedeemable, type RedeemableRow } from "@/lib/indexerApi";
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatEth } from "@/lib/format";
@@ -23,9 +23,11 @@ export function NeedsRedeemingList() {
   const { address, isConnected } = useAccount();
   const [justClaimed, setJustClaimed] = useState<Set<string>>(new Set());
 
-  const { data: rows, status } = usePonderQuery({
-    queryFn: (db) => redeemablePositionsQuery(db, address!),
+  const { data: rows, status } = useQuery({
+    queryKey: ["indexerRedeemablePositions", address],
+    queryFn: () => fetchRedeemablePositions(address!),
     enabled: !!address,
+    refetchInterval: 10_000,
   });
 
   if (!isConnected) return null;

@@ -7,7 +7,7 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { getMarketsList, type AssetSlot } from "@/lib/chainReads";
+import { fetchIndexerMarketsList, type IndexerAssetSlot } from "@/lib/indexerApi";
 import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { AddMarketPanel } from "@/components/AddMarketPanel";
@@ -26,7 +26,7 @@ export default function AdminPage() {
 
   const { data: slots, refetch } = useQuery({
     queryKey: ["adminMarkets"],
-    queryFn: getMarketsList,
+    queryFn: fetchIndexerMarketsList,
     refetchInterval: 10_000,
     enabled: isAdmin,
   });
@@ -305,7 +305,7 @@ function SlotRow({
   onMoveUp,
   onMoveDown,
 }: {
-  slot: AssetSlot;
+  slot: IndexerAssetSlot;
   pending: boolean;
   paused: boolean;
   togglePending: boolean;
@@ -397,7 +397,7 @@ function SlotRow({
           </td>
           <td className="py-2 pr-4 text-gray-300">${formatPriceWad(market.startPriceWad)}</td>
           <td className="py-2 pr-4 text-gray-300">
-            {slot.volume == null ? "—" : `${formatEth(slot.volume)} ${COLLATERAL_SYMBOL}`}
+            {formatEth(market.volume)} {COLLATERAL_SYMBOL}
           </td>
           <td className="py-2 pr-4 text-gray-300 whitespace-nowrap">{formatDate(market.closeTime)}</td>
           <td className="py-2 pr-4 text-gray-300">

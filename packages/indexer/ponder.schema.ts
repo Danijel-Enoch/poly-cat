@@ -1,13 +1,16 @@
 import { index, onchainTable, relations } from "ponder";
 
 // Mirrors MarketFactory.sol's on-chain state plus a running trade tally, not
-// a 1:1 copy of every field the contract exposes — anything a live page
-// already reads directly off-chain (current curve reserve/upSupply/
-// downSupply, exact fee balance) stays a direct `getMarket` read there (see
-// packages/web/lib/chainReads.ts); this indexer exists specifically to
-// answer the two queries direct chain reads can't do cheaply: "every market
-// ever created" (admin) and "every market one address has ever held a
-// position in, resolved and still unclaimed" (portfolio).
+// a 1:1 copy of every field the contract exposes — `reserve` in particular
+// stays a direct `getMarket` read wherever it's actually needed (trade
+// quoting in TradePanel, portfolio's sell-value estimate — see
+// packages/web/lib/chainReads.ts), since that's real money-moving state that
+// has to be exact and live, not indexed. `upSupply`/`downSupply` here exist
+// specifically so *browsing* (the home page grid, admin's markets table)
+// doesn't need a live RPC read per asset just to show the implied
+// probability — see the note on `market.upSupply` below for why indexing
+// them introduces no approximation despite not replaying the contract's own
+// genesis-seeding math.
 
 export const asset = onchainTable("asset", (t) => ({
   id: t.bigint().primaryKey(), // assetId
@@ -44,6 +47,24 @@ export const market = onchainTable(
     // per-market on demand, kept incrementally here instead.
     volume: t.bigint().notNull().default(0n),
     tradeCount: t.integer().notNull().default(0),
+    // Set to exact equal placeholders (1n/1n) at creation and then updated to
+    // the exact bigint from SharesBought/SharesSold's newUpSupply/
+    // newDownSupply on every trade — never independently computed. This is
+    // exact, not approximate, despite not replaying `PythagoreanMath.
+    // seedGenesis`'s integer-sqrt math for the true genesis value: the
+    // display-only "chance Up" formula (upSupply² / (upSupply² +
+    // downSupply²), see lib/format.ts's upProbabilityFromSupplies) is 50/50
+    // for *any* equal pair, and the contract always seeds both sides equal —
+    // so 1n/1n is exactly as correct as the real genesis value for every
+    // consumer of these two columns, until the first real trade overwrites
+    // them with the actual on-chain figures anyway.
+    upSupply: t.bigint().notNull().default(1n),
+    downSupply: t.bigint().notNull().default(1n),
+    // Running tally of feePaid across every trade, zeroed on FeesWithdrawn
+    // (which the contract always empties in full — see MarketFactory.sol's
+    // withdrawFees). Lets the admin markets table read this from the indexer
+    // instead of a live getMarket call per row.
+    collectedFees: t.bigint().notNull().default(0n),
     createdBlock: t.bigint().notNull(),
     createdAt: t.bigint().notNull(),
     settledBlock: t.bigint(),

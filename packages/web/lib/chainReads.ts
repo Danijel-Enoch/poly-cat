@@ -3,8 +3,13 @@ import { activeChain } from "./chains";
 import { MARKET_FACTORY_ADDRESS } from "./contracts";
 import { MarketFactoryAbi } from "./abis/MarketFactoryAbi";
 
-/** Direct on-chain reads — no indexer anywhere in this stack. Every function
- * here either reads current contract state directly, or (for trade history)
+/** Direct on-chain reads — for the state that has to be exact and live
+ * (trade quoting, redeeming, a specific open market's own page) rather than
+ * indexed. Browsing views (the home page grid, admin's markets table, full
+ * market history, "needs redeeming") read packages/indexer instead — see
+ * lib/indexerApi.ts — specifically to avoid the RPC volume all of those used
+ * to cost polling this file's reads every few seconds. Every function here
+ * either reads current contract state directly, or (for trade history)
  * scopes a `getContractEvents` call to a single market's own short (5min)
  * lifetime, which is cheap without an indexer specifically because these
  * markets are short-lived rather than an unbounded, ever-growing set.
@@ -156,38 +161,6 @@ export async function getMarket(id: bigint): Promise<MarketRow | null> {
   return toMarketRow(id, raw);
 }
 
-export type AssetSlot = { asset: Asset; market: MarketRow | null; volume: bigint | null };
-
-/** The current (or most recently created) market for every registered
- * asset — what the home page's asset list renders. A slot's `market` is
- * `null` only in the narrow window before the cron has ever created a
- * market for a newly registered asset. */
-export async function getMarketsList(): Promise<AssetSlot[]> {
-  const assets = await getAssets();
-
-  const currentIds = await Promise.all(
-    assets.map((asset) =>
-      publicClient.readContract({
-        address: MARKET_FACTORY_ADDRESS,
-        abi: MarketFactoryAbi,
-        functionName: "currentMarketId",
-        args: [asset.id],
-      }),
-    ),
-  );
-
-  const markets = await Promise.all(currentIds.map((id) => (id > 0n ? readMarket(id) : null)));
-  const volumes = await Promise.all(
-    markets.map((raw, i) => (raw ? getMarketVolume(currentIds[i], raw.startTime) : null)),
-  );
-
-  return assets.map((asset, i) => ({
-    asset,
-    market: markets[i] ? toMarketRow(currentIds[i], markets[i]!) : null,
-    volume: volumes[i],
-  }));
-}
-
 /** Up to `count` most recent *resolved* markets for one asset, newest first —
  * powers a "past windows" strip on the trade page. Scans back at most
  * `lookback` global market ids (bounded and cheap: assets churn a window
@@ -300,16 +273,6 @@ export async function getTradeHistory(marketId: bigint, startTime: bigint): Prom
 
   rows.sort((a, b) => (a.blockNumber === b.blockNumber ? a.logIndex - b.logIndex : Number(a.blockNumber - b.blockNumber)));
   return rows;
-}
-
-/** Total ETH collateral that has changed hands in one market so far — the
- * sum of every buy's `collateralIn` and every sell's `collateralOut`.
- * There's no on-chain running total (the contract only tracks `reserve`,
- * which nets buys against sells), so this reuses `getTradeHistory`'s
- * already-bounded event scan rather than adding new contract state. */
-export async function getMarketVolume(marketId: bigint, startTime: bigint): Promise<bigint> {
-  const trades = await getTradeHistory(marketId, startTime);
-  return trades.reduce((sum, trade) => sum + trade.collateralAmount, 0n);
 }
 
 export type PositionRow = {

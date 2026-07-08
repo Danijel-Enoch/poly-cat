@@ -24,9 +24,12 @@ This is the deeper architecture reference. For a setup quickstart, see
 packages/contracts   Foundry: MarketFactory (UUPS proxy), PythagoreanMath
 packages/cron        Node/TS: opens each registered asset's next 5-minute window
                       and settles the previous one off a live price feed, on a schedule
-packages/indexer     Ponder: indexes MarketFactory's event log for full-history
-                      queries (every market ever created; every market a user
-                      has ever entered and still needs to redeem/refund)
+packages/indexer     Ponder: indexes MarketFactory's event log, queried as
+                      GraphQL — backs browsing (home page grid, admin's
+                      markets table and full history) and full-history
+                      lookups a direct chain read can't do cheaply (every
+                      market a user has ever entered and still needs to
+                      redeem/refund)
 packages/web         Next.js: trading UI, portfolio, docs, admin (incl. adding new assets)
 ```
 
@@ -34,13 +37,12 @@ One `MarketFactory` contract instance serves every market, keyed by
 `marketId`, rather than one clone/proxy per market. Outcome shares are cheap
 internal balances
 (`mapping(marketId => mapping(isUp => mapping(holder => balance)))`), not
-per-market ERC20s. Live/current state (a market's curve, an asset's
-in-progress window) still comes from direct chain reads — `packages/web`
-reads those straight off the contract (`lib/chainReads.ts`) the same as
-before. `packages/indexer` exists alongside that for the two queries a
-direct read can't do cheaply (see [Frontend](#frontend)); `packages/cron` is
-still the only thing that ever writes to the contract other than traders
-themselves and the owner registering new assets.
+per-market ERC20s. `packages/web` reads most things from `packages/indexer`
+now rather than the chain directly — the exception is `reserve` (trade
+quoting, the portfolio page's sell-value estimate), real money-moving state
+that has to be exact and live, never indexed; see [Frontend](#frontend) for
+the split. `packages/cron` is still the only thing that ever writes to the
+contract other than traders themselves and the owner registering new assets.
 
 ## Assets and market lifecycle
 
@@ -154,12 +156,13 @@ not the contract: **delist/relist** hides an asset from the public grid
 entirely (a delisted asset's market keeps trading and settling normally
 on-chain for anyone with a direct link — this only affects discoverability),
 and **reorder** (↑/↓ per row) sets which assets show first. Both are
-off-chain, admin-curated state in `lib/assetDisplayStore.ts` — a separate
-JSON file from the pause list above (`lib/assetStatusStore.ts`), since
-pausing is an operational concern packages/cron also needs to read, while
-delist/reorder is a `packages/web`-only display concern. Same "local dev
-only" caveat as the pause list: a distributed deployment would need a real
-datastore instead of a JSON file on disk.
+off-chain, admin-curated state in `lib/assetDisplayStore.ts` — Redis-backed
+(see `lib/redis.ts`, `REDIS_URL`), unlike the pause list above
+(`lib/assetStatusStore.ts`), which stays a local JSON file since
+`packages/cron` needs filesystem-level access to it too; delist/reorder is a
+`packages/web`-only display concern with no such constraint. Degrades to
+"nothing delisted, natural order" if `REDIS_URL` is unset, rather than
+crashing.
 
 ## Upgradeability
 
@@ -242,31 +245,35 @@ injected connector. Every write flow (`TradePanel`, `RedeemButton`,
 `ClaimRefundButton`, `AddMarketPanel`, `/admin`) follows the same shape:
 `writeContractAsync` → `waitForTransactionReceipt` → refetch the relevant reads.
 
-Most reads still skip the indexer entirely — `lib/chainReads.ts` reads the
-chain directly via `viem`, deliberately avoiding the `multicall` client
-action (it needs a `Multicall3` contract registered on the target chain,
-which a fresh local Anvil instance doesn't have) in favor of `Promise.all`
-over individual reads with HTTP request batching enabled on the transport.
-Per-market trade history uses `getContractEvents` scoped to that market's own
-short (5min) block range rather than an unbounded scan, found via a binary
-search for the block at the market's `startTime` — cheap regardless of how
-long the chain has been running, since it's O(log blocks) point lookups, not
-a range scan. `getUserPositions` there is the one exception that's only a
-bounded approximation (the most recent ~300 markets) rather than exact —
-which is exactly what `packages/indexer` exists to answer precisely instead.
+`lib/chainReads.ts` reads the chain directly via `viem` for whatever has to
+be exact and live: trade quoting (`TradePanel`), a specific open market's own
+page, redeem/refund, and the portfolio page's "Ur bag" sell-value estimate
+(`getUserPositions`, a bounded ~300-market scan — deliberately not exact,
+since a live `reserve` figure only exists on-chain). It deliberately avoids
+the `multicall` client action (it needs a `Multicall3` contract registered on
+the target chain, which a fresh local Anvil instance doesn't have) in favor
+of `Promise.all` over individual reads with HTTP request batching enabled on
+the transport. Per-market trade history uses `getContractEvents` scoped to
+that market's own short (5min) block range rather than an unbounded scan,
+found via a binary search for the block at the market's `startTime` — cheap
+regardless of how long the chain has been running, since it's O(log blocks)
+point lookups, not a range scan.
 
-Two views specifically read from `packages/indexer` rather than the chain,
-via `@ponder/client`/`@ponder/react` (`lib/ponder.ts`, `lib/ponderQueries.ts`)
-querying its SQL-over-HTTP API: the admin dashboard's "All markets ever
-created" table (`components/AdminMarketHistory.tsx` — a direct chain read
+Everything else — anything that's either browsing (not trading) or needs
+full history — reads `packages/indexer` instead, as plain GraphQL over HTTP
+(`lib/indexerApi.ts`, hand-rolled `fetch` calls, no GraphQL client library):
+the home page grid and admin's live markets table (`fetchIndexerMarketsList`
+— each asset's current market, one indexer round-trip via aliased sub-queries
+regardless of asset count, replacing what used to be dozens of RPC calls per
+poll), the admin dashboard's "All markets ever created" table
+(`fetchAllMarkets`, `components/AdminMarketHistory.tsx` — a direct chain read
 only ever exposes each asset's *current* market via `currentMarketId`, not
 its full history), and the portfolio page's "Needs redeeming" list
-(`components/NeedsRedeemingList.tsx` — every market a wallet has ever held a
-position in that's now resolved and still unclaimed, exact regardless of how
-long ago it was opened). Both queries use `usePonderQuery`'s live-subscription
-mode by default, so claiming a win/refund updates the list as soon as the
-indexer observes the `Redeemed`/`RefundClaimed` event, with no manual
-refetch. See `packages/indexer/README.md` for the indexer itself.
+(`fetchRedeemablePositions`, `components/NeedsRedeemingList.tsx` — every
+market a wallet has ever held a position in that's now resolved and still
+unclaimed, exact regardless of how long ago it was opened). All three poll
+on the same 10-second interval the rest of the app's admin/portfolio queries
+already use — see `packages/indexer/README.md` for the indexer itself.
 
 The price chart on a market's page depends on the asset's source: a
 Gate-sourced ("blue chip") market plots real candlesticks (from
@@ -363,6 +370,7 @@ seeds from it.
 | `NEXT_PUBLIC_MAINNET_CURRENCY_NAME` / `_SYMBOL` | native gas token (defaults to Ether/ETH — unconfirmed, but Robinhood Chain is an Arbitrum L2 and the explorer's own coin icon/price data both point to ETH) |
 | `NEXT_PUBLIC_MAINNET_MARKET_FACTORY_ADDRESS` | the proxy address from the deploy step above |
 | `NEXT_PUBLIC_PONDER_URL` | `packages/indexer`'s deployed API server URL |
+| `REDIS_URL` | backs the admin dashboard's delist/reorder controls (`lib/assetDisplayStore.ts`) — optional, degrades to "nothing delisted, natural order" if unset |
 
 If `NEXT_PUBLIC_NETWORK=mainnet` and the address var is unset, the app
 throws immediately at startup (`lib/contracts.ts`'s `requireMainnetEnv`) —

@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MarketCard } from "./MarketCard";
-import type { Asset, AssetSlot, MarketRow } from "@/lib/chainReads";
+import type { IndexerAsset, IndexerAssetSlot, IndexerMarketRow } from "@/lib/indexerApi";
 
 // MarketCard renders <AssetIcon>, which calls useQuery (to fetch a
 // DexScreener-sourced asset's logo) regardless of whether that query ends up
 // enabled — React Query requires a QueryClientProvider ancestor for that
 // alone, same as app/providers.tsx sets up for the real app.
-function renderMarketCard(slot: AssetSlot) {
+function renderMarketCard(slot: IndexerAssetSlot) {
   const queryClient = new QueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
@@ -17,11 +17,11 @@ function renderMarketCard(slot: AssetSlot) {
   );
 }
 
-function makeAsset(overrides: Partial<Asset> = {}): Asset {
+function makeAsset(overrides: Partial<IndexerAsset> = {}): IndexerAsset {
   return { id: 0n, symbol: "BTC", source: "gate", sourceId: "BTC_USDT", ...overrides };
 }
 
-function makeMarket(overrides: Partial<MarketRow> = {}): MarketRow {
+function makeMarket(overrides: Partial<IndexerMarketRow> = {}): IndexerMarketRow {
   const now = BigInt(Math.floor(Date.now() / 1000));
   return {
     id: 1n,
@@ -29,20 +29,19 @@ function makeMarket(overrides: Partial<MarketRow> = {}): MarketRow {
     startTime: now,
     closeTime: now + 300n,
     startPriceWad: 50_000n * 10n ** 18n,
-    closePriceWad: 0n,
-    reserve: 1000n,
+    closePriceWad: null,
     upSupply: 100n,
     downSupply: 100n,
-    genesisSupply: 100n,
     collectedFees: 0n,
+    volume: 0n,
     state: "Trading",
-    outcome: false,
+    outcome: null,
     ...overrides,
   };
 }
 
-function makeSlot(overrides: Partial<AssetSlot> = {}): AssetSlot {
-  return { asset: makeAsset(), market: makeMarket(), volume: null, ...overrides };
+function makeSlot(overrides: Partial<IndexerAssetSlot> = {}): IndexerAssetSlot {
+  return { asset: makeAsset(), market: makeMarket(), ...overrides };
 }
 
 describe("MarketCard", () => {
@@ -74,7 +73,7 @@ describe("MarketCard", () => {
   });
 
   it("shows total volume when known", () => {
-    renderMarketCard(makeSlot({ volume: 1_500_000_000_000_000_000n }));
+    renderMarketCard(makeSlot({ market: makeMarket({ volume: 1_500_000_000_000_000_000n }) }));
     expect(screen.getByText(/Vol 1\.5 ETH/)).toBeInTheDocument();
   });
 });

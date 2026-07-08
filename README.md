@@ -78,7 +78,7 @@ proxy address into `packages/cron/.env.local` (`MARKET_FACTORY_ADDRESS`),
 
 ```bash
 pnpm cron:run       # one pass: opens any missing windows, settles any closed ones
-pnpm indexer:dev     # Ponder dev server at :42069 — powers admin history + redeemable positions
+pnpm indexer:dev     # Ponder dev server at :42069 — powers browsing, admin history, redeemable positions
 pnpm web:dev         # Next.js dev server at :3000
 ```
 

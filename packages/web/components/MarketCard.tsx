@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring } from "framer-motion";
-import type { AssetSlot } from "@/lib/chainReads";
+import type { IndexerAssetSlot } from "@/lib/indexerApi";
 import { upProbabilityFromSupplies, formatPriceWad, formatEth } from "@/lib/format";
 import { assetDisplayName, assetColor } from "@/lib/assets";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
@@ -46,8 +46,9 @@ function useCardTilt() {
   return { ref, rotateX, rotateY, onPointerMove, onPointerLeave };
 }
 
-export function MarketCard({ slot, index = 0 }: { slot: AssetSlot; index?: number }) {
-  const { asset, market, volume } = slot;
+export function MarketCard({ slot, index = 0 }: { slot: IndexerAssetSlot; index?: number }) {
+  const { asset, market } = slot;
+  const volume = market?.volume ?? null;
   const now = useNow(1000);
   const tilt = useCardTilt();
   const color = assetColor(asset.symbol);

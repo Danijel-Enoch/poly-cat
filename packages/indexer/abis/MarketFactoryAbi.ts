@@ -114,4 +114,14 @@ export const MarketFactoryAbi = [
     inputs: [{ name: "marketId", type: "uint256", indexed: true, internalType: "uint256" }],
     anonymous: false,
   },
+  {
+    type: "event",
+    name: "FeesWithdrawn",
+    inputs: [
+      { name: "marketId", type: "uint256", indexed: true, internalType: "uint256" },
+      { name: "to", type: "address", indexed: true, internalType: "address" },
+      { name: "amount", type: "uint256", indexed: false, internalType: "uint256" },
+    ],
+    anonymous: false,
+  },
 ] as const;
