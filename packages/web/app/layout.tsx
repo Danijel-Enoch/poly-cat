@@ -5,6 +5,13 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";
 import { Sidebar } from "@/components/Sidebar";
+import {
+  SITE_URL,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_DESCRIPTION,
+  SITE_KEYWORDS,
+} from "@/lib/site";
 
 // Degen font stack: Chakra Petch (angular cyberpunk display — headlines,
 // buttons, labels), Space Grotesk (techy but readable body), Space Mono
@@ -26,10 +33,42 @@ const spaceMono = Space_Mono({
   style: ["normal", "italic"],
 });
 
+// metadataBase makes the generated og:image / canonical URLs absolute — social
+// scrapers (Twitter/X, Telegram, WhatsApp, Discord, iMessage) reject relative
+// image paths, so this is what makes a pasted link unfurl into a rich card.
+// The og:image itself is produced by app/opengraph-image.tsx.
 export const metadata: Metadata = {
-  title: "Polycat",
-  description:
-    "Fixed 5-minute Up/Down markets on curated blue-chip and Robinhood Chain memecoin assets. Trade with ETH.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: SITE_KEYWORDS,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: "en_US",
+  },
+  twitter: {
+    // "summary_large_image" is the wide card X/Twitter renders from og:image.
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    // site/creator: add the @handles here once the accounts exist, e.g.
+    // site: "@polycat",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
