@@ -8,23 +8,26 @@ import { fetchAssetPrice, type PricePoint } from "@/lib/priceApi";
 import { useNow } from "@/lib/useNow";
 import type { PriceSourceName } from "@/lib/chainReads";
 import { DexScreenerEmbed } from "@/components/DexScreenerEmbed";
+import { Card, CardContent } from "@/components/ui/card";
 
 const colors = {
-  up: "#00ff9d", // neon green (degen Up)
-  down: "#ff2e88", // hot pink (degen Down)
-  strike: "#9ca3af", // gray-400
-  grid: "#374151", // gray-700
-  axisText: "#6b7280", // gray-500
-  valueText: "#f3f4f6", // gray-100
-  markerRing: "#111827", // gray-900, matches the card background
-  hoverLine: "#6b7280",
-  tooltipBg: "#111827",
-  tooltipBorder: "#1f2937",
-  tooltipText: "#9ca3af",
+  up: "var(--up)",
+  down: "var(--down)",
+  strike: "#a39d8f",
+  axisText: "#a39d8f",
+  valueText: "#1f1a10",
+  markerRing: "#fcfbf8", // matches the card background
+  hoverLine: "#a39d8f",
+  tooltipBg: "#fcfbf8",
+  tooltipBorder: "#e7e2d6",
+  tooltipText: "#635d4f",
 };
 
 const WIDTH = 640;
-const HEIGHT = 260;
+// Tall enough that the chart reads as the page's focal point rather than a
+// thin line in a mostly-empty card — matches how much visual weight a
+// reference trading UI (e.g. a TradingView panel) gives its own chart.
+const HEIGHT = 440;
 const MARGIN = { top: 20, right: 60, bottom: 28, left: 8 };
 const PLOT_WIDTH = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_HEIGHT = HEIGHT - MARGIN.top - MARGIN.bottom;
@@ -126,14 +129,15 @@ function GateChart({
   const hovered = hoverIndex !== null ? points[hoverIndex] : null;
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+    <Card>
+      <CardContent>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-100">Price</h2>
+        <h2 className="font-display text-lg">Price</h2>
         <div className="text-right">
-          <p className={`text-lg font-extrabold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+          <p className="text-lg font-display" style={{ color: isUp ? "var(--up)" : "var(--down)" }}>
             ${current.toLocaleString(undefined, { maximumFractionDigits: priceDigits })}
           </p>
-          <p className={`text-xs font-semibold ${isUp ? "text-emerald-400" : "text-rose-400"}`}>
+          <p className="text-xs font-medium" style={{ color: isUp ? "var(--up)" : "var(--down)" }}>
             {isUp ? "+" : ""}
             {pctChange.toFixed(2)}% vs strike
           </p>
@@ -141,7 +145,7 @@ function GateChart({
       </div>
 
       {isLoading && points.length === 0 ? (
-        <p className="text-sm text-gray-400 py-16 text-center">Loading price...</p>
+        <p className="text-sm text-muted-foreground py-16 text-center">Loading price...</p>
       ) : (
         <div className="relative">
           <svg
@@ -246,7 +250,8 @@ function GateChart({
           </AnimatePresence>
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 

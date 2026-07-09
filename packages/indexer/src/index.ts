@@ -1,5 +1,5 @@
 import { ponder } from "ponder:registry";
-import { asset, market, position, protocolStat, trade } from "ponder:schema";
+import { asset, market, position, protocolStat, trade, trader } from "ponder:schema";
 
 // The singleton row's fixed primary key — see ponder.schema.ts's protocolStat.
 const PROTOCOL_STAT_ID = "protocol";
@@ -36,18 +36,51 @@ ponder.on("MarketFactory:MarketCreated", async ({ event, context }) => {
     createdBlock: event.block.number,
     createdAt: event.block.timestamp,
   });
+
+  await context.db.update(asset, { id: event.args.assetId }).set((row) => ({
+    marketCount: row.marketCount + 1,
+  }));
 });
 
 ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
   const { marketId, buyer, isUp, collateralIn, sharesOut, feePaid, newUpSupply, newDownSupply } = event.args;
 
-  await context.db.update(market, { id: marketId }).set((row) => ({
+  // update().set() resolves to the updated row, so this also gives us
+  // assetId for the asset-level aggregate below without a second read.
+  const updatedMarket = await context.db.update(market, { id: marketId }).set((row) => ({
     volume: row.volume + collateralIn,
     tradeCount: row.tradeCount + 1,
     upSupply: newUpSupply,
     downSupply: newDownSupply,
     collectedFees: row.collectedFees + feePaid,
   }));
+
+  await context.db.update(asset, { id: updatedMarket.assetId }).set((row) => ({
+    totalVolume: row.totalVolume + collateralIn,
+    totalFees: row.totalFees + feePaid,
+    totalTrades: row.totalTrades + 1,
+    lastTradeAt: event.block.timestamp,
+    lastTradeBlock: event.block.number,
+  }));
+
+  await context.db
+    .insert(trader)
+    .values({
+      id: buyer,
+      totalBought: collateralIn,
+      totalFeesPaid: feePaid,
+      pnl: -collateralIn,
+      buyCount: 1,
+      firstTradeAt: event.block.timestamp,
+      lastTradeAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalBought: row.totalBought + collateralIn,
+      totalFeesPaid: row.totalFeesPaid + feePaid,
+      pnl: row.pnl - collateralIn,
+      buyCount: row.buyCount + 1,
+      lastTradeAt: event.block.timestamp,
+    }));
 
   await context.db
     .insert(protocolStat)
@@ -101,13 +134,40 @@ ponder.on("MarketFactory:SharesBought", async ({ event, context }) => {
 ponder.on("MarketFactory:SharesSold", async ({ event, context }) => {
   const { marketId, seller, isUp, sharesIn, collateralOut, feePaid, newUpSupply, newDownSupply } = event.args;
 
-  await context.db.update(market, { id: marketId }).set((row) => ({
+  const updatedMarket = await context.db.update(market, { id: marketId }).set((row) => ({
     volume: row.volume + collateralOut,
     tradeCount: row.tradeCount + 1,
     upSupply: newUpSupply,
     downSupply: newDownSupply,
     collectedFees: row.collectedFees + feePaid,
   }));
+
+  await context.db.update(asset, { id: updatedMarket.assetId }).set((row) => ({
+    totalVolume: row.totalVolume + collateralOut,
+    totalFees: row.totalFees + feePaid,
+    totalTrades: row.totalTrades + 1,
+    lastTradeAt: event.block.timestamp,
+    lastTradeBlock: event.block.number,
+  }));
+
+  await context.db
+    .insert(trader)
+    .values({
+      id: seller,
+      totalSold: collateralOut,
+      totalFeesPaid: feePaid,
+      pnl: collateralOut,
+      sellCount: 1,
+      firstTradeAt: event.block.timestamp,
+      lastTradeAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalSold: row.totalSold + collateralOut,
+      totalFeesPaid: row.totalFeesPaid + feePaid,
+      pnl: row.pnl + collateralOut,
+      sellCount: row.sellCount + 1,
+      lastTradeAt: event.block.timestamp,
+    }));
 
   await context.db
     .insert(protocolStat)
@@ -194,6 +254,23 @@ ponder.on("MarketFactory:Redeemed", async ({ event, context }) => {
     claimedAt: event.block.timestamp,
     updatedAt: event.block.timestamp,
   });
+
+  await context.db
+    .insert(trader)
+    .values({
+      id: event.args.redeemer,
+      totalClaimed: event.args.payout,
+      pnl: event.args.payout,
+      claimCount: 1,
+      firstTradeAt: event.block.timestamp,
+      lastTradeAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalClaimed: row.totalClaimed + event.args.payout,
+      pnl: row.pnl + event.args.payout,
+      claimCount: row.claimCount + 1,
+      lastTradeAt: event.block.timestamp,
+    }));
 });
 
 ponder.on("MarketFactory:RefundClaimed", async ({ event, context }) => {
@@ -206,6 +283,23 @@ ponder.on("MarketFactory:RefundClaimed", async ({ event, context }) => {
     claimedAt: event.block.timestamp,
     updatedAt: event.block.timestamp,
   });
+
+  await context.db
+    .insert(trader)
+    .values({
+      id: event.args.claimant,
+      totalClaimed: event.args.payout,
+      pnl: event.args.payout,
+      claimCount: 1,
+      firstTradeAt: event.block.timestamp,
+      lastTradeAt: event.block.timestamp,
+    })
+    .onConflictDoUpdate((row) => ({
+      totalClaimed: row.totalClaimed + event.args.payout,
+      pnl: row.pnl + event.args.payout,
+      claimCount: row.claimCount + 1,
+      lastTradeAt: event.block.timestamp,
+    }));
 });
 
 ponder.on("MarketFactory:FeesWithdrawn", async ({ event, context }) => {

@@ -8,6 +8,7 @@ import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_SYMBOL } from "@/lib/contracts";
 import { formatEth } from "@/lib/format";
 import type { PositionRow } from "@/lib/chainReads";
+import { Button } from "@/components/ui/button";
 
 /** Compact inline claim action for one portfolio row — a scaled-down sibling
  * of RedeemButton/ClaimRefundButton, which are full cards built for the
@@ -46,21 +47,16 @@ export function PortfolioClaimButton({ position, onClaimed }: { position: Positi
   }
 
   return (
-    <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-800 pt-2">
-      <p className="text-xs text-gray-500">
+    <div className="mt-2 flex items-center justify-between gap-2 border-t border-border pt-2">
+      <p className="text-xs text-muted-foreground">
         {error ??
           (mode === "redeem"
-            ? `Won ${formatEth(winningBalance)} ${COLLATERAL_SYMBOL} — claim ur bag.`
-            : `Pushed — ${formatEth(refundableBalance)} ${COLLATERAL_SYMBOL} refundable, ser.`)}
+            ? `Won ${formatEth(winningBalance)} ${COLLATERAL_SYMBOL} — ready to claim.`
+            : `Pushed — ${formatEth(refundableBalance)} ${COLLATERAL_SYMBOL} refundable.`)}
       </p>
-      <button
-        type="button"
-        onClick={handleClaim}
-        disabled={submitting}
-        className="shrink-0 rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-xs font-bold px-3 py-1.5 disabled:opacity-50"
-      >
-        {submitting ? "Claiming ur bag..." : mode === "redeem" ? "Claim bag 🐒" : "Claim refund"}
-      </button>
+      <Button size="sm" disabled={submitting} onClick={handleClaim} className="shrink-0">
+        {submitting ? "Claiming..." : mode === "redeem" ? "Claim" : "Claim refund"}
+      </Button>
     </div>
   );
 }

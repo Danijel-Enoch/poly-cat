@@ -12,7 +12,11 @@ import { quoteSell, CurveQuoteError } from "@/lib/curveMath";
 import { assetDisplayName } from "@/lib/assets";
 import { PortfolioClaimButton } from "@/components/PortfolioClaimButton";
 import { NeedsRedeemingList } from "@/components/NeedsRedeemingList";
-import { HoloCard } from "@/components/HoloCard";
+import { PnlShareCard } from "@/components/PnlShareCard";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatTile } from "@/components/ui/stat-tile";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
@@ -60,51 +64,53 @@ export default function PortfolioPage() {
 
   if (!isConnected) {
     return (
-      <div className="max-w-lg rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
-        <p className="text-gray-400 text-sm">Connect ur wallet to see ur bag, fren.</p>
-      </div>
+      <Card className="max-w-lg">
+        <CardContent className="text-center py-4">
+          <p className="text-muted-foreground text-sm">Connect your wallet to see your positions.</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Ur bag</h1>
+    <div className="flex flex-col gap-10">
+      <PageHeader eyebrow="Your account" title="Portfolio" />
 
-      <HoloCard radius={20} innerClassName="p-5">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Total bag value</p>
-        <p className="text-3xl font-extrabold text-gray-100 mt-1">
-          {totalValue === null ? "—" : `${formatEth(totalValue)} ${COLLATERAL_SYMBOL}`}
-        </p>
-        <p className="text-xs text-gray-500 mt-1">
-          What you&apos;d pull exiting everything now, or redeeming resolved bags.
-        </p>
-      </HoloCard>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <StatTile
+          label="Total value"
+          value={totalValue === null ? "—" : formatEth(totalValue)}
+          description={totalValue === null ? undefined : `${COLLATERAL_SYMBOL} · what you'd get exiting everything now`}
+        />
+
+        {address && <PnlShareCard address={address} />}
+      </div>
 
       <NeedsRedeemingList />
 
       {isLoading ? (
-        <p className="text-sm text-gray-400">Loading...</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       ) : !positions || positions.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-900 py-16 text-center">
-          <p className="text-gray-400 text-sm">No bags yet — go ape something 🐒</p>
-        </div>
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <p className="text-muted-foreground text-sm">No open positions yet.</p>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-3">
           {positions.map((position) => (
-            <HoloCard key={position.marketId.toString()} radius={20} innerClassName="p-4">
-              <Link href={`/markets/${position.marketId}`} className="flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-100 uppercase tracking-wide">{assetDisplayName(position.asset.symbol)}</span>
-                <div className="flex gap-2 text-sm">
-                  <span className="rounded-lg bg-emerald-950 text-emerald-400 px-3 py-1 font-bold uppercase tracking-wide">
-                    Up: {formatEth(position.upBalance)}
-                  </span>
-                  <span className="rounded-lg bg-rose-950 text-rose-400 px-3 py-1 font-bold uppercase tracking-wide">
-                    Dn: {formatEth(position.downBalance)}
-                  </span>
-                </div>
-              </Link>
-              <PortfolioClaimButton position={position} onClaimed={() => refetchPositions()} />
-            </HoloCard>
+            <Card key={position.marketId.toString()}>
+              <CardContent>
+                <Link href={`/markets/${position.marketId}`} className="flex items-center justify-between">
+                  <span className="text-sm font-display text-lg">{assetDisplayName(position.asset.symbol)}</span>
+                  <div className="flex gap-2 text-sm">
+                    <Badge variant="up">Up: {formatEth(position.upBalance)}</Badge>
+                    <Badge variant="down">Down: {formatEth(position.downBalance)}</Badge>
+                  </div>
+                </Link>
+                <PortfolioClaimButton position={position} onClaimed={() => refetchPositions()} />
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

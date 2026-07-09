@@ -13,12 +13,13 @@ export function ProbabilityDisplay({ upPct }: { upPct: number }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
             transition={{ duration: 0.2 }}
-            className={`text-3xl font-extrabold ${upPct >= 50 ? "text-emerald-400" : "text-rose-400"}`}
+            className="text-3xl font-display"
+            style={{ color: upPct >= 50 ? "var(--up)" : "var(--down)" }}
           >
             {upPct}%
           </motion.p>
         </AnimatePresence>
-        <p className="text-[11px] text-gray-500 -mt-1">chance Up</p>
+        <p className="text-[11px] text-muted-foreground -mt-1">chance Up</p>
       </div>
     </>
   );
@@ -26,9 +27,10 @@ export function ProbabilityDisplay({ upPct }: { upPct: number }) {
 
 export function ProbabilityBar({ upPct }: { upPct: number }) {
   return (
-    <div className="mt-4 h-2 w-full rounded-full bg-gray-800 overflow-hidden">
+    <div className="mt-4 h-1.5 w-full rounded-full bg-muted overflow-hidden">
       <motion.div
-        className="h-full rounded-full bg-emerald-500"
+        className="h-full rounded-full"
+        style={{ background: "var(--up)" }}
         animate={{ width: `${upPct}%` }}
         transition={{ type: "spring", stiffness: 200, damping: 26 }}
       />

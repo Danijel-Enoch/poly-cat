@@ -18,7 +18,17 @@ function renderMarketCard(slot: IndexerAssetSlot) {
 }
 
 function makeAsset(overrides: Partial<IndexerAsset> = {}): IndexerAsset {
-  return { id: 0n, symbol: "BTC", source: "gate", sourceId: "BTC_USDT", ...overrides };
+  return {
+    id: 0n,
+    symbol: "BTC",
+    source: "gate",
+    sourceId: "BTC_USDT",
+    totalVolume: 0n,
+    totalFees: 0n,
+    totalTrades: 0,
+    marketCount: 1,
+    ...overrides,
+  };
 }
 
 function makeMarket(overrides: Partial<IndexerMarketRow> = {}): IndexerMarketRow {
@@ -48,7 +58,7 @@ describe("MarketCard", () => {
   it("renders the asset and 50/50 probability at genesis", () => {
     renderMarketCard(makeSlot());
     expect(screen.getByText("Bitcoin")).toBeInTheDocument();
-    expect(screen.getByText(/5m window/)).toBeInTheDocument();
+    expect(screen.getByText("5m")).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
@@ -72,8 +82,13 @@ describe("MarketCard", () => {
     expect(screen.getByText(/Push/)).toBeInTheDocument();
   });
 
-  it("shows total volume when known", () => {
-    renderMarketCard(makeSlot({ market: makeMarket({ volume: 1_500_000_000_000_000_000n }) }));
+  it("shows the asset's lifetime volume, not just the current window's", () => {
+    renderMarketCard(
+      makeSlot({
+        asset: makeAsset({ totalVolume: 1_500_000_000_000_000_000n }),
+        market: makeMarket({ volume: 1n }), // current window's own volume — deliberately not what's asserted below
+      }),
+    );
     expect(screen.getByText(/Vol 1\.5 ETH/)).toBeInTheDocument();
   });
 });

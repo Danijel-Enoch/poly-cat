@@ -12,11 +12,14 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 // Brand tokens, mirrored from app/globals.css so the card matches the site.
-const BG = "#090303";
-const ACCENT = "#FFD000"; // gold
-const UP = "#00FF9D"; // Up = green
-const DOWN = "#FF2E88"; // Down = hot pink
-const FG = "#edebe3";
+// (next/og's Satori renderer doesn't support oklch()/CSS vars, so these are
+// the same background/foreground hex already resolved for RainbowKit's
+// lightTheme in app/providers.tsx — keep the two in sync.)
+const BG = "#fcfbf8";
+const ACCENT = "#1f1a10";
+const UP = "#3f7a52";
+const DOWN = "#b54b3a";
+const FG = "#1f1a10";
 
 async function loadPaw(): Promise<string | null> {
   // Embed the real paw mark as a data URI; fall back to no logo if the file
@@ -44,7 +47,7 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           background: BG,
-          backgroundImage: `radial-gradient(900px 500px at 78% -10%, rgba(255,208,0,0.18), transparent 60%), radial-gradient(700px 500px at -5% 110%, rgba(255,46,136,0.14), transparent 55%)`,
+          backgroundImage: `radial-gradient(900px 500px at 78% -10%, rgba(63,122,82,0.10), transparent 60%), radial-gradient(700px 500px at -5% 110%, rgba(181,75,58,0.08), transparent 55%)`,
           padding: "72px 80px",
           color: FG,
           fontFamily: "sans-serif",
@@ -89,7 +92,7 @@ export default async function OpengraphImage() {
               fontSize: 32,
               lineHeight: 1.35,
               maxWidth: 900,
-              color: "rgba(237,235,227,0.7)",
+              color: "rgba(31,26,16,0.65)",
             }}
           >
             {SITE_DESCRIPTION}
@@ -108,7 +111,7 @@ export default async function OpengraphImage() {
               borderRadius: 9999,
               color: UP,
               border: `2px solid ${UP}`,
-              background: "rgba(0,255,157,0.08)",
+              background: "rgba(63,122,82,0.08)",
             }}
           >
             ▲ UP
@@ -123,7 +126,7 @@ export default async function OpengraphImage() {
               borderRadius: 9999,
               color: DOWN,
               border: `2px solid ${DOWN}`,
-              background: "rgba(255,46,136,0.08)",
+              background: "rgba(181,75,58,0.08)",
             }}
           >
             ▼ DOWN

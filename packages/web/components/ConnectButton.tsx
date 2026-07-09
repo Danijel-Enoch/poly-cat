@@ -1,11 +1,13 @@
 "use client";
 
 import { ConnectButton as RainbowConnectButton } from "@rainbow-me/rainbowkit";
+import { Button } from "@/components/ui/button";
 
-// Degen-styled trigger wrapping RainbowKit's actual wallet picker/account
-// modal (ConnectButton.Custom render prop) — the picker itself is RainbowKit's
-// own centered overlay, themed gold in app/providers.tsx. Keeping the same
-// exported name/no-props API as before so Sidebar.tsx needs no changes.
+// Wraps RainbowKit's actual wallet picker/account modal (ConnectButton.Custom
+// render prop) with buttons styled onto the app's own tokens instead of
+// RainbowKit's defaults — the picker itself is RainbowKit's own centered
+// overlay, themed in app/providers.tsx. Same exported name/no-props API as
+// before so callers need no changes.
 export function ConnectButton() {
   return (
     <RainbowConnectButton.Custom>
@@ -21,29 +23,17 @@ export function ConnectButton() {
             })}
           >
             {!connected ? (
-              <button
-                onClick={openConnectModal}
-                type="button"
-                className="w-full text-sm font-bold px-4 py-2 rounded-full bg-accent text-gray-950 hover:bg-accent-dark glow-accent transition-colors"
-              >
-                Connect 🐒
-              </button>
+              <Button onClick={openConnectModal} type="button" size="sm" className="w-full rounded-full">
+                Connect wallet
+              </Button>
             ) : chain.unsupported ? (
-              <button
-                onClick={openChainModal}
-                type="button"
-                className="w-full text-sm font-bold px-4 py-2 rounded-full bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900 transition-colors"
-              >
-                Wrong network, ser
-              </button>
+              <Button onClick={openChainModal} type="button" variant="destructive" size="sm" className="w-full rounded-full">
+                Wrong network
+              </Button>
             ) : (
-              <button
-                onClick={openAccountModal}
-                type="button"
-                className="w-full text-sm font-bold px-3 py-2 rounded-full border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors"
-              >
+              <Button onClick={openAccountModal} type="button" variant="outline" size="sm" className="w-full rounded-full">
                 {account.displayName}
-              </button>
+              </Button>
             )}
           </div>
         );

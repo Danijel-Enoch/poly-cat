@@ -6,29 +6,15 @@ import { useAccount, useReadContract } from "wagmi";
 
 import { marketFactoryContract } from "@/lib/contracts";
 
-function IconShield() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 4 6v5c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6Z" />
-    </svg>
-  );
-}
-
 /** Owner-only Admin nav item. Renders nothing unless the connected wallet is
- * the contract's current `owner()`. Styled to match the sidebar's other links
- * (active state + icon) so it slots into the same list seamlessly. */
-export function AdminNavLink({
-  pathname,
-  onNavigate,
-}: {
-  pathname?: string;
-  onNavigate?: () => void;
-}) {
+ * the contract's current `owner()`. Styled to match DashboardNav's other
+ * links so it slots in seamlessly. */
+export function AdminNavLink({ pathname }: { pathname?: string }) {
   const { address } = useAccount();
-  // Gated on a connected wallet — this is mounted globally in the sidebar
-  // (see components/Sidebar.tsx), so an unconditional read here would fire
-  // an owner() RPC call on every single page for every visitor, including
-  // the (vast majority) who never connect a wallet at all.
+  // Gated on a connected wallet — mounted globally in the dashboard nav (see
+  // components/DashboardNav.tsx), so an unconditional read here would fire
+  // an owner() RPC call on every page for every visitor, including the vast
+  // majority who never connect a wallet at all.
   const { data: owner } = useReadContract({
     ...marketFactoryContract,
     functionName: "owner",
@@ -45,13 +31,10 @@ export function AdminNavLink({
   return (
     <Link
       href="/admin"
-      onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-        active ? "bg-gray-800 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white"
-      }`}
+      className={`relative text-sm shrink-0 transition-colors group ${active ? "text-foreground" : "text-foreground/60 hover:text-foreground"}`}
     >
-      <IconShield />
       Admin
+      <span className={`absolute -bottom-1 left-0 h-px bg-foreground transition-all duration-300 ${active ? "w-full" : "w-0 group-hover:w-full"}`} />
     </Link>
   );
 }

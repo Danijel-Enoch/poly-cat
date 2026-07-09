@@ -2,9 +2,30 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchMarketTrades } from "@/lib/indexerApi";
+import { fetchMarketTrades, type IndexedTradeRow } from "@/lib/indexerApi";
 import { formatEth, shortenAddress } from "@/lib/format";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { ResponsiveTable, type ResponsiveTableColumn } from "@/components/ui/responsive-table";
+
+const columns: ResponsiveTableColumn<IndexedTradeRow>[] = [
+  {
+    key: "trader",
+    header: "Trader",
+    primary: true,
+    render: (t) => (
+      <div className="flex items-center gap-2 font-mono">
+        <span style={{ color: t.side === "buy" ? "var(--up)" : "var(--down)" }} className="font-medium">
+          {t.side === "buy" ? "Buy" : "Sell"}
+        </span>
+        {shortenAddress(t.trader)}
+      </div>
+    ),
+  },
+  { key: "outcome", header: "Side", render: (t) => (t.isUp ? "Up" : "Down") },
+  { key: "amount", header: COLLATERAL_SYMBOL, render: (t) => formatEth(t.collateralAmount) },
+  { key: "shares", header: "Shares", render: (t) => formatEth(t.sharesAmount) },
+];
 
 export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
   // Indexer-backed (see lib/indexerApi.ts's fetchMarketTrades) — every trade
@@ -18,45 +39,13 @@ export function TradeHistoryTable({ marketId }: { marketId: bigint }) {
   });
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-      <h2 className="font-bold text-gray-100 mb-4 uppercase tracking-wide">Tape</h2>
-
-      {isLoading ? (
-        <p className="text-sm text-gray-500">Loading action...</p>
-      ) : !trades || trades.length === 0 ? (
-        <p className="text-sm text-gray-500">No action yet, ser.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
-                <th className="pb-2 pr-4 font-bold">Degen</th>
-                <th className="pb-2 pr-4 font-bold">Side</th>
-                <th className="pb-2 pr-4 font-bold">Outcome</th>
-                <th className="pb-2 pr-4 font-bold">{COLLATERAL_SYMBOL}</th>
-                <th className="pb-2 font-bold">Shares</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trades.map((trade) => (
-                <tr key={trade.id} className="border-b border-gray-800/60 last:border-0">
-                  <td className="py-2 pr-4 text-gray-300">{shortenAddress(trade.trader)}</td>
-                  <td className="py-2 pr-4">
-                    <span
-                      className={`font-bold ${trade.side === "buy" ? "text-emerald-400" : "text-rose-400"}`}
-                    >
-                      {trade.side === "buy" ? "Ape" : "Exit"}
-                    </span>
-                  </td>
-                  <td className="py-2 pr-4 text-gray-300">{trade.isUp ? "UP" : "DOWN"}</td>
-                  <td className="py-2 pr-4 text-gray-300">{formatEth(trade.collateralAmount)}</td>
-                  <td className="py-2 text-gray-300">{formatEth(trade.sharesAmount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Trade history</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveTable columns={columns} rows={trades} getRowKey={(t) => t.id} loading={isLoading} emptyMessage="No trades yet." />
+      </CardContent>
+    </Card>
   );
 }
