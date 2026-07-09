@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { Chakra_Petch, Space_Grotesk, Space_Mono } from "next/font/google";
+import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PageTransition } from "@/components/PageTransition";
-import { Sidebar } from "@/components/Sidebar";
 import {
   SITE_URL,
   SITE_NAME,
@@ -13,24 +12,22 @@ import {
   SITE_KEYWORDS,
 } from "@/lib/site";
 
-// Degen font stack: Chakra Petch (angular cyberpunk display — headlines,
-// buttons, labels), Space Grotesk (techy but readable body), Space Mono
-// (terminal/ape mono). All via next/font/google — no new deps, self-hosted.
-const chakraPetch = Chakra_Petch({
-  variable: "--font-chakra-petch",
+// Optimus font stack (see the design-system rebuild plan): Instrument Sans
+// (body default), Instrument Serif (font-display — headlines, big numbers),
+// JetBrains Mono (eyebrow labels, meta text). Via next/font/google, same as
+// the previous font stack — no new deps, self-hosted.
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400",
 });
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
 });
 
 // metadataBase makes the generated og:image / canonical URLs absolute — social
@@ -77,17 +74,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${chakraPetch.variable} ${spaceGrotesk.variable} ${spaceMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-950 text-gray-100">
+    <html
+      lang="en"
+      // next-themes sets the `dark` class on this element client-side (before
+      // paint, via an inline script it injects) based on stored/system
+      // preference — suppressHydrationWarning stops React from flagging that
+      // as a server/client mismatch, which is expected here.
+      suppressHydrationWarning
+      className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col font-sans antialiased">
         <Providers>
-          {/* Sidebar is global (whole app, incl. the landing page) so chrome is
-              consistent everywhere. Desktop: fixed left; the content area is
-              offset by the sidebar's width. Mobile: a top bar + slide-in drawer
-              rendered inside <Sidebar />, no fixed offset needed. */}
-          <Sidebar />
-          <div className="flex-1 flex flex-col min-h-screen lg:pl-64">
-            <PageTransition>{children}</PageTransition>
-          </div>
+          {/* No global chrome here — the landing page composes its own
+              anchor-scroll <Navigation/> (components/landing/navigation.tsx),
+              and (dapp) routes get their own multi-route <DashboardNav/> via
+              app/(dapp)/layout.tsx. The two need genuinely different nav
+              patterns (single-page anchors vs. real routes), so neither
+              belongs at the root. */}
+          <PageTransition>{children}</PageTransition>
         </Providers>
       </body>
     </html>

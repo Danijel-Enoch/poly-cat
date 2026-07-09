@@ -7,7 +7,8 @@ import type { Address } from "viem";
 import { fetchTraderStats, fetchTraderMarketCount, pnlFromTraderStats } from "@/lib/indexerApi";
 import { formatEth } from "@/lib/format";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { HoloCard } from "@/components/HoloCard";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 /** Preview + "Share PnL" button for the portfolio page. The image itself is
  * generated server-side by app/api/pnl-card/route.tsx (same next/og
@@ -61,26 +62,26 @@ export function PnlShareCard({ address }: { address: Address }) {
   }
 
   return (
-    <HoloCard radius={20} innerClassName="p-5">
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wide">Your PnL, all-time</p>
-      <p className={`text-3xl font-extrabold mt-1 ${!hasTraded ? "text-gray-100" : isProfit ? "text-emerald-400" : "text-rose-400"}`}>
-        {!hasTraded || pnl === null
-          ? "—"
-          : `${pnl >= 0n ? "+" : "-"}${formatEth(pnl >= 0n ? pnl : -pnl)} ${COLLATERAL_SYMBOL}`}
-      </p>
-      <p className="text-xs text-gray-500 mt-1">
-        {hasTraded && data
-          ? `${(data.stats.buyCount + data.stats.sellCount).toLocaleString()} trades across ${data.marketCount.toLocaleString()} markets`
-          : "Trade a market to start your bag."}
-      </p>
-      <button
-        disabled={!hasTraded || sharing}
-        onClick={handleShare}
-        className="mt-4 w-full rounded-lg bg-accent hover:bg-accent-dark text-gray-950 text-sm font-bold px-3 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {sharing ? "Generating…" : "Share PnL"}
-      </button>
-      {shareError && <p className="text-xs text-rose-400 mt-2">{shareError}</p>}
-    </HoloCard>
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-mono text-xs uppercase tracking-wide text-muted-foreground font-normal">
+          PnL, all-time
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="font-display text-4xl leading-none" style={!hasTraded ? undefined : { color: isProfit ? "var(--up)" : "var(--down)" }}>
+          {!hasTraded || pnl === null ? "—" : `${pnl >= 0n ? "+" : "-"}${formatEth(pnl >= 0n ? pnl : -pnl)} ${COLLATERAL_SYMBOL}`}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          {hasTraded && data
+            ? `${(data.stats.buyCount + data.stats.sellCount).toLocaleString()} trades across ${data.marketCount.toLocaleString()} markets`
+            : "Trade a market to see your PnL here."}
+        </p>
+        <Button variant="default" className="mt-4 w-full" disabled={!hasTraded || sharing} onClick={handleShare}>
+          {sharing ? "Generating…" : "Share PnL"}
+        </Button>
+        {shareError && <p className="text-xs text-destructive mt-2">{shareError}</p>}
+      </CardContent>
+    </Card>
   );
 }

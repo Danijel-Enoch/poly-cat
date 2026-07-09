@@ -20,3 +20,11 @@ packages/contracts/broadcast/
 # shared with packages/cron, not source. The delist/reorder store
 # (packages/web/lib/assetDisplayStore.ts) lives in Redis instead, not here.
 /data/
+
+# Editor/tooling-local — machine-specific, not shared project config.
+/.vscode/
+/.playwright-mcp/
+
+# This repo is pnpm-only (see pnpm-lock.yaml) — an npm/package-lock.json at
+# the root is always accidental, from some tool shelling out to npm directly.
+/package-lock.json

@@ -3,12 +3,56 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
-import { fetchAllMarkets } from "@/lib/indexerApi";
+import { fetchAllMarkets, type IndexedMarketRow } from "@/lib/indexerApi";
 import { formatEth, formatDate, formatPriceWad } from "@/lib/format";
 import { assetDisplayName } from "@/lib/assets";
 import { COLLATERAL_SYMBOL } from "@/lib/contracts";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ResponsiveTable, type ResponsiveTableColumn } from "@/components/ui/responsive-table";
 
 const PAGE_SIZE = 25;
+
+const columns: ResponsiveTableColumn<IndexedMarketRow>[] = [
+  {
+    key: "asset",
+    header: "Asset",
+    primary: true,
+    render: (row) => (
+      <span className="font-display">
+        #{row.id.toString()} · {assetDisplayName(row.assetSymbol ?? `Asset ${row.assetId}`)}
+      </span>
+    ),
+  },
+  {
+    key: "state",
+    header: "State",
+    render: (row) => (
+      <span className="text-muted-foreground">
+        {row.state}
+        {row.state === "Finalized" ? ` · ${row.outcome ? "Up" : "Down"}` : ""}
+        {row.state === "Cancelled" && row.cancelReason ? ` · ${row.cancelReason}` : ""}
+      </span>
+    ),
+  },
+  { key: "strike", header: "Strike", render: (row) => `$${formatPriceWad(row.startPriceWad)}` },
+  {
+    key: "closePrice",
+    header: "Close price",
+    render: (row) => (row.closePriceWad === null ? "—" : `$${formatPriceWad(row.closePriceWad)}`),
+  },
+  {
+    key: "volume",
+    header: "Volume",
+    render: (row) => (
+      <span className="whitespace-nowrap">
+        {formatEth(row.volume)} {COLLATERAL_SYMBOL}
+      </span>
+    ),
+  },
+  { key: "trades", header: "Trades", render: (row) => row.tradeCount },
+  { key: "created", header: "Created", render: (row) => <span className="whitespace-nowrap">{formatDate(row.createdAt)}</span> },
+];
 
 /** Every market the factory has ever created, not just each asset's current
  * one — the admin dashboard's live markets table only ever shows one row per
@@ -25,93 +69,33 @@ export function AdminMarketHistory() {
   });
 
   return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-bold text-gray-100">All markets ever created</h2>
-        <p className="text-xs text-gray-500">Full history, via packages/indexer</p>
-      </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>All markets ever created</CardTitle>
+        <p className="text-xs text-muted-foreground">via packages/indexer</p>
+      </CardHeader>
+      <CardContent>
+        {status === "error" ? (
+          <p className="text-sm text-destructive">
+            Couldn&apos;t reach the indexer — is <code className="text-foreground">packages/indexer</code> running (
+            <code className="text-foreground">pnpm indexer:dev</code>)?
+          </p>
+        ) : (
+          <>
+            <ResponsiveTable columns={columns} rows={rows} getRowKey={(row) => row.id.toString()} loading={status === "pending"} emptyMessage="No markets yet." />
 
-      {status === "error" ? (
-        <p className="text-sm text-rose-400">
-          Couldn&apos;t reach the indexer — is <code className="text-gray-300">packages/indexer</code> running
-          (<code className="text-gray-300">pnpm indexer:dev</code>)?
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-800">
-                <th className="pb-2 pr-4 font-medium">ID</th>
-                <th className="pb-2 pr-4 font-medium">Asset</th>
-                <th className="pb-2 pr-4 font-medium">State</th>
-                <th className="pb-2 pr-4 font-medium">Strike</th>
-                <th className="pb-2 pr-4 font-medium">Close price</th>
-                <th className="pb-2 pr-4 font-medium">Volume</th>
-                <th className="pb-2 pr-4 font-medium">Trades</th>
-                <th className="pb-2 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {status === "pending" ? (
-                <tr>
-                  <td className="py-4 text-gray-500" colSpan={8}>
-                    Loading...
-                  </td>
-                </tr>
-              ) : rows && rows.length > 0 ? (
-                rows.map((row) => (
-                  <tr key={row.id.toString()} className="border-b border-gray-800/60 last:border-0">
-                    <td className="py-2 pr-4 text-gray-400">#{row.id.toString()}</td>
-                    <td className="py-2 pr-4 text-gray-100 font-semibold whitespace-nowrap">
-                      {assetDisplayName(row.assetSymbol ?? `Asset ${row.assetId}`)}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-400">
-                      {row.state}
-                      {row.state === "Finalized" ? ` · ${row.outcome ? "Up" : "Down"}` : ""}
-                      {row.state === "Cancelled" && row.cancelReason ? ` · ${row.cancelReason}` : ""}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-300">${formatPriceWad(row.startPriceWad)}</td>
-                    <td className="py-2 pr-4 text-gray-300">
-                      {row.closePriceWad === null ? "—" : `$${formatPriceWad(row.closePriceWad)}`}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-300">
-                      {formatEth(row.volume)} {COLLATERAL_SYMBOL}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-300">{row.tradeCount}</td>
-                    <td className="py-2 text-gray-300 whitespace-nowrap">{formatDate(row.createdAt)}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td className="py-4 text-gray-500" colSpan={8}>
-                    No markets yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between mt-3">
-        <button
-          type="button"
-          disabled={page === 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-          className="rounded-lg border border-gray-700 text-gray-200 hover:bg-gray-800 text-xs font-semibold px-2.5 py-1 disabled:opacity-40"
-        >
-          Newer
-        </button>
-        <span className="text-xs text-gray-500">Page {page + 1}</span>
-        <button
-          type="button"
-          disabled={!rows || rows.length < PAGE_SIZE}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded-lg border border-gray-700 text-gray-200 hover:bg-gray-800 text-xs font-semibold px-2.5 py-1 disabled:opacity-40"
-        >
-          Older
-        </button>
-      </div>
-    </div>
+            <div className="flex items-center justify-between mt-3">
+              <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                Newer
+              </Button>
+              <span className="text-xs text-muted-foreground">Page {page + 1}</span>
+              <Button size="sm" variant="outline" disabled={!rows || rows.length < PAGE_SIZE} onClick={() => setPage((p) => p + 1)}>
+                Older
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

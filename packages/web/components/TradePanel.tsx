@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { useClickRipple } from "@/components/ClickRipple";
 import { useAccount, useBalance, useReadContract, useWriteContract } from "wagmi";
@@ -8,13 +9,24 @@ import { waitForTransactionReceipt } from "wagmi/actions";
 
 import { wagmiConfig } from "@/lib/wagmi";
 import { marketFactoryContract, COLLATERAL_DECIMALS, COLLATERAL_SYMBOL } from "@/lib/contracts";
-import { formatCollateral, parseCollateral, isPartialDecimalInput, upProbabilityFromSupplies } from "@/lib/format";
+import {
+  formatCollateral,
+  parseCollateral,
+  isPartialDecimalInput,
+  upProbabilityFromSupplies,
+  formatPriceWad,
+} from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import { quoteBuy, quoteSell, quoteAmountInForShares, CurveQuoteError } from "@/lib/curveMath";
-import { HoloCard } from "@/components/HoloCard";
+import { cn } from "@/lib/cn";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ConnectButton } from "@/components/ConnectButton";
 
 const MARKET_STATE_TRADING = 0;
+const MARKET_STATE_FINALIZED = 1;
+const MARKET_STATE_CANCELLED = 2;
 
 export function TradePanel({ marketId }: { marketId: bigint }) {
   const { address, isConnected } = useAccount();
@@ -145,9 +157,9 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
 
   if (!market) {
     return (
-      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 text-sm text-gray-400">
-        Loading market...
-      </div>
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">Loading market...</CardContent>
+      </Card>
     );
   }
 
@@ -159,7 +171,6 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
   const upProb = upProbabilityFromSupplies(market.upSupply, market.downSupply);
   const upPct = Math.round(upProb * 100);
   const shareBalance = isUp ? upBalance : downBalance;
-  const sideColor = isUp ? "emerald" : "rose";
   const reserve = market.reserve;
 
   async function refetchAll() {
@@ -202,12 +213,12 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         // Floor the buy-in at `defaultInitialLiquidity` — the contract itself only
         // requires amountIn > 0, so this UI-level guard is what actually enforces it.
         if (minBuyIn !== undefined && amountIn < minBuyIn) {
-          setStatus(`Min ape-in is ${formatCollateral(minBuyIn, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}, ser.`);
+          setStatus(`Minimum trade is ${formatCollateral(minBuyIn, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}.`);
           return;
         }
         const minSharesOut = buyMode === "receive" ? parsed : 0n;
 
-        setStatus("Aping in...");
+        setStatus("Submitting...");
         const hash = await writeContractAsync({
           ...marketFactoryContract,
           functionName: "buyShares",
@@ -225,196 +236,227 @@ export function TradePanel({ marketId }: { marketId: bigint }) {
         });
         await waitForTransactionReceipt(wagmiConfig, { hash });
       }
-      setStatus("WAGMI 🐒");
+      setStatus("Done.");
       await refetchAll();
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "rekt — tx failed");
+      setStatus(err instanceof Error ? err.message : "Transaction failed");
     } finally {
       setSubmitting(false);
     }
   }
 
   return (
-    <HoloCard radius={20} glow={false} innerClassName="p-5">
-      <div className="relative flex items-center justify-between gap-1 mb-4">
-        <div className="relative flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setSide("buy")}
-            className={`relative px-3 py-1.5 rounded-full text-sm font-bold transition-colors ${side === "buy" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
-          >
-            {side === "buy" && (
-              <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
-            )}
-            <span className="relative">Ape</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSide("sell")}
-            className={`relative px-3 py-1.5 rounded-full text-sm font-bold transition-colors ${side === "sell" ? "text-white" : "text-gray-400 hover:bg-gray-800"}`}
-          >
-            {side === "sell" && (
-              <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-gray-700" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
-            )}
-            <span className="relative">Exit</span>
-          </button>
-        </div>
-        {isConnected && (
-          <span className="text-xs text-gray-500">
-            Bag:{" "}
-            <span className="text-gray-300 font-bold">
-              {formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL}
-            </span>
-          </span>
-        )}
-      </div>
-
-      {!isTrading ? (
-        <p className="text-sm text-gray-400">Window&apos;s closed, ser — too late to ape this one.</p>
-      ) : !isConnected ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-gray-400">Connect ur wallet to ape, fren.</p>
-          <ConnectButton />
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-2">
-            <motion.button
+    <Card>
+      <CardContent>
+        <div className="relative flex items-center justify-between gap-1 mb-4">
+          <div className="relative flex items-center gap-1 rounded-full bg-muted p-1">
+            <button
               type="button"
-              onClick={() => setIsUp(true)}
-              whileTap={{ scale: 0.96 }}
-              className={`rounded-xl py-3 font-bold text-sm uppercase tracking-wide transition-[box-shadow,background-color] ${
-                isUp
-                  ? "bg-emerald-500 text-gray-950 glow-up"
-                  : "bg-emerald-950 text-emerald-400 border border-emerald-900 hover:bg-emerald-900"
-              }`}
+              onClick={() => setSide("buy")}
+              className={`relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${side === "buy" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Ape Up · {upPct}¢
-            </motion.button>
-            <motion.button
+              {side === "buy" && (
+                <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-foreground" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+              )}
+              <span className="relative">Buy</span>
+            </button>
+            <button
               type="button"
-              onClick={() => setIsUp(false)}
-              whileTap={{ scale: 0.96 }}
-              className={`rounded-xl py-3 font-bold text-sm uppercase tracking-wide transition-[box-shadow,background-color] ${
-                !isUp
-                  ? "bg-rose-500 text-gray-950 glow-down"
-                  : "bg-rose-950 text-rose-400 border border-rose-900 hover:bg-rose-900"
-              }`}
+              onClick={() => setSide("sell")}
+              className={`relative px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${side === "sell" ? "text-background" : "text-muted-foreground hover:text-foreground"}`}
             >
-              Ape Dn · {100 - upPct}¢
-            </motion.button>
-          </div>
-
-          {side === "buy" && (
-            <div className="flex items-center gap-1 -mb-2">
-              <button
-                type="button"
-                onClick={() => setBuyMode("spend")}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
-                  buyMode === "spend" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
-                }`}
-              >
-                Send {COLLATERAL_SYMBOL}
-              </button>
-              <button
-                type="button"
-                onClick={() => setBuyMode("receive")}
-                className={`px-2.5 py-1 rounded-full text-xs font-bold transition-colors ${
-                  buyMode === "receive" ? "bg-gray-700 text-white" : "text-gray-400 hover:bg-gray-800"
-                }`}
-              >
-                Exact shares
-              </button>
-            </div>
-          )}
-
-          <div>
-            <label className="text-xs font-medium text-gray-400">
-              {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : `Amount (${COLLATERAL_SYMBOL})`}
-            </label>
-            <div className="relative mt-1">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => {
-                  if (isPartialDecimalInput(e.target.value)) setAmount(e.target.value);
-                }}
-                className="w-full text-2xl font-bold text-gray-100 bg-transparent border-b-2 border-gray-700 focus:border-accent outline-none py-1"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {side === "buy" && belowMin && minBuyInEth
-                ? <span className="text-amber-400">Min ape-in is {minBuyInEth} {COLLATERAL_SYMBOL}</span>
-                : preview
-                  ? preview.label === "shares"
-                    ? `If ${isUp ? "Up" : "Down"} wins → bag ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
-                    : `≈ ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${preview.label}`
-                  : side === "sell"
-                    ? `Bag: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
-                    : `Bag: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`}
-            </p>
-          </div>
-
-          <div className="flex gap-2 text-xs font-semibold">
-            {side === "buy" && buyMode === "spend" ? (
-              <>
-                {[0.01, 0.05, 0.1].map((increment) => (
-                  <button
-                    key={increment}
-                    type="button"
-                    onClick={() => addToAmount(increment)}
-                    className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800"
-                  >
-                    +{increment}
-                  </button>
-                ))}
-              </>
-            ) : (
-              <>
-                <button type="button" onClick={() => addToAmount(1)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
-                  +1
-                </button>
-                <button type="button" onClick={() => addToAmount(10)} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
-                  +10
-                </button>
-              </>
-            )}
-            <button type="button" onClick={setMax} className="flex-1 rounded-full border border-gray-700 text-gray-300 py-1.5 hover:bg-gray-800">
-              Max
+              {side === "sell" && (
+                <motion.span layoutId="trade-side-highlight" className="absolute inset-0 rounded-full bg-foreground" transition={{ type: "spring", stiffness: 400, damping: 32 }} />
+              )}
+              <span className="relative">Sell</span>
             </button>
           </div>
-
-          <motion.button
-            type="submit"
-            disabled={submitting || belowMin}
-            whileTap={{ scale: 0.98 }}
-            onPointerDown={onSubmitRipple}
-            className={`relative overflow-hidden rounded-xl py-3 font-bold text-gray-950 text-sm uppercase tracking-wide disabled:opacity-50 ${
-              sideColor === "emerald" ? "bg-emerald-500 hover:bg-emerald-400 glow-up" : "bg-rose-500 hover:bg-rose-400 glow-down"
-            }`}
-          >
-            {submitRippleLayer}
-            {submitting
-              ? "Sending it..."
-              : side === "buy"
-                ? `Ape ${isUp ? "Up 🟢" : "Down 🔴"}`
-                : `Exit ${isUp ? "Up" : "Down"}`}
-          </motion.button>
-          {status && <p className="text-sm text-gray-400">{status}</p>}
-        </form>
-      )}
-
-      {isConnected && (
-        <div className="mt-5 pt-4 border-t border-gray-800 flex gap-3 text-xs">
-          <span className="flex-1 rounded-lg bg-emerald-950 text-emerald-400 px-3 py-2 font-bold uppercase tracking-wide">
-            Up bag: {formatCollateral(upBalance ?? 0n, COLLATERAL_DECIMALS)}
-          </span>
-          <span className="flex-1 rounded-lg bg-rose-950 text-rose-400 px-3 py-2 font-bold uppercase tracking-wide">
-            Dn bag: {formatCollateral(downBalance ?? 0n, COLLATERAL_DECIMALS)}
-          </span>
+          {isConnected && (
+            <span className="text-xs text-muted-foreground">
+              Balance: <span className="text-foreground font-medium">{formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} {COLLATERAL_SYMBOL}</span>
+            </span>
+          )}
         </div>
-      )}
-    </HoloCard>
+
+        {!isTrading ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-end justify-between">
+              <span className="text-4xl font-display leading-none" style={{ color: upPct >= 50 ? "var(--up)" : "var(--down)" }}>
+                {upPct}%
+              </span>
+              <span className="text-xs font-mono uppercase tracking-wide text-muted-foreground">final odds</span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${upPct}%`, background: "var(--up)" }} />
+            </div>
+
+            {market.state === MARKET_STATE_FINALIZED ? (
+              <div className="rounded-md bg-muted px-3 py-3">
+                <Badge variant={market.outcome ? "up" : "down"} className="mb-2">
+                  {market.outcome ? "Up won" : "Down won"}
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  Settled at ${formatPriceWad(market.closePriceWad)} vs a ${formatPriceWad(market.startPriceWad)} strike.
+                </p>
+              </div>
+            ) : market.state === MARKET_STATE_CANCELLED ? (
+              <div className="rounded-md bg-muted px-3 py-3">
+                <Badge variant="secondary" className="mb-2">
+                  Pushed
+                </Badge>
+                <p className="text-xs text-muted-foreground">
+                  Closed exactly at the ${formatPriceWad(market.startPriceWad)} strike — a refund, not a win or loss.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This window has closed. Settlement runs automatically within moments.
+              </p>
+            )}
+
+            <Link href="/app" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              Browse other markets
+            </Link>
+          </div>
+        ) : !isConnected ? (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">Connect your wallet to trade.</p>
+            <ConnectButton />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-2">
+              <motion.button
+                type="button"
+                onClick={() => setIsUp(true)}
+                whileTap={{ scale: 0.97 }}
+                className="rounded-md py-3 font-medium text-sm transition-colors border"
+                style={
+                  isUp
+                    ? { background: "var(--up)", color: "white", borderColor: "var(--up)" }
+                    : { color: "var(--up)", borderColor: "var(--up)", background: "color-mix(in oklab, var(--up) 8%, transparent)" }
+                }
+              >
+                Up · {upPct}¢
+              </motion.button>
+              <motion.button
+                type="button"
+                onClick={() => setIsUp(false)}
+                whileTap={{ scale: 0.97 }}
+                className="rounded-md py-3 font-medium text-sm transition-colors border"
+                style={
+                  !isUp
+                    ? { background: "var(--down)", color: "white", borderColor: "var(--down)" }
+                    : { color: "var(--down)", borderColor: "var(--down)", background: "color-mix(in oklab, var(--down) 8%, transparent)" }
+                }
+              >
+                Down · {100 - upPct}¢
+              </motion.button>
+            </div>
+
+            {side === "buy" && (
+              <div className="flex items-center gap-1 -mb-2">
+                <button
+                  type="button"
+                  onClick={() => setBuyMode("spend")}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${buyMode === "spend" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+                >
+                  Send {COLLATERAL_SYMBOL}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBuyMode("receive")}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${buyMode === "receive" ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-accent"}`}
+                >
+                  Exact shares
+                </button>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-mono uppercase tracking-wide text-muted-foreground">
+                {side === "sell" ? "Shares to sell" : buyMode === "receive" ? "Shares to buy" : `Amount (${COLLATERAL_SYMBOL})`}
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(e) => {
+                    if (isPartialDecimalInput(e.target.value)) setAmount(e.target.value);
+                  }}
+                  className="w-full text-2xl font-display bg-transparent border-b-2 border-border focus:border-foreground outline-none py-1"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {side === "buy" && belowMin && minBuyInEth ? (
+                  <span className="text-destructive">
+                    Minimum trade is {minBuyInEth} {COLLATERAL_SYMBOL}
+                  </span>
+                ) : preview ? (
+                  preview.label === "shares" ? (
+                    `If ${isUp ? "Up" : "Down"} wins → ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
+                  ) : (
+                    `≈ ${formatCollateral(preview.value, COLLATERAL_DECIMALS)} ${preview.label}`
+                  )
+                ) : side === "sell" ? (
+                  `Balance: ${formatCollateral(shareBalance ?? 0n, COLLATERAL_DECIMALS)} shares`
+                ) : (
+                  `Balance: ${formatCollateral(ethBalance ?? 0n, COLLATERAL_DECIMALS)} ${COLLATERAL_SYMBOL}`
+                )}
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              {side === "buy" && buyMode === "spend" ? (
+                <>
+                  {[0.01, 0.05, 0.1].map((increment) => (
+                    <Button key={increment} type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => addToAmount(increment)}>
+                      +{increment}
+                    </Button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => addToAmount(1)}>
+                    +1
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={() => addToAmount(10)}>
+                    +10
+                  </Button>
+                </>
+              )}
+              <Button type="button" variant="outline" size="sm" className="flex-1 rounded-full" onClick={setMax}>
+                Max
+              </Button>
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={submitting || belowMin}
+              whileTap={{ scale: 0.98 }}
+              onPointerDown={onSubmitRipple}
+              className="relative overflow-hidden rounded-md py-3 font-medium text-sm text-white disabled:opacity-50"
+              style={{ background: isUp ? "var(--up)" : "var(--down)" }}
+            >
+              {submitRippleLayer}
+              {submitting ? "Sending..." : side === "buy" ? `Buy ${isUp ? "Up" : "Down"}` : `Sell ${isUp ? "Up" : "Down"}`}
+            </motion.button>
+            {status && <p className="text-sm text-muted-foreground">{status}</p>}
+          </form>
+        )}
+
+        {isConnected && (
+          <div className="mt-5 pt-4 border-t border-border flex gap-3">
+            <Badge variant="up" className="flex-1 justify-center py-2">
+              Up: {formatCollateral(upBalance ?? 0n, COLLATERAL_DECIMALS)}
+            </Badge>
+            <Badge variant="down" className="flex-1 justify-center py-2">
+              Down: {formatCollateral(downBalance ?? 0n, COLLATERAL_DECIMALS)}
+            </Badge>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

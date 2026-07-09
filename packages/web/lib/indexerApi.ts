@@ -7,12 +7,18 @@ import type { PriceSourceName } from "./chainReads";
  * matching this repo's existing style for every other proxied API
  * (lib/assetSearchApi.ts, lib/priceApi.ts), rather than pulling in a GraphQL
  * client library for a handful of read-only queries. */
+// Server-side callers (RSC pages, route handlers) hit the indexer directly —
+// fastest path, and a relative URL wouldn't resolve there anyway. Browser
+// callers go through this app's own /api/indexer proxy (see that route for
+// why: it's what makes the indexer reachable at all when this app is loaded
+// through a forwarded dev URL rather than plain localhost).
 const INDEXER_URL = process.env.NEXT_PUBLIC_PONDER_URL ?? "http://localhost:42069";
 
 class IndexerError extends Error {}
 
 async function graphqlRequest<T>(query: string): Promise<T> {
-  const res = await fetch(INDEXER_URL, {
+  const url = typeof window === "undefined" ? INDEXER_URL : "/api/indexer";
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ query }),

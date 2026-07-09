@@ -19,10 +19,10 @@ export function CopyableAddress({ address, className = "" }: { address: string; 
       type="button"
       onClick={handleCopy}
       title="Copy address"
-      className={`inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 font-mono text-xs text-gray-200 hover:border-accent hover:text-accent transition-colors ${className}`}
+      className={`inline-flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 font-mono text-xs text-foreground hover:border-foreground/40 transition-colors ${className}`}
     >
       <span className="truncate">{address}</span>
-      <span className="shrink-0 text-gray-500">{copied ? "Copied ✓" : "Copy"}</span>
+      <span className="shrink-0 text-muted-foreground">{copied ? "Copied ✓" : "Copy"}</span>
     </button>
   );
 }

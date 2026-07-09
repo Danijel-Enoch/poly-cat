@@ -17,12 +17,15 @@ import { SITE_NAME } from "@/lib/site";
 // social the way the site-wide OG image does. The trader stats themselves
 // are already public, on-chain, recomputable data — this route re-presents
 // them, it doesn't gate anything a signature would meaningfully protect.
-const BG = "#090303";
-const ACCENT = "#FFD000"; // gold
-const UP = "#00FF9D"; // pnl >= 0
-const DOWN = "#FF2E88"; // pnl < 0
-const FG = "#edebe3";
-const MUTED = "rgba(237,235,227,0.6)";
+// next/og's Satori renderer doesn't support oklch()/CSS vars — these mirror
+// the same background/foreground/up/down hex used in app/opengraph-image.tsx
+// and app/providers.tsx's RainbowKit lightTheme; keep all three in sync.
+const BG = "#fcfbf8";
+const ACCENT = "#1f1a10";
+const UP = "#3f7a52"; // pnl >= 0
+const DOWN = "#b54b3a"; // pnl < 0
+const FG = "#1f1a10";
+const MUTED = "rgba(31,26,16,0.6)";
 
 async function loadPaw(): Promise<string | null> {
   try {
@@ -68,8 +71,8 @@ export async function GET(request: NextRequest) {
           flexDirection: "column",
           justifyContent: "space-between",
           background: BG,
-          backgroundImage: `radial-gradient(900px 500px at 78% -10%, rgba(255,208,0,0.18), transparent 60%), radial-gradient(700px 500px at -5% 110%, ${
-            isProfit ? "rgba(0,255,157,0.14)" : "rgba(255,46,136,0.14)"
+          backgroundImage: `radial-gradient(900px 500px at 78% -10%, rgba(31,26,16,0.06), transparent 60%), radial-gradient(700px 500px at -5% 110%, ${
+            isProfit ? "rgba(63,122,82,0.10)" : "rgba(181,75,58,0.10)"
           }, transparent 55%)`,
           padding: "72px 80px",
           color: FG,
@@ -148,7 +151,7 @@ function StatPill({ label, value }: { label: string; value: string }) {
         gap: 4,
         padding: "12px 24px",
         borderRadius: 16,
-        border: "2px solid rgba(237,235,227,0.16)",
+        border: "2px solid rgba(31,26,16,0.14)",
       }}
     >
       <span style={{ display: "flex", fontSize: 16, fontWeight: 700, letterSpacing: "0.06em", color: MUTED }}>

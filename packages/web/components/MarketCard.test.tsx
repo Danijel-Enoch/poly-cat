@@ -58,7 +58,7 @@ describe("MarketCard", () => {
   it("renders the asset and 50/50 probability at genesis", () => {
     renderMarketCard(makeSlot());
     expect(screen.getByText("Bitcoin")).toBeInTheDocument();
-    expect(screen.getByText(/5m window/)).toBeInTheDocument();
+    expect(screen.getByText("5m")).toBeInTheDocument();
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 

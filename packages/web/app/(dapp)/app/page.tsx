@@ -1,6 +1,7 @@
 import { fetchIndexerMarketsList, type IndexerAssetSlot } from "@/lib/indexerApi";
 import { getDelistedAssetIds, getAssetOrder } from "@/lib/assetDisplayStore";
-import { MarketCard } from "@/components/MarketCard";
+import { MarketsGrid } from "@/components/MarketsGrid";
+import { PageHeader } from "@/components/ui/page-header";
 
 // Not statically prerendered at build time — this always needs a fresh read
 // (via packages/indexer, see lib/indexerApi.ts) rather than whatever was
@@ -24,20 +25,14 @@ export default async function Home() {
     .filter((slot): slot is IndexerAssetSlot => !!slot);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-gray-100 uppercase tracking-tight">Live windows</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          Every market is a 5-minute Up/Down sprint. Ape before it closes — Down wins if the price dips below the
-          strike, Up wins if it rips. gm degens.
-        </p>
-      </div>
+    <div className="flex flex-col gap-10">
+      <PageHeader
+        eyebrow="Live windows"
+        title="Markets"
+        description="Every market runs a fixed five-minute Up/Down window. Down wins if the price falls below the strike, Up wins if it rises above it."
+      />
 
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {visibleSlots.map((slot, index) => (
-          <MarketCard key={slot.asset.id.toString()} slot={slot} index={index} />
-        ))}
-      </div>
+      <MarketsGrid slots={visibleSlots} />
     </div>
   );
 }

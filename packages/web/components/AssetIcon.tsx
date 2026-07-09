@@ -35,7 +35,7 @@ export function useAssetIconUrl(asset: IconAsset): string | null {
 export function AssetIcon({
   asset,
   className = "",
-  textClassName = "text-gray-950",
+  textClassName = "text-white",
 }: {
   asset: IconAsset;
   className?: string;
