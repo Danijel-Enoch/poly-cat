@@ -32,21 +32,43 @@ function IconX(props: React.SVGProps<SVGSVGElement>) {
 // used as-is on the landing page (components/landing/navigation.tsx).
 const NAV_LINKS = [
   { href: "/app", label: "Markets" },
-  { href: "/prediction-markets", label: "Prediction Market" },
+  { href: "https://prediction.poly-cat.xyz/", label: "Prediction Market", external: true },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/docs", label: "Docs" },
 ] as const;
 
-function NavLinkItem({ href, label, active, onNavigate }: { href: string; label: string; active: boolean; onNavigate?: () => void }) {
+function NavLinkItem({
+  href,
+  label,
+  active,
+  external,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+  external?: boolean;
+  onNavigate?: () => void;
+}) {
+  const className = `relative text-sm shrink-0 transition-colors group ${active ? "text-foreground" : "text-foreground/60 hover:text-foreground"}`;
+  const underline = (
+    <span className={`absolute -bottom-1 left-0 h-px bg-foreground transition-all duration-300 ${active ? "w-full" : "w-0 group-hover:w-full"}`} />
+  );
+
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" onClick={onNavigate} className={className}>
+        {label}
+        {underline}
+      </a>
+    );
+  }
+
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`relative text-sm shrink-0 transition-colors group ${active ? "text-foreground" : "text-foreground/60 hover:text-foreground"}`}
-    >
+    <Link href={href} onClick={onNavigate} className={className}>
       {label}
-      <span className={`absolute -bottom-1 left-0 h-px bg-foreground transition-all duration-300 ${active ? "w-full" : "w-0 group-hover:w-full"}`} />
+      {underline}
     </Link>
   );
 }
@@ -77,7 +99,8 @@ export function DashboardNav() {
                   key={link.href}
                   href={link.href}
                   label={link.label}
-                  active={pathname === link.href || pathname.startsWith(link.href + "/")}
+                  external={"external" in link && link.external}
+                  active={!("external" in link) && (pathname === link.href || pathname.startsWith(link.href + "/"))}
                 />
               ))}
               <AdminNavLink pathname={pathname} />
@@ -110,16 +133,29 @@ export function DashboardNav() {
       >
         <div className="flex flex-col min-h-full px-6 pt-8 pb-8">
           <div className="flex-1 flex flex-col gap-6">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="text-3xl font-display text-foreground"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map((link) =>
+              "external" in link && link.external ? (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setOpen(false)}
+                  className="text-3xl font-display text-foreground"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setOpen(false)}
+                  className="text-3xl font-display text-foreground"
+                >
+                  {link.label}
+                </Link>
+              ),
+            )}
             <AdminNavLink pathname={pathname} onNavigate={() => setOpen(false)} />
           </div>
           <div className="pt-6 border-t border-border">
