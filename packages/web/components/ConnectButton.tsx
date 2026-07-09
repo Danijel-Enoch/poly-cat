@@ -24,7 +24,7 @@ export function ConnectButton() {
           >
             {!connected ? (
               <Button onClick={openConnectModal} type="button" size="sm" className="w-full rounded-full">
-                Connect wallet
+                Connect
               </Button>
             ) : chain.unsupported ? (
               <Button onClick={openChainModal} type="button" variant="destructive" size="sm" className="w-full rounded-full">
