@@ -18,7 +18,7 @@ const NAV = [
 /** Stand-in for the connect-wallet button in the real header, so the walkthrough below can
  * point at something without needing a live wallet connection to screenshot. */
 function MockConnectButton() {
-  return <Button size="sm">Connect Wallet</Button>;
+  return <Button size="sm">Connect</Button>;
 }
 
 /** A small, static stand-in for a real MarketCard (see components/MarketCard.tsx) —
@@ -162,7 +162,7 @@ export default function DocsPage() {
             <Step
               n={1}
               title="Connect your wallet"
-              body='Click "Connect Wallet" in the top bar, pick your wallet from the list, and approve the connection. That&apos;s it — no account to create.'
+              body='Click "Connect" in the top bar, pick your wallet from the list, and approve the connection. That&apos;s it — no account to create.'
             />
             <div className="pl-11">
               <MockConnectButton />
