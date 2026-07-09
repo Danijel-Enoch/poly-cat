@@ -88,9 +88,8 @@ export function DashboardNav() {
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center gap-4 h-16">
-            <Link href="/app" className="flex items-center gap-2 shrink-0">
-              <Logo size={26} className="h-[26px] w-auto" />
-              <span className="font-display text-xl tracking-tight text-foreground">Polycat</span>
+            <Link href="/app" className="flex items-center shrink-0">
+              <Logo variant="full" height={28} className="h-7 w-auto" />
             </Link>
 
             <nav className="hidden md:flex items-center gap-6 min-w-0">
